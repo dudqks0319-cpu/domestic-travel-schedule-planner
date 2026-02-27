@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { optimizeRouteHandler } from "../controllers/route-controller";
+import { optimizeRouteRateLimit } from "../middleware/route-rate-limit";
 
 const plannerRouter = Router();
 
-plannerRouter.post("/route/optimize", optimizeRouteHandler);
+plannerRouter.post("/route/optimize", optimizeRouteRateLimit, optimizeRouteHandler);
 
 plannerRouter.post("/generate", (_req, res) => {
   res.status(501).json({

@@ -6,6 +6,7 @@ import {
   RouteTransportMode,
   optimizeRoute
 } from "../services/route-optimizer";
+import { normalizeRouteErrorMessage } from "../utils/response-safety";
 
 interface ValidationSuccess {
   ok: true;
@@ -99,9 +100,10 @@ function parsePointArray(raw: unknown, label: string, errors: string[]): RoutePo
     errors.push(`${label} can include at most 25 points.`);
   }
 
+  const cappedRaw = raw.slice(0, 25);
   const points: RoutePoint[] = [];
 
-  raw.forEach((item, index) => {
+  cappedRaw.forEach((item, index) => {
     const parsed = parsePoint(item, `${label}[${index}]`, errors);
     if (parsed) {
       points.push(parsed);
@@ -248,7 +250,8 @@ export async function optimizeRouteHandler(req: Request, res: Response): Promise
       data: result
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to optimize route.";
+    const message = normalizeRouteErrorMessage(error);
+    console.error("[route-optimize] failed", error);
 
     res.status(500).json({
       error: "Internal Server Error",

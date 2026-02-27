@@ -63,7 +63,7 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      setSignupMemory({ email, nickname, password });
+      setSignupMemory({ email, nickname });
       router.push("/auth/profile-setup");
     } catch {
       clearSignupMemory();

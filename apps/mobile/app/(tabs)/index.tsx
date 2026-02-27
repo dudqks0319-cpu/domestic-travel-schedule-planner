@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
+import { getUserProfile } from "../../lib/secure-storage";
 
 const { width } = Dimensions.get("window");
 const cardGap = 12;
@@ -20,10 +20,8 @@ export default function HomeScreen() {
 
   const loadUserData = async () => {
     try {
-      const data = await AsyncStorage.getItem("userData");
-      if (!data) return;
-
-      const parsed = JSON.parse(data) as { nickname?: string };
+      const parsed = await getUserProfile<{ nickname?: string }>();
+      if (!parsed) return;
       setNickname(parsed.nickname ?? "여행자");
     } catch {
       setNickname("여행자");

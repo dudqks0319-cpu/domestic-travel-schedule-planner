@@ -1,7 +1,6 @@
 type SignupMemory = {
   email: string;
   nickname: string;
-  password: string;
 };
 
 let signupMemory: SignupMemory | null = null;

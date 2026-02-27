@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  ActivityIndicator
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -31,11 +40,50 @@ interface RouteParams {
 
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
-const DEFAULT_POINTS: RoutePoint[] = [
-  { id: "jeju-airport", name: "제주공항", lat: 33.5113, lng: 126.4928 },
-  { id: "dongmun", name: "동문시장", lat: 33.5121, lng: 126.5279 },
-  { id: "seongsan", name: "성산일출봉", lat: 33.4592, lng: 126.9424 },
-  { id: "seogwipo", name: "서귀포 올레시장", lat: 33.2506, lng: 126.5653 }
+const LEGACY_POINT_NAME_PATTERN = /(도착|추천 스팟|식당)$/;
+
+const DESTINATION_CENTERS: Record<string, { lat: number; lng: number }> = {
+  제주: { lat: 33.4996, lng: 126.5312 },
+  부산: { lat: 35.1796, lng: 129.0756 },
+  서울: { lat: 37.5665, lng: 126.978 },
+  강릉: { lat: 37.7519, lng: 128.8761 },
+  여수: { lat: 34.7604, lng: 127.6622 },
+  경주: { lat: 35.8562, lng: 129.2247 },
+  전주: { lat: 35.8242, lng: 127.148 },
+  인천: { lat: 37.4563, lng: 126.7052 },
+  속초: { lat: 38.207, lng: 128.5918 },
+  포항: { lat: 36.019, lng: 129.3435 }
+};
+
+const ATTRACTION_LABELS: Record<string, string> = {
+  nature: "자연/풍경",
+  museum: "박물관",
+  theme_park: "테마파크",
+  market: "시장/쇼핑",
+  night_view: "야경 명소",
+  walk_course: "산책 코스",
+  kids_zone: "키즈 스팟",
+  culture: "공연/문화"
+};
+
+const RESTAURANT_LABELS: Record<string, string> = {
+  korean: "한식",
+  seafood: "해산물",
+  bbq: "고기집",
+  noodle: "면요리",
+  cafe: "카페",
+  dessert: "디저트",
+  night_food: "야식",
+  local: "로컬 맛집"
+};
+
+const POINT_OFFSETS = [
+  { lat: 0, lng: 0 },
+  { lat: 0.014, lng: 0.012 },
+  { lat: -0.011, lng: 0.017 },
+  { lat: -0.016, lng: -0.01 },
+  { lat: 0.013, lng: -0.016 },
+  { lat: 0.006, lng: 0.022 }
 ];
 
 function normalizeParam(param: string | string[] | undefined): string | undefined {
@@ -136,6 +184,58 @@ function toBoolean(raw: string | undefined, defaultValue: boolean): boolean {
   return defaultValue;
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function hasTripSelectionData(destination: string, attractions: string[], restaurants: string[]): boolean {
+  return destination.trim().length > 0 && (attractions.length > 0 || restaurants.length > 0);
+}
+
+function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
+  const normalized = destination.trim();
+  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
+  if (entry) {
+    return entry[1];
+  }
+
+  return { lat: 37.5665, lng: 126.978 };
+}
+
+function buildTripRoutePointsFromSelection(
+  destination: string,
+  attractions: string[],
+  restaurants: string[]
+): RoutePoint[] {
+  const safeDestination = destination.trim() || "여행지";
+  const center = resolveDestinationCenter(safeDestination);
+  const attractionNames = attractions
+    .slice(0, 3)
+    .map((key, index) => `${safeDestination} ${ATTRACTION_LABELS[key] ?? `추천 명소 ${index + 1}`}`);
+  const restaurantNames = restaurants
+    .slice(0, 2)
+    .map((key, index) => `${safeDestination} ${RESTAURANT_LABELS[key] ?? `추천 맛집 ${index + 1}`}`);
+
+  const maxIntermediateCount = Math.max(0, POINT_OFFSETS.length - 2);
+  const intermediateNames = [...attractionNames, ...restaurantNames].slice(0, maxIntermediateCount);
+  const names = [`${safeDestination} 출발`, ...intermediateNames, `${safeDestination} 마무리`];
+
+  if (intermediateNames.length === 0 && POINT_OFFSETS.length >= 3) {
+    names.splice(1, 0, `${safeDestination} 추천 스팟`);
+  }
+
+  return names.slice(0, POINT_OFFSETS.length).map((name, index) => ({
+    id: `point_${index + 1}`,
+    name,
+    lat: center.lat + POINT_OFFSETS[index].lat,
+    lng: center.lng + POINT_OFFSETS[index].lng
+  }));
+}
+
 function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
   if (!rawTrip || typeof rawTrip !== "object") {
     return [];
@@ -143,14 +243,36 @@ function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
 
   const value = rawTrip as Record<string, unknown>;
   const points = value.routePoints;
+  const destination = typeof value.destination === "string" ? value.destination : "";
+  const attractions = normalizeStringArray(value.attractions);
+  const restaurants = normalizeStringArray(value.restaurants);
+  const canBuildFromSelection = hasTripSelectionData(destination, attractions, restaurants);
 
   if (!Array.isArray(points)) {
-    return [];
+    return canBuildFromSelection
+      ? buildTripRoutePointsFromSelection(destination, attractions, restaurants)
+      : [];
   }
 
-  return points
+  const parsedPoints = points
     .map((item, index) => toRoutePoint(item, index))
     .filter((item): item is RoutePoint => item !== null);
+
+  if (parsedPoints.length < 2) {
+    return canBuildFromSelection
+      ? buildTripRoutePointsFromSelection(destination, attractions, restaurants)
+      : [];
+  }
+
+  const hasOnlyLegacyNames = parsedPoints.every((point) =>
+    typeof point.name === "string" ? LEGACY_POINT_NAME_PATTERN.test(point.name) : false
+  );
+
+  if (!hasOnlyLegacyNames) {
+    return parsedPoints;
+  }
+
+  return buildTripRoutePointsFromSelection(destination, attractions, restaurants);
 }
 
 function parseCurrentTripMode(rawTrip: unknown): RouteTransportMode | null {
@@ -247,21 +369,29 @@ function buildRequestConfig(
     fallbackMode?: RouteTransportMode | null;
   }
 ): {
-  request: OptimizeRouteRequest;
+  request: OptimizeRouteRequest | null;
   mode: RouteTransportMode;
   hasInputPoints: boolean;
 } {
   const pointsParam = normalizeParam(params.routePoints ?? params.points);
   const parsedPoints = parseRoutePoints(pointsParam);
   const fallbackPoints = options?.fallbackPoints ?? [];
-  const hasInputPoints = parsedPoints.length >= 2 || fallbackPoints.length >= 2;
-  const points = parsedPoints.length >= 2 ? parsedPoints : fallbackPoints.length >= 2 ? fallbackPoints : DEFAULT_POINTS;
+  const points = parsedPoints.length >= 2 ? parsedPoints : fallbackPoints.length >= 2 ? fallbackPoints : [];
+  const hasInputPoints = points.length >= 2;
 
   const modeParam = normalizeParam(params.mode ?? params.transport);
   const mode = modeParam ? normalizeMode(modeParam) : options?.fallbackMode ?? "driving";
 
-  const start = points[0];
-  const end = points[points.length - 1];
+  if (!hasInputPoints) {
+    return {
+      request: null,
+      mode,
+      hasInputPoints: false
+    };
+  }
+
+  const start = points[0] as RoutePoint;
+  const end = points[points.length - 1] as RoutePoint;
   const waypoints = points.slice(1, points.length - 1);
 
   return {
@@ -286,6 +416,61 @@ function modeLabel(mode: RouteTransportMode): string {
   }
 
   return "자동차";
+}
+
+function sourceLabel(source: OptimizedRoute["source"]): string {
+  if (source === "kakao") return "카카오 길찾기";
+  if (source === "odsay") return "공공교통 데이터";
+  if (source === "mixed") return "혼합 추정";
+  return "예상 경로(미리보기)";
+}
+
+function toUserFriendlyRouteMessage(rawMessage: string): string {
+  const message = rawMessage.toLowerCase();
+
+  if (message.includes("at least two points")) {
+    return "출발지와 도착지를 포함해 2개 이상의 장소가 필요해요.";
+  }
+
+  if (message.includes("network") || message.includes("failed to fetch") || message.includes("connection")) {
+    return "네트워크 연결이 불안정해 실시간 경로를 불러오지 못했어요.";
+  }
+
+  if (message.includes("timeout")) {
+    return "응답이 지연되어 실시간 경로 대신 예상 경로를 먼저 보여드려요.";
+  }
+
+  if (message.includes("status") || message.includes("request failed") || message.includes("route optimization")) {
+    return "실시간 경로 서버 응답이 불안정해 예상 경로로 안내하고 있어요.";
+  }
+
+  if (message.includes("invalid")) {
+    return "경로 데이터 확인 중 문제가 있어 예상 경로를 먼저 보여드려요.";
+  }
+
+  return "실시간 경로를 불러오지 못해 예상 경로를 먼저 보여드리고 있어요.";
+}
+
+function formatWarning(warning: string): string {
+  const normalized = warning.toLowerCase();
+
+  if (normalized.includes("kakao")) {
+    return "카카오 실시간 경로 계산이 불안정해 대체 경로로 표시했어요.";
+  }
+
+  if (normalized.includes("odsay") || normalized.includes("transit")) {
+    return "대중교통 경로 응답이 불안정해 대체 경로로 표시했어요.";
+  }
+
+  if (normalized.includes("fallback") || normalized.includes("estimate") || normalized.includes("straight")) {
+    return "실시간 최적화 연결 전, 예상 경로를 먼저 보여드리고 있어요.";
+  }
+
+  if (normalized.includes("network") || normalized.includes("timeout")) {
+    return "연결 상태가 불안정해 일부 구간은 예상 이동 시간으로 안내돼요.";
+  }
+
+  return "일부 구간 데이터가 불안정해 예상 경로를 함께 안내하고 있어요.";
 }
 
 function formatDuration(durationMin: number): string {
@@ -381,18 +566,52 @@ export default function RouteMapScreen() {
     };
   }, []);
 
-  const routeRequest: OptimizeRouteRequest = useMemo(
-    () => ({
-      ...requestConfig.request,
-      mode
-    }),
+  const routeRequest = useMemo(
+    () => (requestConfig.request ? { ...requestConfig.request, mode } : null),
     [requestConfig.request, mode]
   );
 
-  const fallbackPreviewRoute = useMemo(() => buildFallbackPreviewRoute(routeRequest), [routeRequest]);
-  const displayedRoute = optimizedRoute ?? fallbackPreviewRoute;
+  const fallbackPreviewRoute = useMemo(
+    () => (routeRequest ? buildFallbackPreviewRoute(routeRequest) : null),
+    [routeRequest]
+  );
+  const displayedRoute = requestConfig.hasInputPoints ? optimizedRoute ?? fallbackPreviewRoute : null;
+  const isFallbackRoute = displayedRoute?.source === "fallback";
+  const routeTitleText = !hydrated
+    ? "저장된 여행 경로를 불러오는 중이에요."
+    : requestConfig.request
+      ? formatRouteNames(requestConfig.request)
+      : "아직 표시할 경로가 없어요.";
+  const routeInfoHintText = !hydrated
+    ? "잠시만요, 여행 정보를 확인하고 있어요."
+    : !requestConfig.hasInputPoints
+      ? "여행 만들기에서 목적지와 장소를 선택하면 경로가 자동으로 채워져요."
+      : isFallbackRoute
+        ? "실시간 경로 연결이 지연돼 예상 경로를 먼저 보여드리고 있어요."
+        : `이동수단: ${modeLabel(mode)}`;
+  const routeStatusLabel = !hydrated
+    ? "불러오는 중"
+    : !requestConfig.hasInputPoints
+      ? "경로 없음"
+      : isFallbackRoute
+        ? "예상 경로"
+        : "실시간 경로";
+  const listEmptyText = !hydrated
+    ? "경로 정보를 불러오는 중이에요."
+    : !requestConfig.hasInputPoints
+      ? "여행을 만들면 이동 구간 리스트가 여기에 표시돼요."
+      : "경로 포인트를 확인하면 구간 리스트가 표시됩니다.";
 
   const optimizeRouteNow = useCallback(async (options?: { silent?: boolean }) => {
+    if (!routeRequest) {
+      const emptyRouteMessage = "여행 만들기에서 장소를 선택하면 경로 최적화를 시작할 수 있어요.";
+      setErrorMessage(emptyRouteMessage);
+      if (!(options?.silent ?? false) && Platform.OS !== "web") {
+        Alert.alert("경로 최적화 안내", emptyRouteMessage);
+      }
+      return;
+    }
+
     setLoading(true);
     setErrorMessage(null);
 
@@ -401,13 +620,14 @@ export default function RouteMapScreen() {
       setOptimizedRoute(result);
       await persistOptimizedRoute(result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "경로 최적화에 실패했어요.";
+      const technicalMessage = error instanceof Error ? error.message : "";
+      const userMessage = toUserFriendlyRouteMessage(technicalMessage);
       const isSilent = options?.silent ?? false;
-      const fallbackMessage = "실시간 최적화 서버 연결에 실패해 예상 경로를 먼저 표시하고 있어요.";
-      setErrorMessage(isSilent ? fallbackMessage : message);
+      const fallbackMessage = "실시간 경로 연결이 지연되어 예상 경로를 먼저 표시하고 있어요.";
+      setErrorMessage(isSilent ? fallbackMessage : userMessage);
 
       if (!isSilent && Platform.OS !== "web") {
-        Alert.alert("경로 최적화 실패", message);
+        Alert.alert("경로 최적화 안내", userMessage);
       }
     } finally {
       setLoading(false);
@@ -415,13 +635,19 @@ export default function RouteMapScreen() {
   }, [routeRequest]);
 
   useEffect(() => {
-    if (!hydrated || hasAutoOptimizedRef.current || !requestConfig.hasInputPoints || mode !== requestConfig.mode) {
+    if (!hydrated || hasAutoOptimizedRef.current || !routeRequest || mode !== requestConfig.mode) {
       return;
     }
 
     hasAutoOptimizedRef.current = true;
     void optimizeRouteNow({ silent: true });
-  }, [hydrated, mode, optimizeRouteNow, requestConfig.hasInputPoints, requestConfig.mode]);
+  }, [hydrated, mode, optimizeRouteNow, requestConfig.mode, routeRequest]);
+
+  useEffect(() => {
+    if (!requestConfig.hasInputPoints) {
+      setErrorMessage(null);
+    }
+  }, [requestConfig.hasInputPoints]);
 
   return (
     <View style={styles.container}>
@@ -438,8 +664,31 @@ export default function RouteMapScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.routeInfoCard}>
-          <Text style={styles.routeInfoLabel}>경로</Text>
-          <Text style={styles.routeInfoValue}>{formatRouteNames(requestConfig.request)}</Text>
+          <View style={styles.routeInfoTopRow}>
+            <Text style={styles.routeInfoLabel}>경로</Text>
+            <View
+              style={[
+                styles.routeStatusBadge,
+                !hydrated ? styles.routeStatusBadgeLoading : null,
+                hydrated && !requestConfig.hasInputPoints ? styles.routeStatusBadgeMuted : null,
+                isFallbackRoute ? styles.routeStatusBadgeFallback : null
+              ]}
+            >
+              {!hydrated ? (
+                <ActivityIndicator size="small" color={Colors.common.white} />
+              ) : null}
+              <Text
+                style={[
+                  styles.routeStatusText,
+                  hydrated && !requestConfig.hasInputPoints ? styles.routeStatusTextMuted : null,
+                  isFallbackRoute ? styles.routeStatusTextFallback : null
+                ]}
+              >
+                {routeStatusLabel}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.routeInfoValue}>{routeTitleText}</Text>
 
           <View style={styles.modeRow}>
             {MODE_OPTIONS.map((option) => (
@@ -458,7 +707,7 @@ export default function RouteMapScreen() {
             ))}
           </View>
 
-          <Text style={styles.routeInfoHint}>{`이동수단: ${modeLabel(mode)}`}</Text>
+          <Text style={styles.routeInfoHint}>{routeInfoHintText}</Text>
         </View>
 
         <View style={styles.toggleWrap}>
@@ -481,7 +730,7 @@ export default function RouteMapScreen() {
         </View>
 
         {viewMode === "map" ? (
-          <RouteMapView route={displayedRoute} mode={mode} />
+          <RouteMapView route={displayedRoute} mode={mode} loading={!hydrated || (loading && !displayedRoute)} />
         ) : (
           <View style={styles.listContainer}>
             {displayedRoute?.segments.length ? (
@@ -495,7 +744,7 @@ export default function RouteMapScreen() {
               ))
             ) : (
               <View style={styles.emptyListCard}>
-                <Text style={styles.emptyListText}>경로 포인트를 확인하면 구간 리스트가 표시됩니다.</Text>
+                <Text style={styles.emptyListText}>{listEmptyText}</Text>
               </View>
             )}
           </View>
@@ -503,7 +752,9 @@ export default function RouteMapScreen() {
 
         {displayedRoute ? (
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>{optimizedRoute ? "최적화 결과" : "예상 경로 요약"}</Text>
+            <Text style={styles.summaryTitle}>
+              {displayedRoute.source === "fallback" ? "예상 경로 요약" : "최적화 결과"}
+            </Text>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>총 거리</Text>
               <Text style={styles.summaryValue}>{displayedRoute.totalDistanceKm.toFixed(1)} km</Text>
@@ -514,7 +765,7 @@ export default function RouteMapScreen() {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>데이터 소스</Text>
-              <Text style={styles.summaryValue}>{displayedRoute.source}</Text>
+              <Text style={styles.summaryValue}>{sourceLabel(displayedRoute.source)}</Text>
             </View>
           </View>
         ) : null}
@@ -524,7 +775,7 @@ export default function RouteMapScreen() {
             <Text style={styles.warningTitle}>참고</Text>
             {displayedRoute.warnings.slice(0, 3).map((warning, index) => (
               <Text key={`warning-${index}`} style={styles.warningText}>
-                • {warning}
+                • {formatWarning(warning)}
               </Text>
             ))}
           </View>
@@ -536,21 +787,32 @@ export default function RouteMapScreen() {
           </View>
         ) : null}
 
-        <Button
-          title="경로 최적화 실행"
-          onPress={() => {
-            void optimizeRouteNow();
-          }}
-          loading={loading}
-          size="large"
-        />
+        {requestConfig.hasInputPoints ? (
+          <>
+            <Button
+              title="경로 최적화 실행"
+              onPress={() => {
+                void optimizeRouteNow();
+              }}
+              loading={loading}
+              disabled={!routeRequest}
+              size="large"
+            />
 
-        <Button
-          title="일정 타임라인 보기"
-          variant="outline"
-          onPress={() => router.push("/trip/schedule")}
-          size="large"
-        />
+            <Button
+              title="일정 타임라인 보기"
+              variant="outline"
+              onPress={() => router.push("/trip/schedule")}
+              size="large"
+            />
+          </>
+        ) : hydrated ? (
+          <Button
+            title="여행 만들기 시작"
+            onPress={() => router.push("/trip/create")}
+            size="large"
+          />
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -573,9 +835,43 @@ const styles = StyleSheet.create({
     borderColor: Colors.common.gray200,
     padding: Spacing.lg
   },
+  routeInfoTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
   routeInfoLabel: {
     ...Typography.normal.caption,
     color: Colors.common.gray500
+  },
+  routeStatusBadge: {
+    borderRadius: 999,
+    backgroundColor: Colors.young.primary,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  routeStatusBadgeLoading: {
+    backgroundColor: Colors.young.primary
+  },
+  routeStatusBadgeMuted: {
+    backgroundColor: Colors.common.gray100
+  },
+  routeStatusBadgeFallback: {
+    backgroundColor: "#FFF4E6"
+  },
+  routeStatusText: {
+    ...Typography.normal.caption,
+    color: Colors.common.white,
+    fontWeight: "700"
+  },
+  routeStatusTextMuted: {
+    color: Colors.common.gray600
+  },
+  routeStatusTextFallback: {
+    color: "#AD6800"
   },
   routeInfoValue: {
     ...Typography.normal.bodySmall,

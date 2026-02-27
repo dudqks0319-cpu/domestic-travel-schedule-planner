@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
+import { clearAuthToken, clearUserProfile, getUserProfile } from "../../lib/secure-storage";
 
 import type { UserSignupProfile } from "../../types";
 
@@ -19,9 +19,9 @@ export default function ProfileScreen() {
 
   const loadUserData = async () => {
     try {
-      const data = await AsyncStorage.getItem("userData");
+      const data = await getUserProfile<UserSignupProfile>();
       if (data) {
-        setUserData(JSON.parse(data) as UserSignupProfile);
+        setUserData(data);
       }
     } catch {
       setUserData(null);
@@ -35,8 +35,7 @@ export default function ProfileScreen() {
         text: "로그아웃",
         style: "destructive",
         onPress: async () => {
-          await AsyncStorage.removeItem("userToken");
-          await AsyncStorage.removeItem("userData");
+          await Promise.all([clearAuthToken(), clearUserProfile()]);
           router.replace("/auth/login");
         }
       }

@@ -60,6 +60,10 @@ export const ROUTE_STORAGE_KEY = "optimizedRoute";
 const DEFAULT_API_BASE_URL = "http://localhost:4000";
 const ROUTE_OPTIMIZE_ENDPOINTS = ["/api/v1/route/optimize", "/api/v1/planner/route/optimize"];
 
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -127,11 +131,21 @@ function readEnvApiBaseUrl(): string | undefined {
 
 function normalizeBaseUrl(raw?: string): string {
   const value = (raw ?? "").trim();
-  if (!value) {
-    return DEFAULT_API_BASE_URL;
+  const base = value || DEFAULT_API_BASE_URL;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(base);
+  } catch {
+    throw new RouteApiError("Invalid API base URL configuration.");
   }
 
-  return value.endsWith("/") ? value.slice(0, -1) : value;
+  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopbackHost(parsed.hostname))) {
+    throw new RouteApiError("Insecure API base URL is blocked. Use HTTPS.");
+  }
+
+  const normalized = `${parsed.protocol}//${parsed.host}${parsed.pathname}`.replace(/\/$/, "");
+  return normalized;
 }
 
 function mapTransportMode(mode?: RouteTransportMode): RouteTransportMode {

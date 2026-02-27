@@ -15,6 +15,7 @@ import StepTransport from "../../components/trip/StepTransport";
 import StepAccommodation from "../../components/trip/StepAccommodation";
 import StepAttractions from "../../components/trip/StepAttractions";
 import StepRestaurants from "../../components/trip/StepRestaurants";
+import { clearPersistedOptimizedRoute } from "../../services/routeApi";
 
 import type {
   CompanionType,
@@ -67,6 +68,50 @@ const INITIAL_STATE: StepState = {
   restaurants: []
 };
 
+const DESTINATION_CENTERS: Record<string, { latitude: number; longitude: number }> = {
+  제주: { latitude: 33.4996, longitude: 126.5312 },
+  부산: { latitude: 35.1796, longitude: 129.0756 },
+  서울: { latitude: 37.5665, longitude: 126.978 },
+  강릉: { latitude: 37.7519, longitude: 128.8761 },
+  여수: { latitude: 34.7604, longitude: 127.6622 },
+  경주: { latitude: 35.8562, longitude: 129.2247 },
+  전주: { latitude: 35.8242, longitude: 127.148 },
+  인천: { latitude: 37.4563, longitude: 126.7052 },
+  속초: { latitude: 38.207, longitude: 128.5918 },
+  포항: { latitude: 36.019, longitude: 129.3435 }
+};
+
+const ATTRACTION_LABELS: Record<string, string> = {
+  nature: "자연/풍경",
+  museum: "박물관",
+  theme_park: "테마파크",
+  market: "시장/쇼핑",
+  night_view: "야경 명소",
+  walk_course: "산책 코스",
+  kids_zone: "키즈 스팟",
+  culture: "공연/문화"
+};
+
+const RESTAURANT_LABELS: Record<string, string> = {
+  korean: "한식",
+  seafood: "해산물",
+  bbq: "고기집",
+  noodle: "면요리",
+  cafe: "카페",
+  dessert: "디저트",
+  night_food: "야식",
+  local: "로컬 맛집"
+};
+
+const POINT_OFFSETS = [
+  { latitude: 0, longitude: 0 },
+  { latitude: 0.014, longitude: 0.012 },
+  { latitude: -0.011, longitude: 0.017 },
+  { latitude: -0.016, longitude: -0.01 },
+  { latitude: 0.013, longitude: -0.016 },
+  { latitude: 0.006, longitude: 0.022 }
+];
+
 function parseDate(dateText: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return null;
   const parsed = new Date(`${dateText}T00:00:00`);
@@ -80,27 +125,46 @@ function getTargetGroup(companion: CompanionType): TargetGroup {
   return "young";
 }
 
-function buildDummyRoutePoints(destination: string): TripRouteMapPoint[] {
-  return [
-    {
-      id: "point_start",
-      name: `${destination} 도착`,
-      latitude: 33.4996,
-      longitude: 126.5312
-    },
-    {
-      id: "point_mid",
-      name: `${destination} 추천 스팟`,
-      latitude: 33.3617,
-      longitude: 126.5292
-    },
-    {
-      id: "point_end",
-      name: `${destination} 식당`,
-      latitude: 33.2502,
-      longitude: 126.5651
-    }
-  ];
+function resolveDestinationCenter(destination: string): { latitude: number; longitude: number } {
+  const normalized = destination.trim();
+  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
+  if (entry) {
+    return entry[1];
+  }
+
+  return { latitude: 37.5665, longitude: 126.978 };
+}
+
+function buildRoutePoints(
+  destination: string,
+  attractions: string[],
+  restaurants: string[]
+): TripRouteMapPoint[] {
+  const center = resolveDestinationCenter(destination);
+  const safeDestination = destination.trim() || "여행지";
+
+  const attractionNames = attractions
+    .slice(0, 3)
+    .map((key, index) => `${safeDestination} ${ATTRACTION_LABELS[key] ?? `추천 명소 ${index + 1}`}`);
+  const restaurantNames = restaurants
+    .slice(0, 2)
+    .map((key, index) => `${safeDestination} ${RESTAURANT_LABELS[key] ?? `추천 맛집 ${index + 1}`}`);
+
+  const maxIntermediateCount = Math.max(0, POINT_OFFSETS.length - 2);
+  const intermediateNames = [...attractionNames, ...restaurantNames].slice(0, maxIntermediateCount);
+
+  const names = [`${safeDestination} 출발`, ...intermediateNames, `${safeDestination} 마무리`];
+
+  if (intermediateNames.length === 0 && POINT_OFFSETS.length >= 3) {
+    names.splice(1, 0, `${safeDestination} 추천 스팟`);
+  }
+
+  return names.slice(0, POINT_OFFSETS.length).map((name, index) => ({
+    id: `point_${index + 1}`,
+    name,
+    latitude: center.latitude + POINT_OFFSETS[index].latitude,
+    longitude: center.longitude + POINT_OFFSETS[index].longitude
+  }));
 }
 
 export default function TripCreateScreen() {
@@ -239,12 +303,15 @@ export default function TripCreateScreen() {
       accommodationType: draft.accommodationType,
       attractions: draft.attractions,
       restaurants: draft.restaurants,
-      routePoints: buildDummyRoutePoints(draft.destination.trim()),
+      routePoints: buildRoutePoints(draft.destination.trim(), draft.attractions, draft.restaurants),
       createdAt: new Date().toISOString()
     };
 
     try {
-      await AsyncStorage.setItem("currentTrip", JSON.stringify(currentTrip));
+      await Promise.all([
+        AsyncStorage.setItem("currentTrip", JSON.stringify(currentTrip)),
+        clearPersistedOptimizedRoute()
+      ]);
       router.push("/trip/route-map");
     } catch {
       Alert.alert("저장 실패", "여행 정보를 저장하지 못했어요. 다시 시도해주세요.");

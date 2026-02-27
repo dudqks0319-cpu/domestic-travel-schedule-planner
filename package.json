@@ -7,12 +7,18 @@
     "services/*"
   ],
   "scripts": {
+    "check:env": "node scripts/dev-readiness-check.mjs",
+    "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build",
+    "check:dev": "npm run check:env && npm run check:health",
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:web": "npm --prefix apps/mobile run web",
     "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
     "api:dev": "npm --prefix services/api run dev",
     "api:build": "npm --prefix services/api run build",
     "api:start": "npm --prefix services/api run start",
-    "planner:build": "npm --prefix packages/planner run build"
+    "api:smoke:local": "npm --prefix services/api run smoke:local",
+    "api:smoke:gate": "sh -c 'npm run -s api:start >/tmp/tripmate-api.log 2>&1 & API_PID=$!; trap \"kill $API_PID >/dev/null 2>&1 || true\" EXIT INT TERM; i=0; until curl -fsS http://127.0.0.1:4000/health >/dev/null 2>&1; do i=$((i+1)); if [ $i -ge 30 ]; then echo \"[gate] API did not become ready on :4000\"; exit 1; fi; sleep 1; done; npm run -s api:smoke:local'",
+    "planner:build": "npm --prefix packages/planner run build",
+    "gate:local": "npm run -s check:env && npm run -s mobile:typecheck && npm run -s api:build && npm run -s planner:build && npm run -s api:smoke:gate"
   }
 }

@@ -1,3 +1,5 @@
+import { normalizeRouteWarning, sanitizePublicText } from "../utils/response-safety";
+
 export type RouteTransportMode = "driving" | "transit" | "walking";
 export type RouteEstimateProvider = "kakao" | "odsay" | "fallback";
 
@@ -42,6 +44,19 @@ interface RawEstimate {
   distanceKm: number;
   durationMin: number;
   provider: RouteEstimateProvider;
+}
+
+function addWarning(warnings: string[], warning: string): void {
+  const normalized = normalizeRouteWarning(warning, "Fallback route estimates were used.");
+
+  if (!warnings.includes(normalized)) {
+    warnings.push(normalized);
+  }
+}
+
+function extractHttpStatusCode(value: string): string | null {
+  const matched = value.match(/\bHTTP\s+(\d{3})\b/i);
+  return matched?.[1] ?? null;
 }
 
 function clonePoint(point: RoutePoint): RoutePoint {
@@ -291,9 +306,20 @@ async function estimateSegment(
       return await estimator.run();
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
-      warnings.push(
-        `${estimator.provider.toUpperCase()} estimate failed for ${from.name ?? "point"} -> ${to.name ?? "point"} (${message}).`
-      );
+      const sanitizedMessage = sanitizePublicText(message);
+      const statusCode = extractHttpStatusCode(sanitizedMessage);
+
+      if (statusCode) {
+        addWarning(
+          warnings,
+          `${estimator.provider.toUpperCase()} estimate request returned HTTP ${statusCode}. Fallback estimate used.`
+        );
+      } else {
+        addWarning(
+          warnings,
+          `${estimator.provider.toUpperCase()} estimate request failed. Fallback estimate used.`
+        );
+      }
     }
   }
 
@@ -319,7 +345,10 @@ export async function optimizeRoute(input: OptimizeRouteInput): Promise<Optimize
   const keys = resolveProviderKeys();
 
   if (!keys.kakaoKey && !keys.odsayKey) {
-    warnings.push("No KAKAO/ODSAY API key found in process.env. Using local fallback estimates.");
+    addWarning(
+      warnings,
+      "Live route provider keys are not configured. Using local fallback estimates."
+    );
   }
 
   const orderedWaypoints = orderWaypointsByDistance(input.start, input.waypoints);

@@ -10,12 +10,12 @@ import {
   Alert
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
+import { setAuthToken } from "../../lib/secure-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await AsyncStorage.setItem("userToken", "temp_token_12345");
+      await setAuthToken("temp_token_12345");
       router.replace("/(tabs)");
     } catch {
       Alert.alert("오류", "로그인에 실패했어요.");

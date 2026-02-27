@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../constants/Colors";
+import { getAuthToken } from "../lib/secure-storage";
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function SplashScreen() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-      const userToken = await AsyncStorage.getItem("userToken");
+      const userToken = await getAuthToken();
 
       if (!hasSeenOnboarding) {
         router.replace("/onboarding");

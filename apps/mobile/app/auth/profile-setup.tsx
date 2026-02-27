@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
@@ -10,6 +9,7 @@ import SelectCard from "../../components/common/SelectCard";
 import MultiSelectCard from "../../components/common/MultiSelectCard";
 import ProgressBar from "../../components/common/ProgressBar";
 import { clearSignupMemory, getSignupMemory } from "../../lib/signup-memory";
+import { setAuthToken, setUserProfile } from "../../lib/secure-storage";
 
 import type {
   CompanionType,
@@ -29,8 +29,7 @@ export default function ProfileSetupScreen() {
 
   const email = signupMemoryRef.current?.email ?? "";
   const nickname = signupMemoryRef.current?.nickname ?? "";
-  const password = signupMemoryRef.current?.password ?? "";
-  const hasValidSignupData = Boolean(email.trim() && nickname.trim() && password);
+  const hasValidSignupData = Boolean(email.trim() && nickname.trim());
 
   const [step, setStep] = useState(1);
   const totalSetupSteps = 5;
@@ -132,8 +131,8 @@ export default function ProfileSetupScreen() {
     };
 
     try {
-      await AsyncStorage.setItem("userData", JSON.stringify(userData));
-      await AsyncStorage.setItem("userToken", "temp_token_12345");
+      await setUserProfile(userData);
+      await setAuthToken("temp_token_12345");
       clearSignupMemory();
       router.replace("/(tabs)");
     } catch {

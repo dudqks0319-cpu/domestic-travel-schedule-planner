@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { normalizeInternalErrorMessage } from "../utils/response-safety";
 
 export function errorHandler(
   err: unknown,
@@ -6,10 +7,10 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  const message = err instanceof Error ? err.message : "Unexpected error";
+  console.error("[api] unhandled error", err);
 
   res.status(500).json({
     error: "Internal Server Error",
-    message
+    message: normalizeInternalErrorMessage()
   });
 }
