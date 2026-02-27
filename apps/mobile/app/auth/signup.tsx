@@ -16,7 +16,7 @@ import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import ProgressBar from "../../components/common/ProgressBar";
-import { clearSignupMemory, setSignupMemory } from "./signup-memory";
+import { clearSignupMemory, setSignupMemory } from "../../lib/signup-memory";
 
 export default function SignupScreen() {
   const router = useRouter();

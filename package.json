@@ -1,0 +1,18 @@
+{
+  "name": "tripmate",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "mobile:start": "npm --prefix apps/mobile run start",
+    "mobile:web": "npm --prefix apps/mobile run web",
+    "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+    "api:dev": "npm --prefix services/api run dev",
+    "api:build": "npm --prefix services/api run build",
+    "api:start": "npm --prefix services/api run start",
+    "planner:build": "npm --prefix packages/planner run build"
+  }
+}

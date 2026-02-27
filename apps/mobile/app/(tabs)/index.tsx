@@ -41,7 +41,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={[styles.bentoCard, styles.bentoLarge]}
           activeOpacity={0.8}
-          onPress={() => router.push("/create")}
+          onPress={() => router.push("/trip/create")}
         >
           <Text style={styles.bentoEmoji}>✈️</Text>
           <Text style={styles.bentoTitle}>새 여행 만들기</Text>

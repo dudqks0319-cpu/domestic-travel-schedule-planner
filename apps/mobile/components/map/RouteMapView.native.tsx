@@ -1,21 +1,15 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
-import type { OptimizedRoute, RoutePoint, RouteTransportMode } from "../../services/routeApi";
+import type { OptimizedRoute, RouteTransportMode } from "../../services/routeApi";
 
 interface RouteMapViewProps {
   route: OptimizedRoute | null;
   mode: RouteTransportMode;
-}
-
-interface MarkerPosition {
-  point: RoutePoint;
-  order: number;
-  leftPercent: number;
-  topPercent: number;
 }
 
 function getModeLabel(mode: RouteTransportMode): string {
@@ -43,35 +37,28 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
-function toMarkerPositions(points: RoutePoint[]): MarkerPosition[] {
-  if (points.length === 0) return [];
-
-  const latitudes = points.map((point) => point.lat);
-  const longitudes = points.map((point) => point.lng);
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLng = Math.min(...longitudes);
-  const maxLng = Math.max(...longitudes);
-  const latRange = Math.max(maxLat - minLat, 0.0001);
-  const lngRange = Math.max(maxLng - minLng, 0.0001);
-
-  return points.map((point, index) => {
-    const leftRatio = (point.lng - minLng) / lngRange;
-    const topRatio = (maxLat - point.lat) / latRange;
-
-    return {
-      point,
-      order: index + 1,
-      leftPercent: 8 + leftRatio * 84,
-      topPercent: 8 + topRatio * 84
-    };
-  });
-}
-
 export default function RouteMapView({ route, mode }: RouteMapViewProps) {
-  const points = route?.orderedPoints ?? [];
-  const positions = useMemo(() => toMarkerPositions(points), [points]);
   const modeColor = getModeColor(mode);
+  const mapRef = useRef<MapView>(null);
+  const points = route?.orderedPoints ?? [];
+
+  useEffect(() => {
+    if (!mapRef.current || points.length < 2) return;
+
+    const coordinates = points.map((point) => ({
+      latitude: point.lat,
+      longitude: point.lng
+    }));
+
+    const timer = setTimeout(() => {
+      mapRef.current?.fitToCoordinates(coordinates, {
+        edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+        animated: true
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [points]);
 
   if (!route) {
     return (
@@ -101,35 +88,50 @@ export default function RouteMapView({ route, mode }: RouteMapViewProps) {
         </View>
       </View>
 
-      <View style={styles.mapCanvas}>
-        {positions.map((item, index) => {
-          const isStart = index === 0;
-          const isEnd = index === positions.length - 1;
-          const markerStyle = isStart ? styles.startMarker : isEnd ? styles.endMarker : styles.midMarker;
+      <MapView
+        ref={mapRef}
+        style={styles.nativeMap}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={{
+          latitude: points[0]?.lat ?? 33.4996,
+          longitude: points[0]?.lng ?? 126.5312,
+          latitudeDelta: 0.15,
+          longitudeDelta: 0.15
+        }}
+        showsCompass
+        showsScale
+        showsUserLocation
+      >
+        {route.segments.map((segment, index) => (
+          <Polyline
+            key={`${segment.from.id ?? index}-${segment.to.id ?? index + 1}`}
+            coordinates={[
+              { latitude: segment.from.lat, longitude: segment.from.lng },
+              { latitude: segment.to.lat, longitude: segment.to.lng }
+            ]}
+            strokeColor={modeColor}
+            strokeWidth={4}
+            lineDashPattern={mode === "walking" ? [8, 6] : undefined}
+          />
+        ))}
 
-          return (
-            <View
-              key={`${item.point.id ?? item.order}-${item.order}`}
-              style={[
-                styles.markerWrap,
-                {
-                  left: `${item.leftPercent}%`,
-                  top: `${item.topPercent}%`
-                }
-              ]}
-            >
-              <View style={[styles.marker, markerStyle]}>
-                <Text style={styles.markerText}>{item.order}</Text>
-              </View>
-              <Text numberOfLines={1} style={styles.markerLabel}>
-                {item.point.name ?? `Point ${item.order}`}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+        {points.map((point, index) => (
+          <Marker
+            key={`${point.id ?? index}-${index}`}
+            coordinate={{ latitude: point.lat, longitude: point.lng }}
+            title={`${index + 1}. ${point.name ?? `Point ${index + 1}`}`}
+            pinColor={
+              index === 0
+                ? Colors.route.selected
+                : index === points.length - 1
+                  ? Colors.family.primary
+                  : Colors.young.primary
+            }
+          />
+        ))}
+      </MapView>
 
-      <Text style={styles.routeHint}>웹에서는 경로 미리보기로 표시되고, 앱에서는 실제 지도로 표시됩니다.</Text>
+      <Text style={styles.routeHint}>시작/경유/도착 지점은 숫자 순서대로 이동합니다.</Text>
     </View>
   );
 }
@@ -176,50 +178,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.common.gray800
   },
-  mapCanvas: {
+  nativeMap: {
     height: 320,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.gray50,
-    overflow: "hidden",
-    position: "relative"
-  },
-  markerWrap: {
-    position: "absolute",
-    marginLeft: -20,
-    marginTop: -20,
-    alignItems: "center",
-    maxWidth: 90
-  },
-  marker: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: Colors.common.white
-  },
-  startMarker: {
-    backgroundColor: Colors.route.selected
-  },
-  midMarker: {
-    backgroundColor: Colors.young.primary
-  },
-  endMarker: {
-    backgroundColor: Colors.family.primary
-  },
-  markerText: {
-    ...Typography.normal.caption,
-    fontWeight: "700",
-    color: Colors.common.white
-  },
-  markerLabel: {
-    ...Typography.normal.caption,
-    color: Colors.common.gray700,
-    marginTop: 4,
-    textAlign: "center"
+    borderRadius: 20
   },
   routeHint: {
     ...Typography.normal.caption,

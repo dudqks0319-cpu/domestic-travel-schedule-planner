@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Button from "../../components/common/Button";
 import Header from "../../components/common/Header";
@@ -37,6 +38,103 @@ const DAY_COLORS = [
   Colors.schedule.day4,
   Colors.schedule.day5
 ];
+const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function toRoutePoint(raw: unknown, index: number): RoutePoint | null {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+
+  const value = raw as Record<string, unknown>;
+  const lat = toFiniteNumber(value.lat ?? value.latitude);
+  const lng = toFiniteNumber(value.lng ?? value.longitude ?? value.lon);
+
+  if (lat === null || lng === null) {
+    return null;
+  }
+
+  const id = typeof value.id === "string" ? value.id : `trip-point-${index + 1}`;
+  const name = typeof value.name === "string" ? value.name : `지점 ${index + 1}`;
+
+  return { id, name, lat, lng };
+}
+
+function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return [];
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  const routePoints = value.routePoints;
+
+  if (!Array.isArray(routePoints)) {
+    return [];
+  }
+
+  return routePoints
+    .map((item, index) => toRoutePoint(item, index))
+    .filter((item): item is RoutePoint => item !== null);
+}
+
+function toRad(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function distanceKm(from: RoutePoint, to: RoutePoint): number {
+  const radiusKm = 6371;
+  const latDiff = toRad(to.lat - from.lat);
+  const lngDiff = toRad(to.lng - from.lng);
+  const a =
+    Math.sin(latDiff / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(lngDiff / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return radiusKm * c;
+}
+
+function buildFallbackRoute(points: RoutePoint[]): OptimizedRoute | null {
+  if (points.length < 2) {
+    return null;
+  }
+
+  const averageSpeedKmPerHour = 30;
+  const segments = points.slice(0, -1).map((from, index) => {
+    const to = points[index + 1];
+    const segmentDistanceKm = distanceKm(from, to);
+    const durationMin = Math.max(1, Math.round((segmentDistanceKm / averageSpeedKmPerHour) * 60));
+
+    return {
+      from,
+      to,
+      distanceKm: segmentDistanceKm,
+      durationMin,
+      provider: "fallback" as const
+    };
+  });
+
+  return {
+    orderedPoints: points,
+    segments,
+    totalDistanceKm: segments.reduce((sum, segment) => sum + segment.distanceKm, 0),
+    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
+    source: "fallback",
+    warnings: ["최적 경로가 없어 현재 여행의 저장된 경유지 순서로 임시 타임라인을 표시합니다."]
+  };
+}
 
 function formatClock(totalMinutes: number): string {
   const normalized = Math.max(0, Math.round(totalMinutes));
@@ -113,6 +211,7 @@ function buildTimeline(route: OptimizedRoute): TimelineEntry[] {
 export default function ScheduleScreen() {
   const router = useRouter();
   const [route, setRoute] = useState<OptimizedRoute | null>(null);
+  const [currentTripPoints, setCurrentTripPoints] = useState<RoutePoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -120,13 +219,21 @@ export default function ScheduleScreen() {
 
     const load = async () => {
       try {
-        const savedRoute = await loadPersistedOptimizedRoute();
+        const [savedRoute, rawCurrentTrip] = await Promise.all([
+          loadPersistedOptimizedRoute(),
+          AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY)
+        ]);
 
         if (!mounted) {
           return;
         }
 
         setRoute(savedRoute);
+
+        if (rawCurrentTrip) {
+          const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
+          setCurrentTripPoints(parseCurrentTripPoints(parsedCurrentTrip));
+        }
       } finally {
         if (mounted) {
           setLoading(false);
@@ -141,7 +248,10 @@ export default function ScheduleScreen() {
     };
   }, []);
 
-  const timeline = useMemo(() => (route ? buildTimeline(route) : []), [route]);
+  const fallbackRoute = useMemo(() => buildFallbackRoute(currentTripPoints), [currentTripPoints]);
+  const displayedRoute = route ?? fallbackRoute;
+  const timeline = useMemo(() => (displayedRoute ? buildTimeline(displayedRoute) : []), [displayedRoute]);
+  const isFallbackTimeline = !route && !!fallbackRoute;
 
   return (
     <View style={styles.container}>
@@ -158,11 +268,11 @@ export default function ScheduleScreen() {
           </View>
         ) : null}
 
-        {!loading && !route ? (
+        {!loading && !displayedRoute ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>저장된 최적 경로가 없어요</Text>
+            <Text style={styles.emptyTitle}>표시할 일정 데이터가 없어요</Text>
             <Text style={styles.emptyDescription}>
-              먼저 경로 최적화 화면에서 계산을 완료하면 일정 타임라인이 생성됩니다.
+              여행 생성 후 경로 최적화를 실행하면 일정 타임라인이 자동으로 생성됩니다.
             </Text>
             <View style={styles.emptyActions}>
               <Button
@@ -173,20 +283,28 @@ export default function ScheduleScreen() {
           </View>
         ) : null}
 
-        {route ? (
+        {displayedRoute ? (
           <>
+            {isFallbackTimeline ? (
+              <View style={styles.fallbackNoticeCard}>
+                <Text style={styles.fallbackNoticeText}>
+                  최적화 결과가 없어 현재 여행의 저장된 경유지 순서로 임시 타임라인을 보여드리고 있어요.
+                </Text>
+              </View>
+            ) : null}
+
             <View style={styles.summaryRow}>
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>총 거리</Text>
-                <Text style={styles.summaryValue}>{route.totalDistanceKm.toFixed(1)} km</Text>
+                <Text style={styles.summaryValue}>{displayedRoute.totalDistanceKm.toFixed(1)} km</Text>
               </View>
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>총 이동시간</Text>
-                <Text style={styles.summaryValue}>{formatDuration(route.totalDurationMin)}</Text>
+                <Text style={styles.summaryValue}>{formatDuration(displayedRoute.totalDurationMin)}</Text>
               </View>
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>구간 수</Text>
-                <Text style={styles.summaryValue}>{route.segments.length}개</Text>
+                <Text style={styles.summaryValue}>{displayedRoute.segments.length}개</Text>
               </View>
             </View>
 
@@ -249,6 +367,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screenPadding,
     paddingBottom: 36,
     gap: Spacing.lg
+  },
+  fallbackNoticeCard: {
+    backgroundColor: "#FFF9DB",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.common.warning,
+    padding: Spacing.md
+  },
+  fallbackNoticeText: {
+    ...Typography.normal.caption,
+    color: "#8A5D00"
   },
   summaryRow: {
     flexDirection: "row",

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Header from "../../components/common/Header";
 import Button from "../../components/common/Button";
@@ -27,6 +28,8 @@ interface RouteParams {
   transport?: string | string[];
   roundTrip?: string | string[];
 }
+
+const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
 const DEFAULT_POINTS: RoutePoint[] = [
   { id: "jeju-airport", name: "제주공항", lat: 33.5113, lng: 126.4928 },
@@ -133,13 +136,129 @@ function toBoolean(raw: string | undefined, defaultValue: boolean): boolean {
   return defaultValue;
 }
 
-function buildRequestConfig(params: RouteParams): {
+function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return [];
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  const points = value.routePoints;
+
+  if (!Array.isArray(points)) {
+    return [];
+  }
+
+  return points
+    .map((item, index) => toRoutePoint(item, index))
+    .filter((item): item is RoutePoint => item !== null);
+}
+
+function parseCurrentTripMode(rawTrip: unknown): RouteTransportMode | null {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return null;
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  if (typeof value.transport !== "string") {
+    return null;
+  }
+
+  return normalizeMode(value.transport);
+}
+
+function buildRequestPoints(request: OptimizeRouteRequest): RoutePoint[] {
+  return [request.start, ...(request.waypoints ?? []), ...(request.end ? [request.end] : [])];
+}
+
+function pointsEqual(left: RoutePoint, right: RoutePoint): boolean {
+  return left.lat === right.lat && left.lng === right.lng;
+}
+
+function toRad(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function distanceKm(from: RoutePoint, to: RoutePoint): number {
+  const radiusKm = 6371;
+  const latDiff = toRad(to.lat - from.lat);
+  const lngDiff = toRad(to.lng - from.lng);
+  const a =
+    Math.sin(latDiff / 2) ** 2 +
+    Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(lngDiff / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return radiusKm * c;
+}
+
+function averageSpeedKmPerHour(mode: RouteTransportMode | undefined): number {
+  if (mode === "walking") {
+    return 4.5;
+  }
+
+  if (mode === "transit") {
+    return 24;
+  }
+
+  return 36;
+}
+
+function buildFallbackPreviewRoute(request: OptimizeRouteRequest): OptimizedRoute | null {
+  const orderedPoints = [...buildRequestPoints(request)];
+
+  if (request.roundTrip && orderedPoints.length >= 2 && !pointsEqual(orderedPoints[0], orderedPoints[orderedPoints.length - 1])) {
+    orderedPoints.push(orderedPoints[0]);
+  }
+
+  if (orderedPoints.length < 2) {
+    return null;
+  }
+
+  const speed = averageSpeedKmPerHour(request.mode);
+  const segments = orderedPoints.slice(0, -1).map((from, index) => {
+    const to = orderedPoints[index + 1];
+    const segmentDistanceKm = distanceKm(from, to);
+    const durationMin = Math.max(1, Math.round((segmentDistanceKm / speed) * 60));
+
+    return {
+      from,
+      to,
+      distanceKm: segmentDistanceKm,
+      durationMin,
+      provider: "fallback" as const
+    };
+  });
+
+  const totalDistanceKm = segments.reduce((sum, segment) => sum + segment.distanceKm, 0);
+  const totalDurationMin = segments.reduce((sum, segment) => sum + segment.durationMin, 0);
+
+  return {
+    orderedPoints,
+    segments,
+    totalDistanceKm,
+    totalDurationMin,
+    source: "fallback",
+    warnings: ["실시간 최적화 API 연결 전에는 직선 거리 기반 예상 경로를 표시합니다."]
+  };
+}
+
+function buildRequestConfig(
+  params: RouteParams,
+  options?: {
+    fallbackPoints?: RoutePoint[];
+    fallbackMode?: RouteTransportMode | null;
+  }
+): {
   request: OptimizeRouteRequest;
   mode: RouteTransportMode;
+  hasInputPoints: boolean;
 } {
   const pointsParam = normalizeParam(params.routePoints ?? params.points);
   const parsedPoints = parseRoutePoints(pointsParam);
-  const points = parsedPoints.length >= 2 ? parsedPoints : DEFAULT_POINTS;
+  const fallbackPoints = options?.fallbackPoints ?? [];
+  const hasInputPoints = parsedPoints.length >= 2 || fallbackPoints.length >= 2;
+  const points = parsedPoints.length >= 2 ? parsedPoints : fallbackPoints.length >= 2 ? fallbackPoints : DEFAULT_POINTS;
+
+  const modeParam = normalizeParam(params.mode ?? params.transport);
+  const mode = modeParam ? normalizeMode(modeParam) : options?.fallbackMode ?? "driving";
 
   const start = points[0];
   const end = points[points.length - 1];
@@ -152,7 +271,8 @@ function buildRequestConfig(params: RouteParams): {
       waypoints,
       roundTrip: toBoolean(normalizeParam(params.roundTrip), false)
     },
-    mode: normalizeMode(normalizeParam(params.mode ?? params.transport))
+    mode,
+    hasInputPoints
   };
 }
 
@@ -196,14 +316,26 @@ const MODE_OPTIONS: Array<{ mode: RouteTransportMode; label: string }> = [
 
 export default function RouteMapScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<RouteParams>();
-  const requestConfig = useMemo(() => buildRequestConfig(params), [params]);
+  const params = useLocalSearchParams() as RouteParams;
 
   const [viewMode, setViewMode] = useState<ViewMode>("map");
-  const [mode, setMode] = useState<RouteTransportMode>(requestConfig.mode);
+  const [tripPoints, setTripPoints] = useState<RoutePoint[]>([]);
+  const [tripMode, setTripMode] = useState<RouteTransportMode | null>(null);
+  const [mode, setMode] = useState<RouteTransportMode>("driving");
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const hasAutoOptimizedRef = useRef(false);
+
+  const requestConfig = useMemo(
+    () =>
+      buildRequestConfig(params, {
+        fallbackPoints: tripPoints,
+        fallbackMode: tripMode
+      }),
+    [params, tripPoints, tripMode]
+  );
 
   useEffect(() => {
     setMode(requestConfig.mode);
@@ -214,15 +346,31 @@ export default function RouteMapScreen() {
 
     const hydrate = async () => {
       try {
-        const savedRoute = await loadPersistedOptimizedRoute();
+        const [savedRoute, rawCurrentTrip] = await Promise.all([
+          loadPersistedOptimizedRoute(),
+          AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY)
+        ]);
 
-        if (!mounted || !savedRoute) {
+        if (!mounted) {
           return;
         }
 
-        setOptimizedRoute(savedRoute);
+        if (savedRoute) {
+          setOptimizedRoute(savedRoute);
+        }
+
+        if (rawCurrentTrip) {
+          const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
+          const parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          setTripPoints(parsedPoints);
+          setTripMode(parseCurrentTripMode(parsedCurrentTrip));
+        }
       } catch {
         // Ignore persistence read failures and continue with fresh optimization.
+      } finally {
+        if (mounted) {
+          setHydrated(true);
+        }
       }
     };
 
@@ -241,7 +389,10 @@ export default function RouteMapScreen() {
     [requestConfig.request, mode]
   );
 
-  const optimizeRouteNow = async () => {
+  const fallbackPreviewRoute = useMemo(() => buildFallbackPreviewRoute(routeRequest), [routeRequest]);
+  const displayedRoute = optimizedRoute ?? fallbackPreviewRoute;
+
+  const optimizeRouteNow = useCallback(async (options?: { silent?: boolean }) => {
     setLoading(true);
     setErrorMessage(null);
 
@@ -251,12 +402,26 @@ export default function RouteMapScreen() {
       await persistOptimizedRoute(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "경로 최적화에 실패했어요.";
-      setErrorMessage(message);
-      Alert.alert("경로 최적화 실패", message);
+      const isSilent = options?.silent ?? false;
+      const fallbackMessage = "실시간 최적화 서버 연결에 실패해 예상 경로를 먼저 표시하고 있어요.";
+      setErrorMessage(isSilent ? fallbackMessage : message);
+
+      if (!isSilent && Platform.OS !== "web") {
+        Alert.alert("경로 최적화 실패", message);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [routeRequest]);
+
+  useEffect(() => {
+    if (!hydrated || hasAutoOptimizedRef.current || !requestConfig.hasInputPoints || mode !== requestConfig.mode) {
+      return;
+    }
+
+    hasAutoOptimizedRef.current = true;
+    void optimizeRouteNow({ silent: true });
+  }, [hydrated, mode, optimizeRouteNow, requestConfig.hasInputPoints, requestConfig.mode]);
 
   return (
     <View style={styles.container}>
@@ -316,11 +481,11 @@ export default function RouteMapScreen() {
         </View>
 
         {viewMode === "map" ? (
-          <RouteMapView route={optimizedRoute} mode={mode} />
+          <RouteMapView route={displayedRoute} mode={mode} />
         ) : (
           <View style={styles.listContainer}>
-            {optimizedRoute?.segments.length ? (
-              optimizedRoute.segments.map((segment, index) => (
+            {displayedRoute?.segments.length ? (
+              displayedRoute.segments.map((segment, index) => (
                 <RouteDetailCard
                   key={`${segment.from.id ?? index}-${segment.to.id ?? index + 1}`}
                   segment={segment}
@@ -330,34 +495,34 @@ export default function RouteMapScreen() {
               ))
             ) : (
               <View style={styles.emptyListCard}>
-                <Text style={styles.emptyListText}>최적 경로를 계산하면 구간 리스트가 표시됩니다.</Text>
+                <Text style={styles.emptyListText}>경로 포인트를 확인하면 구간 리스트가 표시됩니다.</Text>
               </View>
             )}
           </View>
         )}
 
-        {optimizedRoute ? (
+        {displayedRoute ? (
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>최적화 결과</Text>
+            <Text style={styles.summaryTitle}>{optimizedRoute ? "최적화 결과" : "예상 경로 요약"}</Text>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>총 거리</Text>
-              <Text style={styles.summaryValue}>{optimizedRoute.totalDistanceKm.toFixed(1)} km</Text>
+              <Text style={styles.summaryValue}>{displayedRoute.totalDistanceKm.toFixed(1)} km</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>예상 이동 시간</Text>
-              <Text style={styles.summaryValue}>{formatDuration(optimizedRoute.totalDurationMin)}</Text>
+              <Text style={styles.summaryValue}>{formatDuration(displayedRoute.totalDurationMin)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>데이터 소스</Text>
-              <Text style={styles.summaryValue}>{optimizedRoute.source}</Text>
+              <Text style={styles.summaryValue}>{displayedRoute.source}</Text>
             </View>
           </View>
         ) : null}
 
-        {optimizedRoute?.warnings?.length ? (
+        {displayedRoute?.warnings?.length ? (
           <View style={styles.warningCard}>
             <Text style={styles.warningTitle}>참고</Text>
-            {optimizedRoute.warnings.slice(0, 3).map((warning, index) => (
+            {displayedRoute.warnings.slice(0, 3).map((warning, index) => (
               <Text key={`warning-${index}`} style={styles.warningText}>
                 • {warning}
               </Text>
@@ -384,7 +549,6 @@ export default function RouteMapScreen() {
           title="일정 타임라인 보기"
           variant="outline"
           onPress={() => router.push("/trip/schedule")}
-          disabled={!optimizedRoute}
           size="large"
         />
       </ScrollView>

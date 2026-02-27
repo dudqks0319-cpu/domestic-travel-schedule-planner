@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
@@ -16,14 +16,20 @@ interface DatePickerProps {
   error?: string;
 }
 
-const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+const CALENDAR_CELL_COUNT = 42;
+
+function startOfDay(date: Date): Date {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+}
 
 function parseDate(dateText?: string): Date | null {
   if (!dateText || !/^\d{4}-\d{2}-\d{2}$/.test(dateText)) return null;
   const parsed = new Date(`${dateText}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return null;
-  return parsed;
+  return startOfDay(parsed);
 }
 
 function toIsoDate(date: Date): string {
@@ -43,16 +49,47 @@ function formatDate(dateText?: string): string {
   return `${month}월 ${day}일 (${weekday})`;
 }
 
-function buildDateOptions(startDate: Date, maximumDays: number): string[] {
-  const safeDays = Math.max(1, maximumDays);
-  const list: string[] = [];
+function addDays(baseDate: Date, amount: number): Date {
+  const nextDate = new Date(baseDate);
+  nextDate.setDate(nextDate.getDate() + amount);
+  return startOfDay(nextDate);
+}
 
-  for (let i = 0; i < safeDays; i += 1) {
-    const nextDate = new Date(startDate.getTime() + DAY_IN_MS * i);
-    list.push(toIsoDate(nextDate));
+function addMonths(baseDate: Date, amount: number): Date {
+  return new Date(baseDate.getFullYear(), baseDate.getMonth() + amount, 1);
+}
+
+function toMonthStart(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function buildMonthCells(monthDate: Date): Array<Date | null> {
+  const monthStart = toMonthStart(monthDate);
+  const firstWeekday = monthStart.getDay();
+  const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
+  const cells: Array<Date | null> = [];
+
+  for (let i = 0; i < CALENDAR_CELL_COUNT; i += 1) {
+    const day = i - firstWeekday + 1;
+
+    if (day < 1 || day > daysInMonth) {
+      cells.push(null);
+      continue;
+    }
+
+    cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
   }
 
-  return list;
+  return cells;
+}
+
+function isDateInRange(date: Date, minimumDate: Date, maximumDate: Date): boolean {
+  const time = date.getTime();
+  return time >= minimumDate.getTime() && time <= maximumDate.getTime();
+}
+
+function toMonthLabel(monthDate: Date): string {
+  return `${monthDate.getFullYear()}년 ${monthDate.getMonth() + 1}월`;
 }
 
 export default function DatePicker({
@@ -66,65 +103,149 @@ export default function DatePicker({
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const optionStartDate = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const selectedDate = useMemo(() => parseDate(value), [value]);
 
+  const optionStartDate = useMemo(() => {
     const min = parseDate(minimumDate);
     if (!min) return today;
     return min.getTime() > today.getTime() ? min : today;
-  }, [minimumDate]);
+  }, [minimumDate, today]);
 
-  const dateOptions = useMemo(
-    () => buildDateOptions(optionStartDate, maximumDays),
+  const optionEndDate = useMemo(
+    () => addDays(optionStartDate, Math.max(1, maximumDays) - 1),
     [optionStartDate, maximumDays]
   );
 
+  const [visibleMonth, setVisibleMonth] = useState<Date>(() => {
+    if (selectedDate && isDateInRange(selectedDate, optionStartDate, optionEndDate)) {
+      return toMonthStart(selectedDate);
+    }
+    return toMonthStart(optionStartDate);
+  });
+
+  const monthCells = useMemo(() => buildMonthCells(visibleMonth), [visibleMonth]);
+
+  const canGoPreviousMonth = useMemo(() => {
+    const previousMonth = addMonths(visibleMonth, -1);
+    const previousMonthEnd = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0);
+    previousMonthEnd.setHours(0, 0, 0, 0);
+    return previousMonthEnd.getTime() >= optionStartDate.getTime();
+  }, [visibleMonth, optionStartDate]);
+
+  const canGoNextMonth = useMemo(() => {
+    const nextMonthStart = addMonths(visibleMonth, 1);
+    return nextMonthStart.getTime() <= optionEndDate.getTime();
+  }, [visibleMonth, optionEndDate]);
+
+  const openPicker = () => {
+    if (selectedDate && isDateInRange(selectedDate, optionStartDate, optionEndDate)) {
+      setVisibleMonth(toMonthStart(selectedDate));
+    } else {
+      setVisibleMonth(toMonthStart(optionStartDate));
+    }
+    setIsOpen(true);
+  };
+
   const selectedLabel = formatDate(value);
+  const selectedIso = selectedDate ? toIsoDate(selectedDate) : "";
 
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
 
-      <TouchableOpacity
+      <Pressable
         style={[styles.field, error && styles.fieldError]}
-        onPress={() => setIsOpen(true)}
-        activeOpacity={0.7}
+        onPress={openPicker}
         accessibilityRole="button"
       >
         <Text style={[styles.valueText, !selectedLabel && styles.placeholder]}>
           {selectedLabel || placeholder}
         </Text>
-        <Text style={styles.icon}>📅</Text>
-      </TouchableOpacity>
+        <Text style={styles.icon}>달력</Text>
+      </Pressable>
 
-      {error ? <Text style={styles.errorText}>⚠️ {error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <BottomSheet visible={isOpen} onClose={() => setIsOpen(false)} title={label}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {dateOptions.map((dateOption) => {
-            const isSelected = value === dateOption;
+        <View style={styles.calendar}>
+          <View style={styles.monthHeader}>
+            <Pressable
+              style={[styles.monthMoveButton, !canGoPreviousMonth && styles.monthMoveButtonDisabled]}
+              onPress={() => setVisibleMonth((prev) => addMonths(prev, -1))}
+              disabled={!canGoPreviousMonth}
+              accessibilityRole="button"
+              accessibilityLabel="이전 달"
+            >
+              <Text style={[styles.monthMoveButtonText, !canGoPreviousMonth && styles.monthMoveButtonTextDisabled]}>
+                {"<"}
+              </Text>
+            </Pressable>
 
-            return (
-              <TouchableOpacity
-                key={dateOption}
-                style={[styles.option, isSelected && styles.optionSelected]}
-                onPress={() => {
-                  onChange(dateOption);
-                  setIsOpen(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                  {formatDate(dateOption)}
-                </Text>
-                <Text style={[styles.optionSubText, isSelected && styles.optionTextSelected]}>
-                  {dateOption}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            <Text style={styles.monthLabel}>{toMonthLabel(visibleMonth)}</Text>
+
+            <Pressable
+              style={[styles.monthMoveButton, !canGoNextMonth && styles.monthMoveButtonDisabled]}
+              onPress={() => setVisibleMonth((prev) => addMonths(prev, 1))}
+              disabled={!canGoNextMonth}
+              accessibilityRole="button"
+              accessibilityLabel="다음 달"
+            >
+              <Text style={[styles.monthMoveButtonText, !canGoNextMonth && styles.monthMoveButtonTextDisabled]}>
+                {">"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.weekdayRow}>
+            {WEEKDAYS.map((day) => (
+              <Text key={day} style={styles.weekdayLabel}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.dayGrid}>
+            {monthCells.map((dateCell, index) => {
+              if (!dateCell) {
+                return <View key={`empty-${index}`} style={styles.dayCellSlot} />;
+              }
+
+              const dateText = toIsoDate(dateCell);
+              const isSelected = dateText === selectedIso;
+              const isDisabled = !isDateInRange(dateCell, optionStartDate, optionEndDate);
+
+              return (
+                <View key={dateText} style={styles.dayCellSlot}>
+                  <Pressable
+                    style={[
+                      styles.dayCellButton,
+                      isSelected && styles.dayCellButtonSelected,
+                      isDisabled && styles.dayCellButtonDisabled
+                    ]}
+                    onPress={() => {
+                      setIsOpen(false);
+                      onChange(dateText);
+                    }}
+                    disabled={isDisabled}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected, disabled: isDisabled }}
+                  >
+                    <Text
+                      style={[
+                        styles.dayCellText,
+                        isSelected && styles.dayCellTextSelected,
+                        isDisabled && styles.dayCellTextDisabled
+                      ]}
+                    >
+                      {dateCell.getDate()}
+                    </Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </View>
       </BottomSheet>
     </View>
   );
@@ -162,36 +283,95 @@ const styles = StyleSheet.create({
     color: Colors.common.gray400
   },
   icon: {
-    fontSize: 18
+    ...Typography.normal.caption,
+    color: Colors.common.gray500,
+    fontWeight: "700"
   },
   errorText: {
     ...Typography.normal.caption,
     color: Colors.common.error,
     marginTop: Spacing.xs
   },
-  option: {
-    borderRadius: 14,
+  calendar: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.common.gray100,
+    padding: Spacing.md,
+    backgroundColor: Colors.common.white
+  },
+  monthHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.md
+  },
+  monthMoveButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: Colors.common.gray200,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.sm
+    alignItems: "center",
+    justifyContent: "center"
   },
-  optionSelected: {
-    borderColor: Colors.young.primary,
-    backgroundColor: "#EBF5FF"
+  monthMoveButtonDisabled: {
+    borderColor: Colors.common.gray100,
+    backgroundColor: Colors.common.gray50
   },
-  optionText: {
+  monthMoveButtonText: {
+    ...Typography.normal.h3,
+    color: Colors.common.gray700,
+    lineHeight: 24
+  },
+  monthMoveButtonTextDisabled: {
+    color: Colors.common.gray400
+  },
+  monthLabel: {
     ...Typography.normal.body,
-    color: Colors.common.gray800,
+    color: Colors.common.black,
     fontWeight: "700"
   },
-  optionSubText: {
-    ...Typography.normal.caption,
-    color: Colors.common.gray500,
-    marginTop: 2
+  weekdayRow: {
+    flexDirection: "row",
+    marginBottom: Spacing.xs
   },
-  optionTextSelected: {
-    color: Colors.young.primary
+  weekdayLabel: {
+    ...Typography.normal.caption,
+    width: "14.2857%",
+    textAlign: "center",
+    color: Colors.common.gray500,
+    fontWeight: "700"
+  },
+  dayGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap"
+  },
+  dayCellSlot: {
+    width: "14.2857%",
+    padding: 2
+  },
+  dayCellButton: {
+    minHeight: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  dayCellButtonSelected: {
+    backgroundColor: Colors.young.primary
+  },
+  dayCellButtonDisabled: {
+    backgroundColor: Colors.common.gray50
+  },
+  dayCellText: {
+    ...Typography.normal.bodySmall,
+    color: Colors.common.gray800,
+    fontWeight: "600"
+  },
+  dayCellTextSelected: {
+    color: Colors.common.white,
+    fontWeight: "700"
+  },
+  dayCellTextDisabled: {
+    color: Colors.common.gray400
   }
 });

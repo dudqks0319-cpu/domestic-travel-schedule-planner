@@ -60,7 +60,9 @@ export default function OnboardingScreen() {
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
+      const nextIndex = currentIndex + 1;
+      flatListRef.current?.scrollToOffset({ offset: nextIndex * width, animated: true });
+      setCurrentIndex(nextIndex);
       return;
     }
 
@@ -71,14 +73,6 @@ export default function OnboardingScreen() {
     await AsyncStorage.setItem("hasSeenOnboarding", "true");
     router.replace("/auth/signup");
   };
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
-      if (viewableItems.length > 0 && typeof viewableItems[0].index === "number") {
-        setCurrentIndex(viewableItems[0].index);
-      }
-    }
-  ).current;
 
   return (
     <View style={styles.container}>
@@ -104,8 +98,16 @@ export default function OnboardingScreen() {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
           useNativeDriver: false
         })}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ viewAreaCoveragePercentThreshold: 50 }}
+        onMomentumScrollEnd={(event) => {
+          const offsetX = event.nativeEvent.contentOffset.x;
+          const nextIndex = Math.round(offsetX / width);
+          setCurrentIndex(Math.max(0, Math.min(nextIndex, slides.length - 1)));
+        }}
+        onScrollToIndexFailed={(info) => {
+          const safeIndex = Math.max(0, Math.min(info.index, slides.length - 1));
+          flatListRef.current?.scrollToOffset({ offset: safeIndex * width, animated: true });
+          setCurrentIndex(safeIndex);
+        }}
       />
 
       <View style={styles.bottomContainer}>

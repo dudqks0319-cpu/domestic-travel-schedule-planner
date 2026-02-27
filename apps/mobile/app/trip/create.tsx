@@ -108,11 +108,37 @@ export default function TripCreateScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<StepState>(INITIAL_STATE);
+  const [draft, setDraft] = useState<StepState>(() => ({ ...INITIAL_STATE }));
   const [isSaving, setIsSaving] = useState(false);
 
   const updateDraft = <K extends keyof StepState>(key: K, value: StepState[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleChangeStartDate = (value: string) => {
+    setDraft((prev) => {
+      const nextStart = parseDate(value);
+      const currentEnd = parseDate(prev.endDate);
+
+      if (nextStart && currentEnd && currentEnd.getTime() < nextStart.getTime()) {
+        return { ...prev, startDate: value, endDate: "" };
+      }
+
+      return { ...prev, startDate: value };
+    });
+  };
+
+  const handleChangeEndDate = (value: string) => {
+    setDraft((prev) => {
+      const nextEnd = parseDate(value);
+      const currentStart = parseDate(prev.startDate);
+
+      if (nextEnd && currentStart && nextEnd.getTime() < currentStart.getTime()) {
+        return prev;
+      }
+
+      return { ...prev, endDate: value };
+    });
   };
 
   const scrollToTop = () => {
@@ -242,8 +268,8 @@ export default function TripCreateScreen() {
           <StepDates
             startDate={draft.startDate}
             endDate={draft.endDate}
-            onChangeStartDate={(value) => updateDraft("startDate", value)}
-            onChangeEndDate={(value) => updateDraft("endDate", value)}
+            onChangeStartDate={handleChangeStartDate}
+            onChangeEndDate={handleChangeEndDate}
           />
         );
 

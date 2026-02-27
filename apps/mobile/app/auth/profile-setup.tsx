@@ -9,7 +9,7 @@ import Button from "../../components/common/Button";
 import SelectCard from "../../components/common/SelectCard";
 import MultiSelectCard from "../../components/common/MultiSelectCard";
 import ProgressBar from "../../components/common/ProgressBar";
-import { clearSignupMemory, getSignupMemory } from "./signup-memory";
+import { clearSignupMemory, getSignupMemory } from "../../lib/signup-memory";
 
 import type {
   CompanionType,
