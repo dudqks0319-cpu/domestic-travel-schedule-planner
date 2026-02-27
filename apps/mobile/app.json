@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "TripMate",
+    "slug": "tripmate-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tripmate",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tripmate.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "여행 동선 최적화를 위해 위치 정보가 필요합니다.",
+        "NSLocationAlwaysUsageDescription": "여행 중 실시간 안내를 위해 위치 정보가 필요합니다."
+      }
+    },
+    "android": {
+      "package": "com.tripmate.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
