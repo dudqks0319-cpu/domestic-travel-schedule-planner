@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform,
   ActivityIndicator, RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -10,9 +10,7 @@ import Spacing from "../../constants/Spacing";
 import { getUserProfile } from "../../lib/secure-storage";
 import { weatherApi, tripsApi, plannerApi } from "../../services/api";
 
-const { width } = Dimensions.get("window");
 const cardGap = 12;
-const cardWidth = (width - Spacing.screenPadding * 2 - cardGap) / 2;
 
 interface WeatherData {
   city: string;
@@ -167,14 +165,20 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
-  content: { paddingTop: 60, paddingBottom: 30 },
+  content: {
+    paddingTop: 60,
+    paddingBottom: 30,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center"
+  },
   greetingContainer: { paddingHorizontal: Spacing.screenPadding, marginBottom: 24 },
   greeting: { fontSize: 26, fontWeight: "800", color: Colors.common.black },
   greetingSub: { fontSize: 16, color: Colors.common.gray500, marginTop: 4 },
   bentoGrid: { flexDirection: "row", paddingHorizontal: Spacing.screenPadding, gap: cardGap },
-  bentoColumn: { gap: cardGap, width: cardWidth },
+  bentoColumn: { gap: cardGap, flex: 1 },
   bentoCard: { borderRadius: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 5 },
-  bentoLarge: { width: cardWidth, backgroundColor: Colors.young.primary, padding: 24, justifyContent: "space-between", minHeight: cardWidth * 1.3 },
+  bentoLarge: { flex: 1, backgroundColor: Colors.young.primary, padding: 24, justifyContent: "space-between", minHeight: 220 },
   bentoSmall: { flex: 1, padding: 18, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   bentoEmoji: { fontSize: 44, marginBottom: 12 },
   bentoTitle: { fontSize: 20, fontWeight: "800", color: "#FFF", marginBottom: 6 },

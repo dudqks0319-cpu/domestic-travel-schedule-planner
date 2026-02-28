@@ -7,6 +7,7 @@ import React, {
   useState
 } from "react";
 
+import { authApi } from "../../services/api";
 import {
   clearAuthToken,
   clearSessionTokens,
@@ -32,36 +33,43 @@ export interface AuthSession {
   user: UserSignupProfile;
 }
 
+interface BackendAuthUser {
+  id: string;
+  nickname: string;
+  email?: string | null;
+  profileImage?: string | null;
+}
+
 interface AuthContextValue {
   status: AuthStatus;
   user: UserSignupProfile | null;
-  loginWithKakaoMock: (params?: { email?: string; nickname?: string }) => Promise<void>;
+  loginWithKakao: (kakaoAccessToken: string) => Promise<void>;
   setSession: (session: AuthSession) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function createMockUser(params?: { email?: string; nickname?: string }): UserSignupProfile {
-  const safeEmail = params?.email?.trim() || "kakao.mock@tripmate.local";
-  const derivedNickname = safeEmail.includes("@") ? safeEmail.split("@")[0] : "여행자";
-  const safeNickname = params?.nickname?.trim() || derivedNickname || "여행자";
-
+function mergeUserProfile(
+  backendUser: BackendAuthUser,
+  existingProfile: UserSignupProfile | null
+): UserSignupProfile {
   return {
-    email: safeEmail,
-    nickname: safeNickname,
-    companion: "solo",
-    purpose: "sightseeing",
-    travelStyle: "P",
-    transport: "walk",
-    foods: [],
-    childAgeGroups: []
+    email:
+      backendUser.email?.trim() ||
+      existingProfile?.email ||
+      "kakao.user@tripmate.local",
+    nickname:
+      backendUser.nickname?.trim() ||
+      existingProfile?.nickname ||
+      "여행자",
+    companion: existingProfile?.companion ?? "solo",
+    purpose: existingProfile?.purpose ?? "sightseeing",
+    travelStyle: existingProfile?.travelStyle ?? "P",
+    transport: existingProfile?.transport ?? "walk",
+    foods: existingProfile?.foods ?? [],
+    childAgeGroups: existingProfile?.childAgeGroups ?? []
   };
-}
-
-function createMockToken(prefix: string): string {
-  const randomSuffix = Math.random().toString(36).slice(2, 10);
-  return `${prefix}_${Date.now().toString(36)}_${randomSuffix}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -86,16 +94,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus("unauthenticated");
   }, []);
 
-  const loginWithKakaoMock = useCallback(
-    async (params?: { email?: string; nickname?: string }) => {
-      const mockUser = createMockUser(params);
-      const authToken = createMockToken("mock_auth");
+  const loginWithKakao = useCallback(
+    async (kakaoAccessToken: string) => {
+      const existingProfile = await getUserProfile<UserSignupProfile>();
+      const response = await authApi.kakaoLogin(kakaoAccessToken);
+      const accessToken = response.data?.accessToken as string;
+      const refreshToken = response.data?.refreshToken as string;
+      const backendUser = response.data?.user as BackendAuthUser;
+
+      if (!accessToken || !refreshToken || !backendUser) {
+        throw new Error("로그인 응답이 올바르지 않습니다.");
+      }
 
       await setSession({
-        authToken,
-        accessToken: createMockToken("mock_access"),
-        refreshToken: createMockToken("mock_refresh"),
-        user: mockUser
+        authToken: accessToken,
+        accessToken,
+        refreshToken,
+        user: mergeUserProfile(backendUser, existingProfile)
       });
     },
     [setSession]
@@ -118,8 +133,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const hasSessionToken = Boolean(authToken || accessToken || refreshToken);
-        setUser(hasSessionToken ? storedUser : null);
-        setStatus(hasSessionToken ? "authenticated" : "unauthenticated");
+        if (!hasSessionToken) {
+          setUser(null);
+          setStatus("unauthenticated");
+          return;
+        }
+
+        try {
+          const meResponse = await authApi.getMe();
+          const backendUser = meResponse.data?.user as BackendAuthUser | undefined;
+          const mergedProfile = backendUser
+            ? mergeUserProfile(backendUser, storedUser)
+            : storedUser;
+
+          if (!isActive) {
+            return;
+          }
+
+          if (mergedProfile) {
+            await setUserProfile(mergedProfile);
+            if (!isActive) {
+              return;
+            }
+          }
+
+          setUser(mergedProfile ?? null);
+          setStatus("authenticated");
+        } catch {
+          await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
+          if (!isActive) {
+            return;
+          }
+          setUser(null);
+          setStatus("unauthenticated");
+        }
       } catch {
         if (!isActive) {
           return;
@@ -141,11 +188,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       status,
       user,
-      loginWithKakaoMock,
+      loginWithKakao,
       setSession,
       logout
     }),
-    [loginWithKakaoMock, logout, setSession, status, user]
+    [loginWithKakao, logout, setSession, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -128,74 +128,78 @@ export default function StepDestination({ destination, onChangeDestination }: St
         })}
       </View>
 
-      <Text style={styles.sectionLabel}>대한민국 지도 선택</Text>
-      <Text style={styles.sectionDescription}>지도의 핀을 눌러 목적지를 바로 입력할 수 있어요.</Text>
-      <View style={styles.mapCard}>
-        <View style={styles.mapBody} pointerEvents="none" />
-        <View style={styles.mapNorthWest} pointerEvents="none" />
-        <View style={styles.mapEast} pointerEvents="none" />
-        <View style={styles.mapSouthWest} pointerEvents="none" />
-        {mapDestinations.map((item) => {
-          const isSelected = destination.trim() === item.name;
-
-          return (
-            <TouchableOpacity
-              key={item.name}
-              style={[styles.mapPin, { left: item.left, top: item.top }]}
-              onPress={() => onChangeDestination(item.name)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.mapPinDot, isSelected && styles.mapPinDotSelected]} />
-              <Text style={[styles.mapPinLabel, isSelected && styles.mapPinLabelSelected]}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <Text style={styles.sectionLabel}>랜덤 목적지 미니게임</Text>
-      <Text style={styles.sectionDescription}>랜덤 뽑기 또는 룰렛으로 여행지를 정해보세요.</Text>
-      <View style={styles.randomButtonRow}>
-        <TouchableOpacity
-          style={[styles.randomButton, styles.randomDrawButton]}
-          onPress={handleRandomDraw}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.randomDrawButtonText}>랜덤 뽑기</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.randomButton, styles.randomSpinButton, isSpinning && styles.randomSpinDisabled]}
-          onPress={handleSpinRoulette}
-          activeOpacity={0.8}
-          disabled={isSpinning}
-        >
-          <Text style={styles.randomSpinButtonText}>
-            {isSpinning ? "룰렛 회전 중..." : "룰렛 돌리기"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.rouletteContainer}>
-        <View style={styles.rouletteBoard}>
-          {rouletteNodes.map((item) => {
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionLabel}>대한민국 지도 선택</Text>
+        <Text style={styles.sectionDescription}>지도의 핀을 눌러 목적지를 바로 입력할 수 있어요.</Text>
+        <View style={styles.mapCard}>
+          <View style={styles.mapBody} pointerEvents="none" />
+          <View style={styles.mapNorthWest} pointerEvents="none" />
+          <View style={styles.mapEast} pointerEvents="none" />
+          <View style={styles.mapSouthWest} pointerEvents="none" />
+          {mapDestinations.map((item) => {
             const isSelected = destination.trim() === item.name;
 
             return (
-              <View key={item.name} style={[styles.rouletteNode, { left: item.left, top: item.top }]}>
-                <Text style={[styles.rouletteNodeText, isSelected && styles.rouletteNodeTextSelected]}>
+              <TouchableOpacity
+                key={item.name}
+                style={[styles.mapPin, { left: item.left, top: item.top }]}
+                onPress={() => onChangeDestination(item.name)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.mapPinDot, isSelected && styles.mapPinDotSelected]} />
+                <Text style={[styles.mapPinLabel, isSelected && styles.mapPinLabelSelected]}>
                   {item.name}
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
+        </View>
+      </View>
 
-          <Animated.View style={[styles.rouletteNeedleWrap, { transform: [{ rotate: needleRotation }] }]}>
-            <View style={styles.rouletteNeedle} />
-            <View style={styles.rouletteNeedleTip} />
-          </Animated.View>
-          <View style={styles.roulettePivot} />
-          <Text style={styles.rouletteCenterText}>SPIN</Text>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionLabel}>랜덤 목적지 미니게임</Text>
+        <Text style={styles.sectionDescription}>랜덤 뽑기 또는 룰렛으로 여행지를 정해보세요.</Text>
+        <View style={styles.randomButtonRow}>
+          <TouchableOpacity
+            style={[styles.randomButton, styles.randomDrawButton]}
+            onPress={handleRandomDraw}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.randomDrawButtonText}>랜덤 뽑기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.randomButton, styles.randomSpinButton, isSpinning && styles.randomSpinDisabled]}
+            onPress={handleSpinRoulette}
+            activeOpacity={0.8}
+            disabled={isSpinning}
+          >
+            <Text style={styles.randomSpinButtonText}>
+              {isSpinning ? "룰렛 회전 중..." : "룰렛 돌리기"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.rouletteContainer}>
+          <View style={styles.rouletteBoard}>
+            {rouletteNodes.map((item) => {
+              const isSelected = destination.trim() === item.name;
+
+              return (
+                <View key={item.name} style={[styles.rouletteNode, { left: item.left, top: item.top }]}>
+                  <Text style={[styles.rouletteNodeText, isSelected && styles.rouletteNodeTextSelected]}>
+                    {item.name}
+                  </Text>
+                </View>
+              );
+            })}
+
+            <Animated.View style={[styles.rouletteNeedleWrap, { transform: [{ rotate: needleRotation }] }]}>
+              <View style={styles.rouletteNeedle} />
+              <View style={styles.rouletteNeedleTip} />
+            </Animated.View>
+            <View style={styles.roulettePivot} />
+            <Text style={styles.rouletteCenterText}>SPIN</Text>
+          </View>
         </View>
       </View>
 
@@ -267,14 +271,21 @@ const styles = StyleSheet.create({
     color: Colors.common.gray500,
     marginBottom: Spacing.sm
   },
+  sectionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    backgroundColor: Colors.common.white,
+    padding: Spacing.md,
+    marginBottom: Spacing.md
+  },
   mapCard: {
     position: "relative",
-    height: 300,
-    borderRadius: 20,
-    backgroundColor: "#F8FBFF",
+    height: 270,
+    borderRadius: 16,
+    backgroundColor: "#F6FAFF",
     borderWidth: 1,
-    borderColor: "#DCEBFF",
-    marginBottom: Spacing.xl,
+    borderColor: "#D5E7FF",
     overflow: "hidden"
   },
   mapBody: {
@@ -327,8 +338,8 @@ const styles = StyleSheet.create({
   },
   mapPin: {
     position: "absolute",
-    width: 72,
-    marginLeft: -36,
+    width: 78,
+    marginLeft: -39,
     marginTop: -10,
     alignItems: "center"
   },
@@ -395,7 +406,8 @@ const styles = StyleSheet.create({
     opacity: 0.65
   },
   rouletteContainer: {
-    alignItems: "center"
+    alignItems: "center",
+    marginBottom: Spacing.xs
   },
   rouletteBoard: {
     width: ROULETTE_SIZE,

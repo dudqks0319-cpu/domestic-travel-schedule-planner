@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, Keyboard,
+  FlatList, Image, ActivityIndicator, Keyboard, Platform
 } from "react-native";
-import { useRouter } from "expo-router";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
@@ -28,7 +27,6 @@ const TABS: { key: TabKey; label: string; emoji: string }[] = [
 ];
 
 export default function SearchScreen() {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("attractions");
   const [results, setResults] = useState<SearchResultItem[]>([]);
@@ -104,69 +102,78 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>검색</Text>
-      </View>
+      <View style={styles.frame}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>검색</Text>
+        </View>
 
-      <View style={styles.searchBar}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="관광지, 맛집, 축제 검색..."
-          placeholderTextColor={Colors.common.gray400}
-          value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={() => void handleSearch()}
-          returnKeyType="search"
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={() => void handleSearch()}>
-          <Text style={styles.searchButtonText}>검색</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.tabRow}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-            onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
-          >
-            <Text style={styles.tabEmoji}>{tab.emoji}</Text>
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
+        <View style={styles.searchBar}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="관광지, 맛집, 축제 검색..."
+            placeholderTextColor={Colors.common.gray400}
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={() => void handleSearch()}
+            returnKeyType="search"
+          />
+          <TouchableOpacity style={styles.searchButton} onPress={() => void handleSearch()}>
+            <Text style={styles.searchButtonText}>검색</Text>
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
 
-      {loading ? (
-        <ActivityIndicator color={Colors.young.primary} size="large" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={results}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            searched ? (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.emptyEmoji}>🔍</Text>
-                <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
-              </View>
-            ) : (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.emptyEmoji}>✨</Text>
-                <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
-              </View>
-            )
-          }
-        />
-      )}
+        <View style={styles.tabRow}>
+          {TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
+            >
+              <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {loading ? (
+          <ActivityIndicator color={Colors.young.primary} size="large" style={styles.loader} />
+        ) : (
+          <FlatList
+            data={results}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            style={styles.list}
+            contentContainerStyle={styles.listContent}
+            ListEmptyComponent={
+              searched ? (
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+                </View>
+              ) : (
+                <View style={styles.emptyWrap}>
+                  <Text style={styles.emptyEmoji}>✨</Text>
+                  <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
+                </View>
+              )
+            }
+          />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
+  frame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center"
+  },
   header: { paddingTop: 60, paddingHorizontal: Spacing.screenPadding, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: "800", color: Colors.common.black },
   searchBar: {
@@ -193,7 +200,8 @@ const styles = StyleSheet.create({
   tabEmoji: { fontSize: 16 },
   tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.common.gray600 },
   tabLabelActive: { color: Colors.young.primary },
-  listContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 30 },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 30, flexGrow: 1 },
   resultCard: {
     flexDirection: "row", backgroundColor: "#FFF", borderRadius: 16,
     marginBottom: 10, overflow: "hidden",

@@ -689,7 +689,9 @@ export default function RouteMapScreen() {
               </Text>
             </View>
           </View>
-          <Text style={styles.routeInfoValue}>{routeTitleText}</Text>
+          <Text style={styles.routeInfoValue} numberOfLines={2}>
+            {routeTitleText}
+          </Text>
 
           <View style={styles.modeRow}>
             {MODE_OPTIONS.map((option) => (
@@ -885,12 +887,14 @@ const styles = StyleSheet.create({
     ...Typography.normal.bodySmall,
     fontWeight: "700",
     color: Colors.common.gray800,
-    marginTop: Spacing.xs
+    marginTop: Spacing.xs,
+    lineHeight: 21
   },
   routeInfoHint: {
     ...Typography.normal.caption,
     color: Colors.common.gray500,
-    marginTop: Spacing.sm
+    marginTop: Spacing.sm,
+    lineHeight: 18
   },
   modeRow: {
     flexDirection: "row",
@@ -900,7 +904,8 @@ const styles = StyleSheet.create({
   modeChip: {
     flex: 1,
     borderRadius: 12,
-    paddingVertical: 8,
+    minHeight: 44,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: Colors.common.gray300,
     backgroundColor: Colors.common.gray50,
@@ -974,7 +979,7 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6
+    marginBottom: 8
   },
   summaryLabel: {
     ...Typography.normal.caption,
@@ -1001,7 +1006,8 @@ const styles = StyleSheet.create({
   warningText: {
     ...Typography.normal.caption,
     color: "#8A5D00",
-    marginTop: 2
+    marginTop: 4,
+    lineHeight: 17
   },
   errorCard: {
     borderRadius: 14,
@@ -1012,6 +1018,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...Typography.normal.bodySmall,
-    color: "#C92A2A"
+    color: "#C92A2A",
+    lineHeight: 20
   }
 });

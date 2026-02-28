@@ -9,11 +9,12 @@ import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
+import { requestKakaoAccessToken } from "../../lib/kakao-login";
 import { useAuth } from "../providers/auth-provider";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginWithKakaoMock } = useAuth();
+  const { loginWithKakao } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,9 +40,11 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const safeEmail = email.trim().toLowerCase();
-      const nickname = safeEmail.includes("@") ? safeEmail.split("@")[0] : "여행자";
-      await loginWithKakaoMock({ email: safeEmail, nickname });
-      router.replace("/(tabs)");
+      if (!safeEmail || !password.trim()) {
+        Alert.alert("안내", "현재는 카카오 로그인만 지원합니다.");
+        return;
+      }
+      Alert.alert("안내", "현재는 카카오 로그인만 지원합니다.");
     } catch {
       Alert.alert("오류", "로그인에 실패했어요.");
     } finally {
@@ -52,10 +55,12 @@ export default function LoginScreen() {
   const handleKakaoLogin = async () => {
     setKakaoLoading(true);
     try {
-      await loginWithKakaoMock({ email: "kakao@tripmate.app", nickname: "카카오 여행자" });
+      const kakaoAccessToken = await requestKakaoAccessToken();
+      await loginWithKakao(kakaoAccessToken);
       router.replace("/(tabs)");
-    } catch {
-      Alert.alert("오류", "카카오 로그인에 실패했어요.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "카카오 로그인에 실패했어요.";
+      Alert.alert("카카오 로그인", message);
     } finally {
       setKakaoLoading(false);
     }

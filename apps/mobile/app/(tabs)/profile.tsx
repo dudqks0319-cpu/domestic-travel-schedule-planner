@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, RefreshControl, Platform } from "react-native";
 import { useRouter } from "expo-router";
 
 import Colors from "../../constants/Colors";
@@ -144,7 +144,13 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8F9FA" },
-  content: { paddingTop: 60, paddingBottom: 40 },
+  content: {
+    paddingTop: 60,
+    paddingBottom: 40,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center"
+  },
   profileCard: {
     backgroundColor: "#FFF", marginHorizontal: Spacing.screenPadding,
     borderRadius: 24, padding: 28, alignItems: "center",

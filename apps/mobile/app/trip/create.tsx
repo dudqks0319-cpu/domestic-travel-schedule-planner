@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView, Alert, Platform } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -207,32 +207,49 @@ export default function TripCreateScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="여행 만들기" subtitle={`Step ${step} · ${STEP_LABELS[step - 1]}`} onBack={handleBack} />
-      <ProgressBar currentStep={step} totalSteps={TOTAL_STEPS} labels={[...STEP_LABELS]} />
+      <View style={styles.frame}>
+        <Header title="여행 만들기" subtitle={`Step ${step} · ${STEP_LABELS[step - 1]}`} onBack={handleBack} />
+        <ProgressBar currentStep={step} totalSteps={TOTAL_STEPS} labels={[...STEP_LABELS]} />
 
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {renderStep()}
-      </ScrollView>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {renderStep()}
+        </ScrollView>
 
-      {step < TOTAL_STEPS ? (
-        <View style={styles.bottomButtons}>
-          {step > 1 ? (
-            <Button title="이전" onPress={handleBack} variant="outline" size="large" style={styles.backButton} />
-          ) : null}
-          <Button title="다음" onPress={handleNext} size="large" style={[styles.nextButton, step === 1 && styles.nextButtonFull]} />
-        </View>
-      ) : null}
+        {step < TOTAL_STEPS ? (
+          <View style={styles.bottomButtons}>
+            {step > 1 ? (
+              <Button title="이전" onPress={handleBack} variant="outline" size="large" style={styles.backButton} />
+            ) : null}
+            <Button title="다음" onPress={handleNext} size="large" style={[styles.nextButton, step === 1 && styles.nextButtonFull]} />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.common.white },
-  scrollContent: { flexGrow: 1, paddingBottom: Spacing.xl },
+  container: { flex: 1, backgroundColor: Colors.common.gray50 },
+  frame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center",
+    backgroundColor: Colors.common.white
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Spacing.lg
+  },
   bottomButtons: {
     flexDirection: "row", paddingHorizontal: Spacing.screenPadding,
-    paddingTop: Spacing.md, paddingBottom: Spacing.xxl,
+    paddingTop: Spacing.md, paddingBottom: Platform.OS === "web" ? Spacing.lg : Spacing.xxl,
     borderTopWidth: 1, borderTopColor: Colors.common.gray100, backgroundColor: Colors.common.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 6
   },
   backButton: { flex: 1, marginRight: Spacing.sm },
   nextButton: { flex: 1 },

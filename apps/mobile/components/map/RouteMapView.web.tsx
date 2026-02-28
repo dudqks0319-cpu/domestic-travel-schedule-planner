@@ -299,14 +299,17 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
               <Text style={styles.noticeText}>카카오 지도를 불러오는 중이에요...</Text>
             </>
           ) : kakaoStatus === "no-key" ? (
-            <Text style={styles.noticeText}>
-              웹 지도 키가 없어 미리보기만 표시돼요. `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`를 확인해주세요.
-            </Text>
+            <View style={styles.noticeTextWrap}>
+              <Text style={styles.noticeTitle}>카카오 웹 지도 키를 확인해주세요</Text>
+              <Text style={styles.noticeText}>`EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`가 비어 있으면 웹 지도를 렌더링할 수 없어요.</Text>
+            </View>
           ) : (
-            <Text style={styles.noticeText}>
-              지도 로드 실패: {kakaoError ?? "알 수 없는 오류"}
-              {"\n"}카카오 개발자 콘솔의 웹 도메인에 `http://localhost:8081` 등록 여부를 확인해주세요.
-            </Text>
+            <View style={styles.noticeTextWrap}>
+              <Text style={styles.noticeTitle}>카카오 지도 로드 실패</Text>
+              <Text style={styles.noticeText}>원인: {kakaoError ?? "알 수 없는 오류"}</Text>
+              <Text style={styles.noticeText}>1) 카카오 개발자 콘솔 → 웹 도메인에 `http://localhost:8081` 등록</Text>
+              <Text style={styles.noticeText}>2) 저장 후 Expo 웹을 새로고침</Text>
+            </View>
           )}
         </View>
       ) : null}
@@ -374,8 +377,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: Spacing.xs
+  },
+  noticeTextWrap: {
+    flex: 1
+  },
+  noticeTitle: {
+    ...Typography.normal.bodySmall,
+    color: "#8C6D1F",
+    fontWeight: "700",
+    marginBottom: 4
   },
   noticeText: {
     ...Typography.normal.caption,

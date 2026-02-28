@@ -124,6 +124,28 @@ async function run() {
     return `POST ${optimizePath} invalid -> 400`;
   });
 
+  tests.push(async () => {
+    const tourismSearchPath = `${apiPrefix}/tourism/search?keyword=${encodeURIComponent("부산")}`;
+    const { status, body } = await requestJson(`${baseUrl}${tourismSearchPath}`, {
+      method: "GET"
+    });
+
+    assert(status === 200, `GET ${tourismSearchPath} expected 200 but got ${status}`);
+    assert(body && Array.isArray(body.items), `GET ${tourismSearchPath} expected items array`);
+    return `GET ${tourismSearchPath} -> 200`;
+  });
+
+  tests.push(async () => {
+    const restaurantSearchPath = `${apiPrefix}/restaurants/search?query=${encodeURIComponent("부산 맛집")}`;
+    const { status, body } = await requestJson(`${baseUrl}${restaurantSearchPath}`, {
+      method: "GET"
+    });
+
+    assert(status === 200, `GET ${restaurantSearchPath} expected 200 but got ${status}`);
+    assert(body && Array.isArray(body.items), `GET ${restaurantSearchPath} expected items array`);
+    return `GET ${restaurantSearchPath} -> 200`;
+  });
+
   console.log(`Smoke test 시작 / start: ${baseUrl}`);
 
   let passed = 0;

@@ -412,7 +412,7 @@ export default function ScheduleScreen() {
                       style={[styles.dayTab, active ? styles.dayTabActive : null]}
                       onPress={() => setActiveDayIndex(index)}
                     >
-                      <Text style={[styles.dayTabTitle, active ? styles.dayTabTitleActive : null]}>{`DAY ${dayTab.dayNumber}`}</Text>
+                      <Text style={[styles.dayTabTitle, active ? styles.dayTabTitleActive : null]}>{`${dayTab.dayNumber}일차`}</Text>
                       <Text style={[styles.dayTabDate, active ? styles.dayTabDateActive : null]}>{dayTab.dateText}</Text>
                     </TouchableOpacity>
                   );
@@ -420,6 +420,12 @@ export default function ScheduleScreen() {
               </ScrollView>
 
               <View style={styles.tableCard}>
+                <View style={styles.activeDaySummary}>
+                  <Text style={styles.activeDaySummaryTitle}>
+                    {activeDay ? `${activeDay.dayNumber}일차 일정` : "선택 일정"}
+                  </Text>
+                  <Text style={styles.activeDaySummaryDate}>{activeDay?.dateText ?? "날짜 미정"}</Text>
+                </View>
                 <View style={styles.tableHeaderRow}>
                   <Text style={[styles.tableHeaderText, styles.timeCol]}>시간</Text>
                   <Text style={[styles.tableHeaderText, styles.typeCol]}>구분</Text>
@@ -428,7 +434,7 @@ export default function ScheduleScreen() {
 
                 {dayRows.length ? (
                   dayRows.map((row) => (
-                    <View key={row.id} style={styles.tableRow}>
+                    <View key={row.id} style={[styles.tableRow, row.type === "move" ? styles.tableRowMove : styles.tableRowStop]}>
                       <Text style={[styles.tableTime, styles.timeCol]}>{row.timeText}</Text>
                       <View style={[styles.typeBadge, row.type === "move" ? styles.moveBadge : styles.stopBadge, styles.typeCol]}>
                         <Text style={[styles.typeBadgeText, row.type === "move" ? styles.moveBadgeText : styles.stopBadgeText]}>
@@ -550,9 +556,26 @@ const styles = StyleSheet.create({
     borderColor: Colors.common.gray200,
     overflow: "hidden"
   },
+  activeDaySummary: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#F7FAFF",
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.common.gray200
+  },
+  activeDaySummaryTitle: {
+    ...Typography.normal.bodySmall,
+    color: Colors.common.gray800,
+    fontWeight: "700"
+  },
+  activeDaySummaryDate: {
+    ...Typography.normal.caption,
+    color: Colors.common.gray600,
+    marginTop: 3
+  },
   tableHeaderRow: {
     flexDirection: "row",
-    backgroundColor: Colors.common.gray100,
+    backgroundColor: "#EEF3FA",
     borderBottomWidth: 1,
     borderBottomColor: Colors.common.gray200,
     paddingVertical: 10,
@@ -574,8 +597,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.common.gray100
   },
+  tableRowStop: {
+    backgroundColor: "#F8FBFF"
+  },
+  tableRowMove: {
+    backgroundColor: "#FBF8FF"
+  },
   timeCol: {
-    width: 80
+    width: 92
   },
   typeCol: {
     width: 52
