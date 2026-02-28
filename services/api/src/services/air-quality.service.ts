@@ -1,6 +1,13 @@
 import axios from "axios";
 import { env } from "../config/env";
 
+const AIR_API_BASE = "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc";
+
+function withServiceKey(path: string): string {
+  const key = encodeURIComponent(env.dataGoKrApiKey);
+  return `${AIR_API_BASE}/${path}?serviceKey=${key}`;
+}
+
 interface AirQualityItem {
   stationName: string;
   dataTime: string;
@@ -23,19 +30,15 @@ interface AirQualityResponse {
 
 // 시도별 대기질 조회
 export async function getAirQuality(sidoName: string) {
-  const response = await axios.get<AirQualityResponse>(
-    "https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty",
-    {
-      params: {
-        serviceKey: env.dataGoKrApiKey,
-        returnType: "json",
-        numOfRows: 100,
-        pageNo: 1,
-        sidoName,
-        ver: "1.0"
-      }
+  const response = await axios.get<AirQualityResponse>(withServiceKey("getCtprvnRltmMesureDnsty"), {
+    params: {
+      returnType: "json",
+      numOfRows: 100,
+      pageNo: 1,
+      sidoName,
+      ver: "1.0"
     }
-  );
+  });
 
   return response.data?.response?.body?.items ?? [];
 }

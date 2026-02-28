@@ -1,6 +1,11 @@
 import axios from "axios";
 import { env } from "../config/env";
 
+function withServiceKey(url: string): string {
+  const key = encodeURIComponent(env.dataGoKrApiKey);
+  return `${url}?serviceKey=${key}`;
+}
+
 interface HospitalItem {
   dutyName: string;
   dutyAddr: string;
@@ -44,10 +49,11 @@ export async function searchHospitals(params: {
   pageNo?: number;
 }) {
   const response = await axios.get<DataGoResponse<HospitalItem>>(
-    "https://apis.data.go.kr/B552657/HsptlAsembySearchService/getHsptlMdcncListInfoInqire",
+    withServiceKey(
+      "https://apis.data.go.kr/B552657/HsptlAsembySearchService/getHsptlMdcncListInfoInqire"
+    ),
     {
       params: {
-        serviceKey: env.dataGoKrApiKey,
         WGS84_LAT: params.lat,
         WGS84_LON: params.lng,
         pageNo: params.pageNo ?? 1,
@@ -67,10 +73,11 @@ export async function searchPharmacies(params: {
   pageNo?: number;
 }) {
   const response = await axios.get<DataGoResponse<PharmacyItem>>(
-    "https://apis.data.go.kr/B552657/ErmctInsttInfoInqireService/getParmacyListInfoInqire",
+    withServiceKey(
+      "https://apis.data.go.kr/B552657/ErmctInsttInfoInqireService/getParmacyListInfoInqire"
+    ),
     {
       params: {
-        serviceKey: env.dataGoKrApiKey,
         WGS84_LAT: params.lat,
         WGS84_LON: params.lng,
         pageNo: params.pageNo ?? 1,

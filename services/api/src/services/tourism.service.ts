@@ -3,6 +3,11 @@ import { env } from "../config/env";
 
 const TOUR_API_BASE = "https://apis.data.go.kr/B551011/KorService1";
 
+function withServiceKey(path: string): string {
+  const key = encodeURIComponent(env.dataGoKrApiKey);
+  return `${TOUR_API_BASE}/${path}?serviceKey=${key}`;
+}
+
 interface TourItem {
   contentid: string;
   title: string;
@@ -35,9 +40,8 @@ export async function searchAttractions(params: {
   pageNo?: number;
   numOfRows?: number;
 }) {
-  const response = await axios.get<TourApiResponse>(`${TOUR_API_BASE}/areaBasedList1`, {
+  const response = await axios.get<TourApiResponse>(withServiceKey("areaBasedList1"), {
     params: {
-      serviceKey: env.dataGoKrApiKey,
       numOfRows: params.numOfRows ?? 20,
       pageNo: params.pageNo ?? 1,
       MobileOS: "AND",
@@ -55,9 +59,8 @@ export async function searchAttractions(params: {
 
 // 키워드 검색
 export async function searchByKeyword(keyword: string, pageNo?: number) {
-  const response = await axios.get<TourApiResponse>(`${TOUR_API_BASE}/searchKeyword1`, {
+  const response = await axios.get<TourApiResponse>(withServiceKey("searchKeyword1"), {
     params: {
-      serviceKey: env.dataGoKrApiKey,
       numOfRows: 20,
       pageNo: pageNo ?? 1,
       MobileOS: "AND",
@@ -65,7 +68,7 @@ export async function searchByKeyword(keyword: string, pageNo?: number) {
       _type: "json",
       listYN: "Y",
       arrange: "P",
-      keyword: encodeURIComponent(keyword)
+      keyword
     }
   });
 
@@ -78,9 +81,8 @@ export async function searchFestivals(params: {
   areaCode?: string;
   pageNo?: number;
 }) {
-  const response = await axios.get<TourApiResponse>(`${TOUR_API_BASE}/searchFestival1`, {
+  const response = await axios.get<TourApiResponse>(withServiceKey("searchFestival1"), {
     params: {
-      serviceKey: env.dataGoKrApiKey,
       numOfRows: 20,
       pageNo: params.pageNo ?? 1,
       MobileOS: "AND",

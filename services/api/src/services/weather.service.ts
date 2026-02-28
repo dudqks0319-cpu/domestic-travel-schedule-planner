@@ -3,6 +3,11 @@ import { env } from "../config/env";
 
 const WEATHER_API_BASE = "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0";
 
+function withServiceKey(path: string): string {
+  const key = encodeURIComponent(env.kmaApiKey);
+  return `${WEATHER_API_BASE}/${path}?serviceKey=${key}`;
+}
+
 interface WeatherItem {
   baseDate: string;
   baseTime: string;
@@ -30,9 +35,8 @@ export async function getShortTermForecast(params: {
   baseDate: string;
   baseTime: string;
 }) {
-  const response = await axios.get<WeatherApiResponse>(`${WEATHER_API_BASE}/getVilageFcst`, {
+  const response = await axios.get<WeatherApiResponse>(withServiceKey("getVilageFcst"), {
     params: {
-      serviceKey: env.kmaApiKey,
       numOfRows: 300,
       pageNo: 1,
       dataType: "JSON",

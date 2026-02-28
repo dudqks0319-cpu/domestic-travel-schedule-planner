@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { addressRouter } from "./address";
 import { authRouter } from "./auth";
 import { plannerRouter } from "./planner";
 import { medicalRouter } from "./medical";
@@ -11,6 +12,7 @@ import { weatherRouter } from "./weather";
 
 const apiRouter = Router();
 
+apiRouter.use("/address", addressRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/trips", tripsRouter);
 apiRouter.use("/planner", plannerRouter);

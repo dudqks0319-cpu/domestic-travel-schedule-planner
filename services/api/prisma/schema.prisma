@@ -19,19 +19,43 @@ model User {
 }
 
 model Trip {
-  id            String   @id @default(cuid())
-  title         String
-  destination   String
-  startDate     DateTime
-  endDate       DateTime
-  transport     String?
-  companions    String?
-  attractions   String?
-  restaurants   String?
-  accommodation String?
-  status        String   @default("draft")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  id          String    @id @default(cuid())
+  title       String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  transport   String?
+  companions  String?
+  status      String    @default("draft")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  days        TripDay[]
+}
+
+model TripDay {
+  id        String      @id @default(cuid())
+  dayNumber Int
+  date      DateTime
+  tripId    String
+  trip      Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  places    TripPlace[]
+}
+
+model TripPlace {
+  id         String   @id @default(cuid())
+  orderIndex Int
+  name       String
+  address    String?
+  lat        Float?
+  lng        Float?
+  category   String
+  imageUrl   String?
+  phone      String?
+  memo       String?
+  startTime  String?
+  endTime    String?
+  tripDayId  String
+  tripDay    TripDay  @relation(fields: [tripDayId], references: [id], onDelete: Cascade)
 }
