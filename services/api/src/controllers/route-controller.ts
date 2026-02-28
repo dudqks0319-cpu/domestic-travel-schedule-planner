@@ -6,7 +6,7 @@ import {
   RouteTransportMode,
   optimizeRoute
 } from "../services/route-optimizer";
-import { normalizeRouteErrorMessage } from "../utils/response-safety";
+import { normalizeRouteErrorMessage, sanitizePublicText } from "../utils/response-safety";
 
 interface ValidationSuccess {
   ok: true;
@@ -251,7 +251,8 @@ export async function optimizeRouteHandler(req: Request, res: Response): Promise
     });
   } catch (error) {
     const message = normalizeRouteErrorMessage(error);
-    console.error("[route-optimize] failed", error);
+    const internalMessage = error instanceof Error ? sanitizePublicText(error.message) : "unknown";
+    console.error(`[route-optimize] failed: ${internalMessage || "unknown"}`);
 
     res.status(500).json({
       error: "Internal Server Error",

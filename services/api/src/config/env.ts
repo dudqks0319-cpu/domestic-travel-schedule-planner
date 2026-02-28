@@ -10,6 +10,16 @@ export interface EnvConfig {
   databaseUrl: string;
   jwtAccessSecret: string;
   jwtRefreshSecret: string;
+  // 외부 API 키
+  kakaoRestApiKey: string;
+  kakaoNativeAppKey: string;
+  naverClientId: string;
+  naverClientSecret: string;
+  dataGoKrApiKey: string;
+  kmaApiKey: string;
+  odsayApiKey: string;
+  jusoSearchApiKey: string;
+  jusoMobileApiKey: string;
 }
 
 function getRequired(name: string, fallback?: string): string {
@@ -60,5 +70,14 @@ export const env: EnvConfig = {
   apiPrefix: normalizeApiPrefix(getRequired("API_PREFIX", "/api/v1")),
   databaseUrl: getRequired("DATABASE_URL"),
   jwtAccessSecret: getRequired("JWT_ACCESS_SECRET"),
-  jwtRefreshSecret: getRequired("JWT_REFRESH_SECRET")
+  jwtRefreshSecret: getRequired("JWT_REFRESH_SECRET"),
+  kakaoRestApiKey: getRequired("KAKAO_REST_API_KEY"),
+  kakaoNativeAppKey: getRequired("KAKAO_NATIVE_APP_KEY"),
+  naverClientId: getRequired("NAVER_CLIENT_ID"),
+  naverClientSecret: getRequired("NAVER_CLIENT_SECRET"),
+  dataGoKrApiKey: getRequired("DATA_GO_KR_API_KEY"),
+  kmaApiKey: getRequired("KMA_API_KEY"),
+  odsayApiKey: getRequired("ODSAY_API_KEY"),
+  jusoSearchApiKey: getRequired("JUSO_SEARCH_API_KEY"),
+  jusoMobileApiKey: getRequired("JUSO_MOBILE_API_KEY")
 };

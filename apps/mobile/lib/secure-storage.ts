@@ -4,6 +4,8 @@ import * as SecureStore from "expo-secure-store";
 
 export const AUTH_TOKEN_STORAGE_KEY = "userToken";
 export const USER_PROFILE_STORAGE_KEY = "userData";
+export const ACCESS_TOKEN_STORAGE_KEY = "accessToken";
+export const REFRESH_TOKEN_STORAGE_KEY = "refreshToken";
 
 function canUseSecureStore(): boolean {
   return Platform.OS !== "web";
@@ -59,6 +61,34 @@ export async function getAuthToken(): Promise<string | null> {
 
 export async function clearAuthToken(): Promise<void> {
   await removeItem(AUTH_TOKEN_STORAGE_KEY);
+}
+
+export async function setAccessToken(token: string): Promise<void> {
+  await setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+}
+
+export async function getAccessToken(): Promise<string | null> {
+  return getItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function clearAccessToken(): Promise<void> {
+  await removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function setRefreshToken(token: string): Promise<void> {
+  await setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+}
+
+export async function getRefreshToken(): Promise<string | null> {
+  return getItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export async function clearRefreshToken(): Promise<void> {
+  await removeItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export async function clearSessionTokens(): Promise<void> {
+  await Promise.all([clearAccessToken(), clearRefreshToken()]);
 }
 
 export async function setUserProfile<T>(profile: T): Promise<void> {
