@@ -1,10 +1,20 @@
 import axios from "axios";
 import { env } from "../config/env";
 
-const TOUR_API_BASE = "https://apis.data.go.kr/B551011/KorService1";
+const TOUR_API_BASE = "https://apis.data.go.kr/B551011/KorService2";
+
+function normalizeServiceKey(raw: string): string {
+  if (!raw) return "";
+  try {
+    // 공공데이터 키가 이미 인코딩된 상태로 저장되어 있어도 1회 인코딩으로 맞춘다.
+    return encodeURIComponent(decodeURIComponent(raw));
+  } catch {
+    return encodeURIComponent(raw);
+  }
+}
 
 function withServiceKey(path: string): string {
-  const key = encodeURIComponent(env.dataGoKrApiKey);
+  const key = normalizeServiceKey(env.dataGoKrApiKey);
   return `${TOUR_API_BASE}/${path}?serviceKey=${key}`;
 }
 
@@ -24,13 +34,24 @@ interface TourItem {
 interface TourApiResponse {
   response: {
     header: { resultCode: string; resultMsg: string };
-    body: {
+    body?: {
       items?: { item?: TourItem[] };
       numOfRows: number;
       pageNo: number;
       totalCount: number;
     };
   };
+}
+
+function readItems(payload: unknown): TourItem[] {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const response = (payload as { response?: { body?: { items?: { item?: TourItem[] | TourItem } } } }).response;
+  const item = response?.body?.items?.item;
+  if (!item) return [];
+  return Array.isArray(item) ? item : [item];
 }
 
 // 지역 기반 관광지 검색
@@ -40,39 +61,37 @@ export async function searchAttractions(params: {
   pageNo?: number;
   numOfRows?: number;
 }) {
-  const response = await axios.get<TourApiResponse>(withServiceKey("areaBasedList1"), {
+  const response = await axios.get<TourApiResponse>(withServiceKey("areaBasedList2"), {
     params: {
       numOfRows: params.numOfRows ?? 20,
       pageNo: params.pageNo ?? 1,
       MobileOS: "AND",
       MobileApp: "TripMate",
       _type: "json",
-      listYN: "Y",
       arrange: "P",
       areaCode: params.areaCode,
       contentTypeId: params.contentTypeId ?? "12"
     }
   });
 
-  return response.data.response.body.items?.item ?? [];
+  return readItems(response.data);
 }
 
 // 키워드 검색
 export async function searchByKeyword(keyword: string, pageNo?: number) {
-  const response = await axios.get<TourApiResponse>(withServiceKey("searchKeyword1"), {
+  const response = await axios.get<TourApiResponse>(withServiceKey("searchKeyword2"), {
     params: {
       numOfRows: 20,
       pageNo: pageNo ?? 1,
       MobileOS: "AND",
       MobileApp: "TripMate",
       _type: "json",
-      listYN: "Y",
       arrange: "P",
       keyword
     }
   });
 
-  return response.data.response.body.items?.item ?? [];
+  return readItems(response.data);
 }
 
 // 축제/행사 검색
@@ -81,21 +100,20 @@ export async function searchFestivals(params: {
   areaCode?: string;
   pageNo?: number;
 }) {
-  const response = await axios.get<TourApiResponse>(withServiceKey("searchFestival1"), {
+  const response = await axios.get<TourApiResponse>(withServiceKey("searchFestival2"), {
     params: {
       numOfRows: 20,
       pageNo: params.pageNo ?? 1,
       MobileOS: "AND",
       MobileApp: "TripMate",
       _type: "json",
-      listYN: "Y",
       arrange: "P",
       eventStartDate: params.eventStartDate,
       areaCode: params.areaCode
     }
   });
 
-  return response.data.response.body.items?.item ?? [];
+  return readItems(response.data);
 }
 
 // 지역코드 매핑

@@ -1,193 +1,222 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList } from "react-native";
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  ActivityIndicator, FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Theme } from '../../constants/Theme';
+import { restaurantApi } from '../../services/api';
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
-import Button from "../common/Button";
-import { restaurantApi } from "../../services/api";
-
-interface StepRestaurantsProps {
+interface Props {
   destination: string;
   selectedRestaurants: string[];
-  onChangeRestaurants: (nextValues: string[]) => void;
+  onChangeRestaurants: (v: string[]) => void;
   onComplete: () => void;
   loading?: boolean;
 }
 
-interface RestaurantItem {
-  title: string;
-  category: string;
-  address: string;
-  roadAddress: string;
-  telephone: string;
-  mapx: string;
-  mapy: string;
+interface Item {
+  title: string; category: string;
+  address: string; roadAddress: string; telephone: string;
 }
 
-const FOOD_CATEGORIES = [
-  { key: "맛집", label: "전체" },
-  { key: "한식", label: "한식" },
-  { key: "해산물", label: "해산물" },
-  { key: "고기", label: "고기" },
-  { key: "카페", label: "카페" },
-  { key: "디저트", label: "디저트" },
-  { key: "분식", label: "분식" },
+const CATS = [
+  { key: '맛집', label: '전체', icon: 'restaurant-outline' },
+  { key: '한식', label: '한식', icon: 'flame-outline' },
+  { key: '해산물', label: '해산물', icon: 'fish-outline' },
+  { key: '고기', label: '고기', icon: 'nutrition-outline' },
+  { key: '카페', label: '카페', icon: 'cafe-outline' },
+  { key: '디저트', label: '디저트', icon: 'ice-cream-outline' },
+  { key: '분식', label: '분식', icon: 'fast-food-outline' },
 ];
 
-export default function StepRestaurants({
-  destination,
-  selectedRestaurants,
-  onChangeRestaurants,
-  onComplete,
-  loading: savingLoading = false,
-}: StepRestaurantsProps) {
-  const [items, setItems] = useState<RestaurantItem[]>([]);
+export default function StepRestaurants({ destination, selectedRestaurants, onChangeRestaurants, onComplete, loading: saving = false }: Props) {
+  const [items, setItems] = useState<Item[]>([]);
   const [fetching, setFetching] = useState(false);
-  const [error, setError] = useState("");
-  const [activeCategory, setActiveCategory] = useState("맛집");
+  const [error, setError] = useState('');
+  const [cat, setCat] = useState('맛집');
 
-  const fetchRestaurants = useCallback(async (category: string) => {
+  const fetch_ = useCallback(async (c: string) => {
     if (!destination) return;
-    setFetching(true);
-    setError("");
+    setFetching(true); setError('');
     try {
-      const query = category === "맛집" ? `${destination} 맛집` : `${destination} ${category}`;
-      const res = await restaurantApi.search(query, 20);
-      setItems((res.data.items ?? []) as RestaurantItem[]);
-    } catch {
-      setError("맛집 정보를 불러올 수 없습니다");
-    } finally {
-      setFetching(false);
-    }
+      const q = c === '맛집' ? `${destination} 맛집` : `${destination} ${c}`;
+      const res = await restaurantApi.search(q, 20);
+      setItems((res.data.items ?? []) as Item[]);
+    } catch { setError('맛집 정보를 불러올 수 없습니다'); }
+    finally { setFetching(false); }
   }, [destination]);
 
-  useEffect(() => {
-    void fetchRestaurants(activeCategory);
-  }, [destination, activeCategory, fetchRestaurants]);
+  useEffect(() => { fetch_(cat); }, [destination, cat, fetch_]);
 
-  const toggleRestaurant = (title: string) => {
-    if (selectedRestaurants.includes(title)) {
-      onChangeRestaurants(selectedRestaurants.filter((v) => v !== title));
-    } else {
-      onChangeRestaurants([...selectedRestaurants, title]);
-    }
-  };
-
-  const renderItem = ({ item }: { item: RestaurantItem }) => {
-    const isSelected = selectedRestaurants.includes(item.title);
-    return (
-      <TouchableOpacity
-        style={[styles.card, isSelected && styles.cardSelected]}
-        onPress={() => toggleRestaurant(item.title)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardLeft}>
-          <Text style={styles.categoryBadge}>{item.category.split(">").pop()?.trim() ?? "음식점"}</Text>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.cardAddress} numberOfLines={1}>{item.roadAddress || item.address}</Text>
-          {item.telephone ? <Text style={styles.cardPhone}>{item.telephone}</Text> : null}
-        </View>
-        {isSelected && (
-          <View style={styles.checkBadge}>
-            <Text style={styles.checkText}>✓</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+  const toggle = (title: string) => {
+    onChangeRestaurants(
+      selectedRestaurants.includes(title)
+        ? selectedRestaurants.filter((v) => v !== title)
+        : [...selectedRestaurants, title]
     );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>🍽️</Text>
-      <Text style={styles.title}>
-        {destination ? `${destination} 맛집` : "식당 취향도 알려주세요"}
-      </Text>
-      <Text style={styles.description}>네이버 검색 결과에서 불러온 실제 맛집입니다.</Text>
-
-      <View style={styles.filterRow}>
-        {FOOD_CATEGORIES.map((cat) => (
-          <TouchableOpacity
-            key={cat.key}
-            style={[styles.filterChip, activeCategory === cat.key && styles.filterChipActive]}
-            onPress={() => setActiveCategory(cat.key)}
-          >
-            <Text style={[styles.filterChipText, activeCategory === cat.key && styles.filterChipTextActive]}>
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="restaurant" size={32} color="#FF6B6B" />
+        </View>
+        <Text style={styles.title}>{destination} 맛집</Text>
+        <Text style={styles.subtitle}>먹고 싶은 곳을 골라주세요</Text>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <FlatList
+        horizontal showsHorizontalScrollIndicator={false}
+        data={CATS} keyExtractor={(i) => i.key}
+        contentContainerStyle={styles.filterScroll}
+        renderItem={({ item: c }) => (
+          <TouchableOpacity
+            style={[styles.filterChip, cat === c.key && styles.filterChipActive]}
+            onPress={() => setCat(c.key)}
+          >
+            <Ionicons name={c.icon as any} size={14} color={cat === c.key ? '#A15B00' : Theme.colors.textTertiary} />
+            <Text style={[styles.filterText, cat === c.key && styles.filterTextActive]}>{c.label}</Text>
+          </TouchableOpacity>
+        )}
+      />
+
+      {error ? (
+        <View style={styles.errBox}>
+          <Ionicons name="warning-outline" size={16} color={Theme.colors.error} />
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={items}
-        keyExtractor={(item, index) => `${item.title}_${index}`}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListFooterComponent={
-          fetching ? <ActivityIndicator color={Colors.young.primary} style={styles.loader} /> : null
-        }
-        ListEmptyComponent={
-          !fetching ? <Text style={styles.emptyText}>검색 결과가 없습니다</Text> : null
-        }
-        style={styles.list}
+        keyExtractor={(i, idx) => `${i.title}_${idx}`}
+        style={{ maxHeight: 360 }}
+        contentContainerStyle={{ paddingBottom: Theme.spacing.md }}
+        ListFooterComponent={fetching ? <ActivityIndicator color={Theme.colors.primary} style={{ margin: 12 }} /> : null}
+        ListEmptyComponent={!fetching ? <Text style={styles.emptyText}>검색 결과가 없어요</Text> : null}
+        renderItem={({ item }) => {
+          const sel = selectedRestaurants.includes(item.title);
+          return (
+            <TouchableOpacity style={[styles.card, sel && styles.cardSel]} onPress={() => toggle(item.title)} activeOpacity={0.7}>
+              <View style={[styles.cardIcon, sel && styles.cardIconSel]}>
+                <Text style={{ fontSize: 22 }}>🍽️</Text>
+              </View>
+              <View style={styles.cardBody}>
+                <View style={styles.catBadge}>
+                  <Text style={styles.catBadgeText}>{item.category.split('>').pop()?.trim() ?? '음식점'}</Text>
+                </View>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.cardAddr} numberOfLines={1}>{item.roadAddress || item.address}</Text>
+                {item.telephone ? (
+                  <View style={styles.telRow}>
+                    <Ionicons name="call-outline" size={11} color={Theme.colors.textTertiary} />
+                    <Text style={styles.telText}>{item.telephone}</Text>
+                  </View>
+                ) : null}
+              </View>
+              {sel && (
+                <View style={styles.checkBadge}>
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        }}
       />
 
-      <Text style={styles.countText}>선택 {selectedRestaurants.length}개</Text>
+      <View style={styles.countBar}>
+        <Ionicons name="checkmark-circle" size={18} color="#FF6B6B" />
+        <Text style={styles.countText}>{selectedRestaurants.length}개 선택됨</Text>
+      </View>
 
-      <Button
-        title="완료하고 경로 만들기"
+      <TouchableOpacity
+        style={[styles.completeBtn, saving && { opacity: 0.7 }]}
         onPress={onComplete}
-        size="large"
-        loading={savingLoading}
-        style={styles.completeButton}
-      />
+        disabled={saving}
+        activeOpacity={0.85}
+      >
+        {saving ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <>
+            <Ionicons name="sparkles" size={20} color="#FFF" />
+            <Text style={styles.completeBtnText}>AI 일정 생성하기</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: Spacing.screenPadding, paddingTop: Spacing.sm, paddingBottom: Spacing.xxl, flex: 1 },
-  emoji: { fontSize: 48, textAlign: "center", marginBottom: Spacing.sm },
-  title: { ...Typography.normal.h2, color: Colors.common.black, textAlign: "center", marginBottom: Spacing.xs },
-  description: { ...Typography.normal.bodySmall, color: Colors.common.gray500, textAlign: "center", marginBottom: Spacing.md },
-  filterRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: Spacing.md, gap: 6 },
+  container: { padding: Theme.spacing.xl, flex: 1, paddingBottom: Theme.spacing.xxxl },
+  hero: { alignItems: 'center', marginBottom: Theme.spacing.lg },
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: '#FFE8E8',
+    alignItems: 'center', justifyContent: 'center', marginBottom: Theme.spacing.md,
+  },
+  title: { ...Theme.typography.h2, color: Theme.colors.textPrimary },
+  subtitle: { ...Theme.typography.body2, color: Theme.colors.textSecondary, marginTop: 4 },
+  filterScroll: { gap: 8, marginBottom: Theme.spacing.lg },
   filterChip: {
-    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20,
-    backgroundColor: Colors.common.gray100, borderWidth: 1, borderColor: Colors.common.gray200,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.full,
+    borderWidth: 1, borderColor: Theme.colors.border,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  filterChipActive: { backgroundColor: "#FFF3E0", borderColor: Colors.common.warning },
-  filterChipText: { ...Typography.normal.caption, color: Colors.common.gray600, fontWeight: "600" },
-  filterChipTextActive: { color: "#A15B00" },
-  list: { maxHeight: 350 },
-  listContent: { paddingBottom: Spacing.md },
+  filterChipActive: { backgroundColor: '#FFF5E8', borderColor: '#F59E0B' },
+  filterText: { ...Theme.typography.caption, fontWeight: '600', color: Theme.colors.textTertiary },
+  filterTextActive: { color: '#A15B00' },
   card: {
-    flexDirection: "row", alignItems: "center", borderRadius: 14,
-    borderWidth: 2, borderColor: Colors.common.gray200, backgroundColor: Colors.common.white,
-    padding: Spacing.md, marginBottom: Spacing.sm,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg, borderWidth: 2, borderColor: Theme.colors.border,
+    padding: Theme.spacing.lg, marginBottom: Theme.spacing.sm,
+    ...Theme.shadow.sm,
   },
-  cardSelected: { borderColor: Colors.young.primary, backgroundColor: "#F5FAFF" },
-  cardLeft: { flex: 1 },
-  categoryBadge: {
-    ...Typography.normal.caption, color: Colors.common.gray500, backgroundColor: Colors.common.gray100,
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, alignSelf: "flex-start", marginBottom: 4, overflow: "hidden",
+  cardSel: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
+  cardIcon: {
+    width: 48, height: 48, borderRadius: Theme.radius.md,
+    backgroundColor: Theme.colors.background,
+    alignItems: 'center', justifyContent: 'center', marginRight: Theme.spacing.md,
   },
-  cardTitle: { ...Typography.normal.body, fontWeight: "700", color: Colors.common.gray800 },
-  cardAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 2 },
-  cardPhone: { ...Typography.normal.caption, color: Colors.common.info, marginTop: 2 },
+  cardIconSel: { backgroundColor: '#FFF' },
+  cardBody: { flex: 1 },
+  catBadge: {
+    backgroundColor: Theme.colors.background, borderRadius: Theme.radius.sm,
+    paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginBottom: 4,
+  },
+  catBadgeText: { ...Theme.typography.caption, color: Theme.colors.textSecondary },
+  cardTitle: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.textPrimary },
+  cardAddr: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 2 },
+  telRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  telText: { ...Theme.typography.caption, color: Theme.colors.textTertiary },
   checkBadge: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.young.primary, alignItems: "center", justifyContent: "center", marginLeft: Spacing.sm,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center', justifyContent: 'center', marginLeft: Theme.spacing.sm,
   },
-  checkText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  countText: {
-    ...Typography.normal.bodySmall, color: Colors.young.primary,
-    fontWeight: "700", textAlign: "center", marginTop: Spacing.md,
+  countBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: Theme.spacing.md,
+    backgroundColor: '#FFE8E8', borderRadius: Theme.radius.full, paddingVertical: 10,
   },
-  completeButton: { marginTop: Spacing.xl, width: "100%" },
-  errorText: { ...Typography.normal.bodySmall, color: Colors.common.error, textAlign: "center", marginBottom: Spacing.md },
-  emptyText: { ...Typography.normal.body, color: Colors.common.gray500, textAlign: "center", marginTop: Spacing.xxl },
-  loader: { marginVertical: Spacing.md },
+  countText: { ...Theme.typography.body2, fontWeight: '700', color: '#FF6B6B' },
+  completeBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Theme.colors.primary,
+    borderRadius: Theme.radius.lg, paddingVertical: 18, marginTop: Theme.spacing.xl,
+    ...Theme.shadow.md,
+  },
+  completeBtnText: { ...Theme.typography.button, color: '#FFF', fontSize: 18 },
+  errBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Theme.colors.secondaryLight, borderRadius: Theme.radius.md,
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
+  },
+  errText: { ...Theme.typography.body2, color: Theme.colors.error },
+  emptyText: { ...Theme.typography.body1, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 40 },
 });

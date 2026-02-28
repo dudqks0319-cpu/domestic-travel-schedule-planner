@@ -62,9 +62,7 @@ function readKakaoMapWebKey(): string | undefined {
     }
   ).process;
 
-  const candidate =
-    maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY ??
-    maybeProcess?.env?.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY;
+  const candidate = maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY;
 
   const trimmed = candidate?.trim();
   return trimmed ? trimmed : undefined;
@@ -281,13 +279,14 @@ export default function TabMapViewWeb() {
           ) : kakaoStatus === "no-key" ? (
             <View style={styles.noticeTextWrap}>
               <Text style={styles.noticeTitle}>카카오 웹 지도 키 필요</Text>
-              <Text style={styles.noticeText}>`EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`를 확인해주세요.</Text>
+              <Text style={styles.noticeText}>`EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`를 설정해주세요.</Text>
             </View>
           ) : (
             <View style={styles.noticeTextWrap}>
               <Text style={styles.noticeTitle}>카카오 지도 로드 실패</Text>
               <Text style={styles.noticeText}>원인: {kakaoError ?? "알 수 없는 오류"}</Text>
-              <Text style={styles.noticeText}>카카오 개발자 콘솔 웹 도메인에 `http://localhost:8081` 등록이 필요합니다.</Text>
+              <Text style={styles.noticeText}>카카오 개발자 콘솔 `앱 설정 → 플랫폼 → Web` 도메인에 `http://localhost:8081`, `http://127.0.0.1:8081`을 등록해주세요.</Text>
+              <Text style={styles.noticeText}>`제품 링크 관리`가 아니라 `플랫폼(Web)` 페이지입니다.</Text>
             </View>
           )}
         </View>

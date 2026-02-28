@@ -1,217 +1,198 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity, ActivityIndicator, FlatList } from "react-native";
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Image,
+  ActivityIndicator, FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Theme } from '../../constants/Theme';
+import { tourismApi } from '../../services/api';
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
-import { tourismApi } from "../../services/api";
-
-interface StepAttractionsProps {
+interface Props {
   destination: string;
   selectedAttractions: string[];
-  onChangeAttractions: (nextValues: string[]) => void;
+  onChangeAttractions: (v: string[]) => void;
 }
 
-interface AttractionItem {
-  contentid: string;
-  title: string;
-  addr1: string;
-  firstimage?: string;
-  mapx: string;
-  mapy: string;
+interface Item {
+  contentid: string; title: string; addr1: string; firstimage?: string;
 }
 
-const CATEGORY_FILTERS = [
-  { key: "all", label: "전체" },
-  { key: "12", label: "관광지" },
-  { key: "14", label: "문화시설" },
-  { key: "15", label: "축제/행사" },
-  { key: "25", label: "여행코스" },
-  { key: "28", label: "레포츠" },
-  { key: "38", label: "쇼핑" },
+const CATS = [
+  { key: 'all', label: '전체', icon: 'apps-outline' },
+  { key: '12', label: '관광지', icon: 'camera-outline' },
+  { key: '14', label: '문화시설', icon: 'library-outline' },
+  { key: '15', label: '축제', icon: 'ticket-outline' },
+  { key: '25', label: '여행코스', icon: 'trail-sign-outline' },
+  { key: '28', label: '레포츠', icon: 'bicycle-outline' },
+  { key: '38', label: '쇼핑', icon: 'bag-outline' },
 ];
 
-export default function StepAttractions({
-  destination,
-  selectedAttractions,
-  onChangeAttractions,
-}: StepAttractionsProps) {
-  const [items, setItems] = useState<AttractionItem[]>([]);
+export default function StepAttractions({ destination, selectedAttractions, onChangeAttractions }: Props) {
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [error, setError] = useState('');
+  const [cat, setCat] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchAttractions = useCallback(
-    async (pageNum: number, contentType?: string, reset = false) => {
-      if (!destination) return;
-      setLoading(true);
-      setError("");
-      try {
-        const area = destination.replace(/도$|시$|군$|구$/g, "").trim();
-        const ct = contentType === "all" ? undefined : contentType;
-        const res = await tourismApi.getAttractions(area, pageNum, ct);
-        const newItems = (res.data.items ?? []) as AttractionItem[];
-        setItems((prev) => (reset ? newItems : [...prev, ...newItems]));
-        setHasMore(newItems.length >= 20);
-      } catch {
-        setError("관광지 정보를 불러올 수 없습니다");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [destination]
-  );
+  const fetchData = useCallback(async (p: number, c?: string, reset = false) => {
+    if (!destination) return;
+    setLoading(true); setError('');
+    try {
+      const area = destination.replace(/도$|시$|군$|구$/g, '').trim();
+      const ct = c === 'all' ? undefined : c;
+      const res = await tourismApi.getAttractions(area, p, ct);
+      const arr = (res.data.items ?? []) as Item[];
+      setItems((prev) => reset ? arr : [...prev, ...arr]);
+      setHasMore(arr.length >= 20);
+    } catch { setError('관광지 정보를 불러올 수 없습니다'); }
+    finally { setLoading(false); }
+  }, [destination]);
 
-  useEffect(() => {
-    setPage(1);
-    setHasMore(true);
-    void fetchAttractions(1, activeCategory, true);
-  }, [destination, activeCategory, fetchAttractions]);
+  useEffect(() => { setPage(1); setHasMore(true); fetchData(1, cat, true); }, [destination, cat, fetchData]);
 
-  const handleLoadMore = () => {
+  const loadMore = () => {
     if (loading || !hasMore) return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    void fetchAttractions(nextPage, activeCategory);
+    const np = page + 1; setPage(np); fetchData(np, cat);
   };
 
-  const toggleAttraction = (id: string) => {
-    if (selectedAttractions.includes(id)) {
-      onChangeAttractions(selectedAttractions.filter((v) => v !== id));
-    } else {
-      onChangeAttractions([...selectedAttractions, id]);
-    }
-  };
-
-  const renderItem = ({ item }: { item: AttractionItem }) => {
-    const isSelected = selectedAttractions.includes(item.contentid);
-    return (
-      <TouchableOpacity
-        style={[styles.card, isSelected && styles.cardSelected]}
-        onPress={() => toggleAttraction(item.contentid)}
-        activeOpacity={0.7}
-      >
-        {item.firstimage ? (
-          <Image source={{ uri: item.firstimage }} style={styles.cardImage} />
-        ) : (
-          <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-            <Text style={styles.placeholderEmoji}>📷</Text>
-          </View>
-        )}
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.cardAddress} numberOfLines={1}>{item.addr1}</Text>
-        </View>
-        {isSelected && (
-          <View style={styles.checkBadge}>
-            <Text style={styles.checkText}>✓</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+  const toggle = (id: string) => {
+    onChangeAttractions(
+      selectedAttractions.includes(id)
+        ? selectedAttractions.filter((v) => v !== id)
+        : [...selectedAttractions, id]
     );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>🎡</Text>
-      <Text style={styles.title}>
-        {destination ? `${destination} 관광지` : "가보고 싶은 스팟을 골라주세요"}
-      </Text>
-      <Text style={styles.description}>
-        실제 관광 데이터에서 불러온 결과입니다. 복수 선택 가능해요.
-      </Text>
-
-      <View style={styles.filterRow}>
-        {CATEGORY_FILTERS.map((cat) => (
-          <TouchableOpacity
-            key={cat.key}
-            style={[styles.filterChip, activeCategory === cat.key && styles.filterChipActive]}
-            onPress={() => setActiveCategory(cat.key)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeCategory === cat.key && styles.filterChipTextActive,
-              ]}
-            >
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="camera" size={32} color={Theme.colors.primary} />
+        </View>
+        <Text style={styles.title}>{destination} 관광지</Text>
+        <Text style={styles.subtitle}>가보고 싶은 곳을 골라주세요 (복수 선택)</Text>
       </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <FlatList
+        horizontal showsHorizontalScrollIndicator={false}
+        data={CATS}
+        keyExtractor={(i) => i.key}
+        contentContainerStyle={styles.filterScroll}
+        renderItem={({ item: c }) => (
+          <TouchableOpacity
+            style={[styles.filterChip, cat === c.key && styles.filterChipActive]}
+            onPress={() => setCat(c.key)}
+          >
+            <Ionicons name={c.icon as any} size={14} color={cat === c.key ? Theme.colors.primary : Theme.colors.textTertiary} />
+            <Text style={[styles.filterText, cat === c.key && styles.filterTextActive]}>{c.label}</Text>
+          </TouchableOpacity>
+        )}
+      />
+
+      {error ? (
+        <View style={styles.errBox}>
+          <Ionicons name="warning-outline" size={16} color={Theme.colors.error} />
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={items}
-        keyExtractor={(item) => item.contentid}
-        renderItem={renderItem}
+        keyExtractor={(i) => i.contentid}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.listContent}
-        onEndReached={handleLoadMore}
+        contentContainerStyle={{ paddingBottom: Theme.spacing.lg }}
+        onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        ListFooterComponent={
-          loading ? <ActivityIndicator color={Colors.young.primary} style={styles.loader} /> : null
-        }
-        ListEmptyComponent={
-          !loading ? (
-            <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
-          ) : null
-        }
-        style={styles.list}
+        style={{ maxHeight: 420 }}
+        ListFooterComponent={loading ? <ActivityIndicator color={Theme.colors.primary} style={{ margin: 12 }} /> : null}
+        ListEmptyComponent={!loading ? <Text style={styles.emptyText}>검색 결과가 없어요</Text> : null}
+        renderItem={({ item }) => {
+          const sel = selectedAttractions.includes(item.contentid);
+          return (
+            <TouchableOpacity style={[styles.card, sel && styles.cardSel]} onPress={() => toggle(item.contentid)} activeOpacity={0.7}>
+              {item.firstimage ? (
+                <Image source={{ uri: item.firstimage }} style={styles.cardImg} />
+              ) : (
+                <View style={[styles.cardImg, styles.cardImgPh]}>
+                  <Ionicons name="image-outline" size={28} color={Theme.colors.textTertiary} />
+                </View>
+              )}
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.cardAddr} numberOfLines={1}>{item.addr1}</Text>
+              </View>
+              {sel && (
+                <View style={styles.checkBadge}>
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        }}
       />
 
-      <Text style={styles.countText}>선택 {selectedAttractions.length}개</Text>
+      <View style={styles.countBar}>
+        <Ionicons name="checkmark-circle" size={18} color={Theme.colors.primary} />
+        <Text style={styles.countText}>{selectedAttractions.length}개 선택됨</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: Spacing.screenPadding, paddingTop: Spacing.sm, flex: 1 },
-  emoji: { fontSize: 48, textAlign: "center", marginBottom: Spacing.sm },
-  title: { ...Typography.normal.h2, color: Colors.common.black, textAlign: "center", marginBottom: Spacing.xs },
-  description: { ...Typography.normal.bodySmall, color: Colors.common.gray500, textAlign: "center", marginBottom: Spacing.md },
-  filterRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: Spacing.md, gap: 6 },
+  container: { padding: Theme.spacing.xl, flex: 1 },
+  hero: { alignItems: 'center', marginBottom: Theme.spacing.lg },
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: Theme.spacing.md,
+  },
+  title: { ...Theme.typography.h2, color: Theme.colors.textPrimary },
+  subtitle: { ...Theme.typography.body2, color: Theme.colors.textSecondary, marginTop: 4 },
+  filterScroll: { gap: 8, marginBottom: Theme.spacing.lg, paddingRight: Theme.spacing.xl },
   filterChip: {
-    paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20,
-    backgroundColor: Colors.common.gray100, borderWidth: 1, borderColor: Colors.common.gray200,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.full,
+    borderWidth: 1, borderColor: Theme.colors.border,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  filterChipActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
-  filterChipText: { ...Typography.normal.caption, color: Colors.common.gray600, fontWeight: "600" },
-  filterChipTextActive: { color: Colors.young.primary },
-  list: { maxHeight: 400 },
-  listContent: { paddingBottom: Spacing.md },
-  row: { justifyContent: "space-between" },
+  filterChipActive: { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary },
+  filterText: { ...Theme.typography.caption, fontWeight: '600', color: Theme.colors.textTertiary },
+  filterTextActive: { color: Theme.colors.primary },
+  row: { gap: Theme.spacing.md },
   card: {
-    width: "48%", borderRadius: 16, borderWidth: 2, borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.white, marginBottom: Spacing.sm, overflow: "hidden",
+    flex: 1, backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg, borderWidth: 2, borderColor: Theme.colors.border,
+    overflow: 'hidden', marginBottom: Theme.spacing.md,
+    ...Theme.shadow.sm,
   },
-  cardSelected: { borderColor: Colors.young.primary, backgroundColor: "#F5FAFF" },
-  cardImage: { width: "100%", height: 100, backgroundColor: Colors.common.gray100 },
-  cardImagePlaceholder: { alignItems: "center", justifyContent: "center" },
-  placeholderEmoji: { fontSize: 32 },
-  cardContent: { padding: 10 },
-  cardTitle: { ...Typography.normal.bodySmall, fontWeight: "700", color: Colors.common.gray800 },
-  cardAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 2 },
+  cardSel: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
+  cardImg: { width: '100%', height: 110 },
+  cardImgPh: { backgroundColor: Theme.colors.background, alignItems: 'center', justifyContent: 'center' },
+  cardBody: { padding: Theme.spacing.md },
+  cardTitle: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.textPrimary },
+  cardAddr: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 2 },
   checkBadge: {
-    position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: 12,
-    backgroundColor: Colors.young.primary, alignItems: "center", justifyContent: "center",
+    position: 'absolute', top: 8, right: 8,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+    ...Theme.shadow.sm,
   },
-  checkText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
-  countText: {
-    ...Typography.normal.bodySmall, color: Colors.young.primary,
-    fontWeight: "700", textAlign: "center", marginTop: Spacing.md,
+  countBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: Theme.spacing.md,
+    backgroundColor: Theme.colors.primaryLight,
+    borderRadius: Theme.radius.full, paddingVertical: 10,
   },
-  errorText: {
-    ...Typography.normal.bodySmall, color: Colors.common.error,
-    textAlign: "center", marginBottom: Spacing.md,
+  countText: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.primary },
+  errBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Theme.colors.secondaryLight, borderRadius: Theme.radius.md,
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
   },
-  emptyText: {
-    ...Typography.normal.body, color: Colors.common.gray500,
-    textAlign: "center", marginTop: Spacing.xxl,
-  },
-  loader: { marginVertical: Spacing.md },
+  errText: { ...Theme.typography.body2, color: Theme.colors.error },
+  emptyText: { ...Theme.typography.body1, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 40 },
 });

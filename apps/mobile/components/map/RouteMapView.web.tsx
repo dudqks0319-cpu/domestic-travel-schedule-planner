@@ -82,9 +82,7 @@ function readKakaoMapWebKey(): string | undefined {
     }
   ).process;
 
-  const candidate =
-    maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY ??
-    maybeProcess?.env?.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY;
+  const candidate = maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY;
   const trimmed = candidate?.trim();
   return trimmed ? trimmed : undefined;
 }
@@ -307,8 +305,9 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
             <View style={styles.noticeTextWrap}>
               <Text style={styles.noticeTitle}>카카오 지도 로드 실패</Text>
               <Text style={styles.noticeText}>원인: {kakaoError ?? "알 수 없는 오류"}</Text>
-              <Text style={styles.noticeText}>1) 카카오 개발자 콘솔 → 웹 도메인에 `http://localhost:8081` 등록</Text>
-              <Text style={styles.noticeText}>2) 저장 후 Expo 웹을 새로고침</Text>
+              <Text style={styles.noticeText}>1) 카카오 개발자 콘솔 `앱 설정 → 플랫폼 → Web` 도메인 등록</Text>
+              <Text style={styles.noticeText}>2) `http://localhost:8081`, `http://127.0.0.1:8081` 추가</Text>
+              <Text style={styles.noticeText}>3) 저장 후 Expo 웹 강력 새로고침</Text>
             </View>
           )}
         </View>

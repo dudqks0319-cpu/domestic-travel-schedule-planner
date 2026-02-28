@@ -1,485 +1,360 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  Animated, Easing,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Theme } from '../../constants/Theme';
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
-import Input from "../common/Input";
-
-interface StepDestinationProps {
+interface Props {
   destination: string;
-  onChangeDestination: (destination: string) => void;
+  onChangeDestination: (v: string) => void;
 }
 
-const dummyDestinations = [
-  "제주도",
-  "부산",
-  "서울",
-  "강릉",
-  "여수",
-  "경주"
-] as const;
+const DESTINATIONS = [
+  { name: '제주도', emoji: '🏝️', desc: '자연과 힐링' },
+  { name: '부산', emoji: '🌊', desc: '바다와 미식' },
+  { name: '서울', emoji: '🏙️', desc: '도심 여행' },
+  { name: '강릉', emoji: '☕', desc: '커피와 해변' },
+  { name: '여수', emoji: '🌙', desc: '밤바다' },
+  { name: '경주', emoji: '🏛️', desc: '역사 탐방' },
+];
 
-const mapDestinations = [
-  { name: "서울", left: "53%", top: "22%" },
-  { name: "인천", left: "41%", top: "25%" },
-  { name: "강릉", left: "72%", top: "28%" },
-  { name: "경주", left: "69%", top: "49%" },
-  { name: "부산", left: "73%", top: "61%" },
-  { name: "여수", left: "54%", top: "62%" },
-  { name: "제주도", left: "37%", top: "82%" }
-] as const;
+const MAP_PINS = [
+  { name: '서울', left: '53%', top: '22%' },
+  { name: '인천', left: '41%', top: '25%' },
+  { name: '강릉', left: '72%', top: '28%' },
+  { name: '경주', left: '69%', top: '49%' },
+  { name: '부산', left: '73%', top: '61%' },
+  { name: '여수', left: '54%', top: '62%' },
+  { name: '제주도', left: '37%', top: '82%' },
+];
 
-const randomDestinationPool = [...dummyDestinations, "전주", "인천", "속초", "포항"] as const;
+const RANDOM_POOL = ['제주도', '부산', '서울', '강릉', '여수', '경주', '전주', '인천', '속초', '포항'];
 
-const ROULETTE_SIZE = 232;
-const ROULETTE_RADIUS = 88;
-const ROULETTE_LABEL_WIDTH = 56;
+const ROULETTE_SIZE = 240;
+const ROULETTE_RADIUS = 90;
 
-export default function StepDestination({ destination, onChangeDestination }: StepDestinationProps) {
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [randomMessage, setRandomMessage] = useState("");
-  const spinValue = useRef(new Animated.Value(0)).current;
+export default function StepDestination({ destination, onChangeDestination }: Props) {
+  const [spinning, setSpinning] = useState(false);
+  const [randomMsg, setRandomMsg] = useState('');
+  const spinVal = useRef(new Animated.Value(0)).current;
 
-  const needleRotation = spinValue.interpolate({
+  const rotation = spinVal.interpolate({
     inputRange: [0, 8],
-    outputRange: ["0deg", "2880deg"]
+    outputRange: ['0deg', '2880deg'],
   });
 
-  const rouletteNodes = useMemo(
-    () =>
-      randomDestinationPool.map((name, index) => {
-        const angle = (Math.PI * 2 * index) / randomDestinationPool.length - Math.PI / 2;
+  const rouletteNodes = useMemo(() =>
+    RANDOM_POOL.map((name, i) => {
+      const angle = (Math.PI * 2 * i) / RANDOM_POOL.length - Math.PI / 2;
+      return {
+        name,
+        left: ROULETTE_SIZE / 2 + Math.cos(angle) * ROULETTE_RADIUS - 28,
+        top: ROULETTE_SIZE / 2 + Math.sin(angle) * ROULETTE_RADIUS - 10,
+      };
+    }), []);
 
-        return {
-          name,
-          left: ROULETTE_SIZE / 2 + Math.cos(angle) * ROULETTE_RADIUS - ROULETTE_LABEL_WIDTH / 2,
-          top: ROULETTE_SIZE / 2 + Math.sin(angle) * ROULETTE_RADIUS - 10
-        };
-      }),
-    []
-  );
-
-  const getRandomDestination = () =>
-    randomDestinationPool[Math.floor(Math.random() * randomDestinationPool.length)];
-
-  const handleRandomDraw = () => {
-    const picked = getRandomDestination();
-
-    setRandomMessage(`랜덤 뽑기 결과: ${picked}`);
+  const handleRandom = () => {
+    const picked = RANDOM_POOL[Math.floor(Math.random() * RANDOM_POOL.length)];
+    setRandomMsg(`🎯 ${picked}`);
     onChangeDestination(picked);
   };
 
-  const handleSpinRoulette = () => {
-    if (isSpinning) {
-      return;
-    }
-
-    const selectedIndex = Math.floor(Math.random() * randomDestinationPool.length);
-    const picked = randomDestinationPool[selectedIndex];
-    const spinRounds = 4 + Math.floor(Math.random() * 3);
-    const stopPosition = selectedIndex / randomDestinationPool.length;
-
-    setIsSpinning(true);
-    setRandomMessage("룰렛이 돌고 있어요...");
-    spinValue.setValue(0);
-
-    Animated.timing(spinValue, {
-      toValue: spinRounds + stopPosition,
+  const handleSpin = () => {
+    if (spinning) return;
+    const idx = Math.floor(Math.random() * RANDOM_POOL.length);
+    const picked = RANDOM_POOL[idx];
+    const rounds = 4 + Math.floor(Math.random() * 3);
+    setSpinning(true);
+    setRandomMsg('룰렛 돌아가는 중...');
+    spinVal.setValue(0);
+    Animated.timing(spinVal, {
+      toValue: rounds + idx / RANDOM_POOL.length,
       duration: 2200,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false
+      useNativeDriver: false,
     }).start(() => {
-      setIsSpinning(false);
-      setRandomMessage(`룰렛 결과: ${picked}`);
+      setSpinning(false);
+      setRandomMsg(`🎰 ${picked}`);
       onChangeDestination(picked);
     });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>📍</Text>
-      <Text style={styles.title}>어디로 떠나시나요?</Text>
-      <Text style={styles.description}>여행지를 입력하거나 지도/룰렛으로 재미있게 골라보세요.</Text>
+      <View style={styles.heroSection}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="location" size={32} color={Theme.colors.primary} />
+        </View>
+        <Text style={styles.title}>어디로 떠나볼까요?</Text>
+        <Text style={styles.subtitle}>여행지를 검색하거나 아래에서 골라보세요</Text>
+      </View>
 
-      <Input
-        label="여행지"
-        icon="🧭"
-        placeholder="예: 제주도"
-        value={destination}
-        onChangeText={onChangeDestination}
-      />
+      <View style={styles.searchBox}>
+        <Ionicons name="search" size={18} color={Theme.colors.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="도시나 지역을 입력해주세요"
+          placeholderTextColor={Theme.colors.textTertiary}
+          value={destination}
+          onChangeText={onChangeDestination}
+        />
+        {destination.length > 0 && (
+          <TouchableOpacity onPress={() => onChangeDestination('')}>
+            <Ionicons name="close-circle" size={18} color={Theme.colors.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-      <Text style={styles.quickLabel}>빠른 선택</Text>
-      <View style={styles.chipContainer}>
-        {dummyDestinations.map((item) => {
-          const isSelected = destination.trim() === item;
-
+      <Text style={styles.sectionTitle}>인기 여행지</Text>
+      <View style={styles.chipGrid}>
+        {DESTINATIONS.map((d) => {
+          const selected = destination.trim() === d.name;
           return (
             <TouchableOpacity
-              key={item}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => onChangeDestination(item)}
+              key={d.name}
+              style={[styles.destChip, selected && styles.destChipActive]}
+              onPress={() => onChangeDestination(d.name)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{item}</Text>
+              <Text style={styles.destEmoji}>{d.emoji}</Text>
+              <View>
+                <Text style={[styles.destName, selected && styles.destNameActive]}>{d.name}</Text>
+                <Text style={styles.destDesc}>{d.desc}</Text>
+              </View>
+              {selected && (
+                <View style={styles.checkMark}>
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>대한민국 지도 선택</Text>
-        <Text style={styles.sectionDescription}>지도의 핀을 눌러 목적지를 바로 입력할 수 있어요.</Text>
-        <View style={styles.mapCard}>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="map-outline" size={18} color={Theme.colors.primary} />
+          <Text style={styles.cardTitle}>지도에서 선택</Text>
+        </View>
+        <Text style={styles.cardDesc}>핀을 눌러 목적지를 선택하세요</Text>
+        <View style={styles.mapBox}>
           <View style={styles.mapBody} pointerEvents="none" />
-          <View style={styles.mapNorthWest} pointerEvents="none" />
+          <View style={styles.mapNorth} pointerEvents="none" />
           <View style={styles.mapEast} pointerEvents="none" />
-          <View style={styles.mapSouthWest} pointerEvents="none" />
-          {mapDestinations.map((item) => {
-            const isSelected = destination.trim() === item.name;
-
+          <View style={styles.mapSouth} pointerEvents="none" />
+          {MAP_PINS.map((pin) => {
+            const selected = destination.trim() === pin.name;
             return (
               <TouchableOpacity
-                key={item.name}
-                style={[styles.mapPin, { left: item.left, top: item.top }]}
-                onPress={() => onChangeDestination(item.name)}
-                activeOpacity={0.7}
+                key={pin.name}
+                style={[styles.mapPin, { left: pin.left as any, top: pin.top as any }]}
+                onPress={() => onChangeDestination(pin.name)}
               >
-                <View style={[styles.mapPinDot, isSelected && styles.mapPinDotSelected]} />
-                <Text style={[styles.mapPinLabel, isSelected && styles.mapPinLabelSelected]}>
-                  {item.name}
-                </Text>
+                <View style={[styles.mapPinDot, selected && styles.mapPinDotActive]}>
+                  {selected && <Ionicons name="checkmark" size={10} color="#FFF" />}
+                </View>
+                <View style={[styles.mapPinLabel, selected && styles.mapPinLabelActive]}>
+                  <Text style={[styles.mapPinText, selected && styles.mapPinTextActive]}>
+                    {pin.name}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionLabel}>랜덤 목적지 미니게임</Text>
-        <Text style={styles.sectionDescription}>랜덤 뽑기 또는 룰렛으로 여행지를 정해보세요.</Text>
-        <View style={styles.randomButtonRow}>
-          <TouchableOpacity
-            style={[styles.randomButton, styles.randomDrawButton]}
-            onPress={handleRandomDraw}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.randomDrawButtonText}>랜덤 뽑기</Text>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="dice-outline" size={18} color={Theme.colors.secondary} />
+          <Text style={styles.cardTitle}>랜덤 목적지</Text>
+        </View>
+        <Text style={styles.cardDesc}>운에 맡겨볼까요?</Text>
+
+        <View style={styles.randomBtns}>
+          <TouchableOpacity style={styles.randomBtn1} onPress={handleRandom}>
+            <Ionicons name="shuffle" size={18} color="#A15B00" />
+            <Text style={styles.randomBtn1Text}>랜덤 뽑기</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.randomButton, styles.randomSpinButton, isSpinning && styles.randomSpinDisabled]}
-            onPress={handleSpinRoulette}
-            activeOpacity={0.8}
-            disabled={isSpinning}
+            style={[styles.randomBtn2, spinning && { opacity: 0.6 }]}
+            onPress={handleSpin}
+            disabled={spinning}
           >
-            <Text style={styles.randomSpinButtonText}>
-              {isSpinning ? "룰렛 회전 중..." : "룰렛 돌리기"}
+            <Ionicons name="refresh" size={18} color="#FFF" />
+            <Text style={styles.randomBtn2Text}>
+              {spinning ? '돌아가는 중...' : '룰렛 돌리기'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.rouletteContainer}>
+        <View style={styles.rouletteWrap}>
           <View style={styles.rouletteBoard}>
-            {rouletteNodes.map((item) => {
-              const isSelected = destination.trim() === item.name;
-
+            {rouletteNodes.map((n) => {
+              const sel = destination.trim() === n.name;
               return (
-                <View key={item.name} style={[styles.rouletteNode, { left: item.left, top: item.top }]}>
-                  <Text style={[styles.rouletteNodeText, isSelected && styles.rouletteNodeTextSelected]}>
-                    {item.name}
-                  </Text>
+                <View key={n.name} style={[styles.rouletteNode, { left: n.left, top: n.top }]}>
+                  <Text style={[styles.rouletteText, sel && styles.rouletteTextSel]}>{n.name}</Text>
                 </View>
               );
             })}
-
-            <Animated.View style={[styles.rouletteNeedleWrap, { transform: [{ rotate: needleRotation }] }]}>
-              <View style={styles.rouletteNeedle} />
-              <View style={styles.rouletteNeedleTip} />
+            <Animated.View style={[styles.needleWrap, { transform: [{ rotate: rotation }] }]}>
+              <View style={styles.needle} />
+              <View style={styles.needleTip} />
             </Animated.View>
-            <View style={styles.roulettePivot} />
-            <Text style={styles.rouletteCenterText}>SPIN</Text>
+            <View style={styles.pivot} />
           </View>
         </View>
-      </View>
 
-      {randomMessage ? <Text style={styles.randomResult}>{randomMessage}</Text> : null}
+        {randomMsg ? (
+          <View style={styles.resultBadge}>
+            <Text style={styles.resultText}>{randomMsg}</Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Spacing.screenPadding,
-    paddingTop: Spacing.sm
+  container: { padding: Theme.spacing.xl },
+  heroSection: { alignItems: 'center', marginBottom: Theme.spacing.xxl },
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Theme.spacing.md,
   },
-  emoji: {
-    fontSize: 48,
-    textAlign: "center",
-    marginBottom: Spacing.sm
+  title: { ...Theme.typography.h2, color: Theme.colors.textPrimary },
+  subtitle: { ...Theme.typography.body2, color: Theme.colors.textSecondary, marginTop: 4 },
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.lg,
+    borderWidth: 2, borderColor: Theme.colors.border,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: 10,
+    gap: 10, marginBottom: Theme.spacing.xxl,
+    ...Theme.shadow.sm,
   },
-  title: {
-    ...Typography.normal.h2,
-    color: Colors.common.black,
-    textAlign: "center",
-    marginBottom: Spacing.xs
+  searchInput: {
+    flex: 1, ...Theme.typography.body1,
+    color: Theme.colors.textPrimary, padding: 0,
   },
-  description: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.gray500,
-    textAlign: "center",
-    marginBottom: Spacing.xxl
+  sectionTitle: {
+    ...Theme.typography.body1, fontWeight: '700',
+    color: Theme.colors.textPrimary, marginBottom: Theme.spacing.md,
   },
-  quickLabel: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.gray600,
-    fontWeight: "700",
-    marginBottom: Spacing.sm
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm, marginBottom: Theme.spacing.xxl },
+  destChip: {
+    flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm,
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.lg,
+    borderWidth: 2, borderColor: Theme.colors.border,
+    paddingVertical: Theme.spacing.md, paddingHorizontal: Theme.spacing.lg,
+    minWidth: '47%',
+    ...Theme.shadow.sm,
   },
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: Spacing.lg
+  destChipActive: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
+  destEmoji: { fontSize: 24 },
+  destName: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.textPrimary },
+  destNameActive: { color: Theme.colors.primary },
+  destDesc: { ...Theme.typography.caption, color: Theme.colors.textTertiary },
+  checkMark: {
+    position: 'absolute', top: 8, right: 8,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  chip: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: 999,
-    backgroundColor: Colors.common.gray100,
-    marginRight: Spacing.sm,
-    marginBottom: Spacing.sm
+  card: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg,
+    padding: Theme.spacing.xl,
+    marginBottom: Theme.spacing.lg,
+    ...Theme.shadow.sm,
   },
-  chipSelected: {
-    backgroundColor: "#E8F4FD"
-  },
-  chipText: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.gray700,
-    fontWeight: "600"
-  },
-  chipTextSelected: {
-    color: Colors.young.primary
-  },
-  sectionLabel: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.gray700,
-    fontWeight: "700",
-    marginBottom: Spacing.xs
-  },
-  sectionDescription: {
-    ...Typography.normal.caption,
-    color: Colors.common.gray500,
-    marginBottom: Spacing.sm
-  },
-  sectionCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.white,
-    padding: Spacing.md,
-    marginBottom: Spacing.md
-  },
-  mapCard: {
-    position: "relative",
-    height: 270,
-    borderRadius: 16,
-    backgroundColor: "#F6FAFF",
-    borderWidth: 1,
-    borderColor: "#D5E7FF",
-    overflow: "hidden"
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  cardTitle: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.textPrimary },
+  cardDesc: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginBottom: Theme.spacing.lg },
+  mapBox: {
+    position: 'relative', height: 280, borderRadius: Theme.radius.lg,
+    backgroundColor: '#F0F7FF', borderWidth: 1, borderColor: '#D5E7FF',
+    overflow: 'hidden',
   },
   mapBody: {
-    position: "absolute",
-    left: "50%",
-    top: 26,
-    width: 104,
-    height: 208,
-    marginLeft: -52,
-    borderRadius: 52,
-    backgroundColor: "#EAF4FF",
-    borderWidth: 1,
-    borderColor: "#CFE3FA"
+    position: 'absolute', left: '50%', top: 26, width: 104, height: 208,
+    marginLeft: -52, borderRadius: 52, backgroundColor: '#E0EDFF', borderWidth: 1, borderColor: '#CFE3FA',
   },
-  mapNorthWest: {
-    position: "absolute",
-    left: "50%",
-    top: 6,
-    width: 78,
-    height: 44,
-    marginLeft: -62,
-    borderRadius: 24,
-    backgroundColor: "#EAF4FF",
-    borderWidth: 1,
-    borderColor: "#CFE3FA"
+  mapNorth: {
+    position: 'absolute', left: '50%', top: 6, width: 78, height: 44,
+    marginLeft: -62, borderRadius: 24, backgroundColor: '#E0EDFF', borderWidth: 1, borderColor: '#CFE3FA',
   },
   mapEast: {
-    position: "absolute",
-    left: "50%",
-    top: 74,
-    width: 34,
-    height: 110,
-    marginLeft: 22,
-    borderRadius: 18,
-    backgroundColor: "#EAF4FF",
-    borderWidth: 1,
-    borderColor: "#CFE3FA"
+    position: 'absolute', left: '50%', top: 74, width: 34, height: 110,
+    marginLeft: 22, borderRadius: 18, backgroundColor: '#E0EDFF', borderWidth: 1, borderColor: '#CFE3FA',
   },
-  mapSouthWest: {
-    position: "absolute",
-    left: "50%",
-    top: 166,
-    width: 44,
-    height: 96,
-    marginLeft: -66,
-    borderRadius: 20,
-    backgroundColor: "#EAF4FF",
-    borderWidth: 1,
-    borderColor: "#CFE3FA"
+  mapSouth: {
+    position: 'absolute', left: '50%', top: 166, width: 44, height: 96,
+    marginLeft: -66, borderRadius: 20, backgroundColor: '#E0EDFF', borderWidth: 1, borderColor: '#CFE3FA',
   },
   mapPin: {
-    position: "absolute",
-    width: 78,
-    marginLeft: -39,
-    marginTop: -10,
-    alignItems: "center"
+    position: 'absolute', width: 78, marginLeft: -39, marginTop: -10, alignItems: 'center',
   },
   mapPinDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.young.primary,
-    borderWidth: 2,
-    borderColor: Colors.common.white,
-    marginBottom: 5
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: Theme.colors.primary, borderWidth: 2, borderColor: '#FFF',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    ...Theme.shadow.sm,
   },
-  mapPinDotSelected: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: Colors.young.primaryDark
-  },
+  mapPinDotActive: { width: 20, height: 20, borderRadius: 10, backgroundColor: Theme.colors.primaryDark },
   mapPinLabel: {
-    ...Typography.normal.caption,
-    color: Colors.common.gray700,
-    fontWeight: "700",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: Colors.common.white,
-    borderWidth: 1,
-    borderColor: "#DCEBFF"
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: Theme.radius.full,
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#D5E7FF',
+    ...Theme.shadow.sm,
   },
-  mapPinLabelSelected: {
-    color: Colors.young.primaryDark,
-    borderColor: Colors.young.primaryLight,
-    backgroundColor: "#ECF5FF"
+  mapPinLabelActive: { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary },
+  mapPinText: { ...Theme.typography.caption, fontWeight: '700', color: Theme.colors.textPrimary },
+  mapPinTextActive: { color: Theme.colors.primaryDark },
+  randomBtns: { flexDirection: 'row', gap: Theme.spacing.md, marginBottom: Theme.spacing.lg },
+  randomBtn1: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#FFF5E8', borderRadius: Theme.radius.md, paddingVertical: 14,
   },
-  randomButtonRow: {
-    flexDirection: "row",
-    marginBottom: Spacing.md
+  randomBtn1Text: { ...Theme.typography.buttonSmall, color: '#A15B00' },
+  randomBtn2: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Theme.colors.primary, borderRadius: Theme.radius.md, paddingVertical: 14,
   },
-  randomButton: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  randomDrawButton: {
-    backgroundColor: "#FFF5E8",
-    marginRight: Spacing.sm
-  },
-  randomDrawButtonText: {
-    ...Typography.normal.bodySmall,
-    color: "#A15B00",
-    fontWeight: "700"
-  },
-  randomSpinButton: {
-    backgroundColor: Colors.young.primary
-  },
-  randomSpinButtonText: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.white,
-    fontWeight: "700"
-  },
-  randomSpinDisabled: {
-    opacity: 0.65
-  },
-  rouletteContainer: {
-    alignItems: "center",
-    marginBottom: Spacing.xs
-  },
+  randomBtn2Text: { ...Theme.typography.buttonSmall, color: '#FFF' },
+  rouletteWrap: { alignItems: 'center', marginBottom: Theme.spacing.md },
   rouletteBoard: {
-    width: ROULETTE_SIZE,
-    height: ROULETTE_SIZE,
-    borderRadius: ROULETTE_SIZE / 2,
-    borderWidth: 4,
-    borderColor: "#DDEBFC",
-    backgroundColor: "#F5FAFF",
-    position: "relative"
+    width: ROULETTE_SIZE, height: ROULETTE_SIZE, borderRadius: ROULETTE_SIZE / 2,
+    borderWidth: 4, borderColor: '#D5E7FF', backgroundColor: '#F5FAFF',
+    position: 'relative',
   },
-  rouletteNode: {
-    position: "absolute",
-    width: ROULETTE_LABEL_WIDTH,
-    alignItems: "center"
+  rouletteNode: { position: 'absolute', width: 56, alignItems: 'center' },
+  rouletteText: { ...Theme.typography.caption, fontWeight: '700', color: Theme.colors.textSecondary },
+  rouletteTextSel: { color: Theme.colors.primaryDark },
+  needleWrap: {
+    position: 'absolute', left: ROULETTE_SIZE / 2, top: ROULETTE_SIZE / 2,
+    width: 0, height: 0,
   },
-  rouletteNodeText: {
-    ...Typography.normal.caption,
-    color: Colors.common.gray700,
-    fontWeight: "700"
+  needle: {
+    position: 'absolute', left: -1.5, top: -72, width: 3, height: 72,
+    borderRadius: 999, backgroundColor: Theme.colors.textPrimary,
   },
-  rouletteNodeTextSelected: {
-    color: Colors.young.primaryDark
+  needleTip: {
+    position: 'absolute', left: -7, top: -82, width: 14, height: 14,
+    borderRadius: 7, backgroundColor: Theme.colors.secondary,
   },
-  rouletteNeedleWrap: {
-    position: "absolute",
-    left: ROULETTE_SIZE / 2,
-    top: ROULETTE_SIZE / 2,
-    width: 0,
-    height: 0
+  pivot: {
+    position: 'absolute', left: ROULETTE_SIZE / 2 - 12, top: ROULETTE_SIZE / 2 - 12,
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Theme.colors.textPrimary, borderWidth: 3, borderColor: '#FFF',
   },
-  rouletteNeedle: {
-    position: "absolute",
-    left: -1,
-    top: -70,
-    width: 2,
-    height: 70,
-    borderRadius: 999,
-    backgroundColor: Colors.common.gray700
+  resultBadge: {
+    alignSelf: 'center', backgroundColor: Theme.colors.primaryLight,
+    borderRadius: Theme.radius.full, paddingHorizontal: 20, paddingVertical: 8,
   },
-  rouletteNeedleTip: {
-    position: "absolute",
-    left: -6,
-    top: -80,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.common.error
-  },
-  roulettePivot: {
-    position: "absolute",
-    left: ROULETTE_SIZE / 2 - 10,
-    top: ROULETTE_SIZE / 2 - 10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.common.gray700,
-    borderWidth: 3,
-    borderColor: Colors.common.white
-  },
-  rouletteCenterText: {
-    ...Typography.normal.caption,
-    position: "absolute",
-    left: ROULETTE_SIZE / 2 - 16,
-    top: ROULETTE_SIZE / 2 + 16,
-    color: Colors.common.gray500,
-    fontWeight: "700"
-  },
-  randomResult: {
-    ...Typography.normal.bodySmall,
-    color: Colors.young.primaryDark,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: Spacing.md
-  }
+  resultText: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.primaryDark },
 });

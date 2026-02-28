@@ -26,6 +26,41 @@ const TABS: { key: TabKey; label: string; emoji: string }[] = [
   { key: "festivals", label: "축제", emoji: "🎪" },
 ];
 
+const NON_FOOD_CATEGORY_KEYWORDS = [
+  "마트",
+  "슈퍼",
+  "가구",
+  "가전",
+  "인테리어",
+  "쇼핑",
+  "편의점",
+  "백화점",
+  "의류",
+  "약국"
+];
+
+const FOOD_CATEGORY_KEYWORDS = ["음식점", "맛집", "카페", "디저트", "주점", "베이커리", "치킨"];
+
+const hasNonFoodCategory = (category?: string) =>
+  (category ?? "")
+    .split(" ")
+    .join("")
+    .split(">")
+    .map((segment) => segment.trim())
+    .some((segment) =>
+      NON_FOOD_CATEGORY_KEYWORDS.some((keyword) => segment.includes(keyword))
+    );
+
+const hasFoodCategory = (category?: string) =>
+  (category ?? "")
+    .split(" ")
+    .join("")
+    .split(">")
+    .map((segment) => segment.trim())
+    .some((segment) =>
+      FOOD_CATEGORY_KEYWORDS.some((keyword) => segment.includes(keyword))
+    );
+
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("attractions");
@@ -53,11 +88,15 @@ export default function SearchScreen() {
           image: r.firstimage, tab: "attractions",
         }));
       } else if (activeTab === "restaurants") {
-        const res = await restaurantApi.search(trimmed, 20);
+        const queryForFood = /(맛집|음식|식당|카페)/.test(trimmed) ? trimmed : `${trimmed} 맛집`;
+        const res = await restaurantApi.search(queryForFood, 20);
         const raw = (res.data.items ?? []) as Array<{
           title: string; roadAddress: string; address: string; category: string;
         }>;
-        items = raw.map((r, i) => ({
+        const filtered = raw.filter(
+          (r) => hasFoodCategory(r.category) && !hasNonFoodCategory(r.category)
+        );
+        items = filtered.map((r, i) => ({
           id: `rest_${i}`, title: r.title, address: r.roadAddress || r.address,
           category: r.category.split(">").pop()?.trim(), tab: "restaurants",
         }));

@@ -86,7 +86,7 @@ export const env: EnvConfig = {
   kakaoNativeAppKey: getOptional("KAKAO_NATIVE_APP_KEY"),
   naverClientId: getOptional("NAVER_CLIENT_ID"),
   naverClientSecret: getOptional("NAVER_CLIENT_SECRET"),
-  dataGoKrApiKey: getOptional("DATA_GO_KR_API_KEY"),
+  dataGoKrApiKey: getRequired("DATA_GO_KR_API_KEY"),
   kmaApiKey: getOptional("KMA_API_KEY"),
   odsayApiKey: getOptional("ODSAY_API_KEY"),
   jusoSearchApiKey: getOptional("JUSO_SEARCH_API_KEY"),

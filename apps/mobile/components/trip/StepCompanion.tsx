@@ -1,101 +1,86 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Theme } from '../../constants/Theme';
+import type { CompanionType } from '../../types';
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
-import SelectCard from "../common/SelectCard";
-
-import type { CompanionType } from "../../types";
-
-interface StepCompanionProps {
+interface Props {
   companion: CompanionType | null;
-  onSelectCompanion: (companion: CompanionType) => void;
+  onSelectCompanion: (c: CompanionType) => void;
 }
 
-const companionOptions: {
-  key: CompanionType;
-  emoji: string;
-  title: string;
-  subtitle: string;
-  color?: string;
-}[] = [
-  { key: "solo", emoji: "🧑", title: "혼자", subtitle: "나만의 페이스" },
-  { key: "friends", emoji: "👫", title: "친구와", subtitle: "함께 즐기는 여행" },
-  { key: "couple", emoji: "💑", title: "커플", subtitle: "데이트 여행" },
-  {
-    key: "family_kids",
-    emoji: "👨‍👩‍👧‍👦",
-    title: "가족+아이",
-    subtitle: "키즈 친화 장소 우선",
-    color: Colors.family.primary
-  },
-  {
-    key: "family_no_kids",
-    emoji: "👨‍👩‍👧",
-    title: "가족",
-    subtitle: "여유 중심 여행",
-    color: Colors.family.primary
-  },
-  {
-    key: "parents",
-    emoji: "👴👵",
-    title: "부모님과",
-    subtitle: "이동 부담 최소화",
-    color: Colors.senior.primary
-  }
+const OPTIONS: { key: CompanionType; emoji: string; icon: string; title: string; desc: string; color: string }[] = [
+  { key: 'solo', emoji: '🧑', icon: 'person', title: '혼자', desc: '나만의 자유로운 여행', color: '#4A90E2' },
+  { key: 'friends', emoji: '👫', icon: 'people', title: '친구와', desc: '함께 즐기는 추억 여행', color: '#10B981' },
+  { key: 'couple', emoji: '💑', icon: 'heart', title: '커플', desc: '로맨틱 데이트 코스', color: '#FF6B9D' },
+  { key: 'family_kids', emoji: '👨‍👩‍👧‍👦', icon: 'happy', title: '가족+아이', desc: '키즈 친화 장소 우선', color: '#F59E0B' },
+  { key: 'family_no_kids', emoji: '👨‍👩‍👧', icon: 'home', title: '가족', desc: '여유로운 힐링 여행', color: '#7ED321' },
+  { key: 'parents', emoji: '👴👵', icon: 'accessibility', title: '부모님과', desc: '편안한 동선 중심', color: '#0D9488' },
 ];
 
-export default function StepCompanion({ companion, onSelectCompanion }: StepCompanionProps) {
+export default function StepCompanion({ companion, onSelectCompanion }: Props) {
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>👥</Text>
-      <Text style={styles.title}>누구와 함께 가나요?</Text>
-      <Text style={styles.description}>동행자에 맞춰 추천 장소와 동선을 조정해요.</Text>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="people" size={32} color={Theme.colors.primary} />
+        </View>
+        <Text style={styles.title}>누구와 함께 가나요?</Text>
+        <Text style={styles.subtitle}>동행자에 맞춰 장소와 동선을 최적화해요</Text>
+      </View>
 
       <View style={styles.grid}>
-        {companionOptions.map((item) => (
-          <SelectCard
-            key={item.key}
-            emoji={item.emoji}
-            title={item.title}
-            subtitle={item.subtitle}
-            isSelected={companion === item.key}
-            onPress={() => onSelectCompanion(item.key)}
-            size="large"
-            color={item.color}
-          />
-        ))}
+        {OPTIONS.map((opt) => {
+          const selected = companion === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                styles.card,
+                selected && { borderColor: opt.color, backgroundColor: `${opt.color}10` },
+              ]}
+              onPress={() => onSelectCompanion(opt.key)}
+              activeOpacity={0.7}
+            >
+              {selected && (
+                <View style={[styles.check, { backgroundColor: opt.color }]}> 
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                </View>
+              )}
+              <Text style={styles.emoji}>{opt.emoji}</Text>
+              <Text style={[styles.cardTitle, selected && { color: opt.color }]}>{opt.title}</Text>
+              <Text style={styles.cardDesc}>{opt.desc}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: Spacing.screenPadding,
-    paddingTop: Spacing.sm
+  container: { padding: Theme.spacing.xl },
+  hero: { alignItems: 'center', marginBottom: Theme.spacing.xxl },
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: Theme.spacing.md,
   },
-  emoji: {
-    fontSize: 48,
-    textAlign: "center",
-    marginBottom: Spacing.sm
+  title: { ...Theme.typography.h2, color: Theme.colors.textPrimary },
+  subtitle: { ...Theme.typography.body2, color: Theme.colors.textSecondary, marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.md },
+  card: {
+    width: '47%', backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg, borderWidth: 2, borderColor: Theme.colors.border,
+    padding: Theme.spacing.xl, alignItems: 'center',
+    ...Theme.shadow.sm,
   },
-  title: {
-    ...Typography.normal.h2,
-    color: Colors.common.black,
-    textAlign: "center",
-    marginBottom: Spacing.xs
+  check: {
+    position: 'absolute', top: 10, right: 10,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
-  description: {
-    ...Typography.normal.bodySmall,
-    color: Colors.common.gray500,
-    textAlign: "center",
-    marginBottom: Spacing.xxl
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center"
-  }
+  emoji: { fontSize: 40, marginBottom: Theme.spacing.sm },
+  cardTitle: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.textPrimary, textAlign: 'center' },
+  cardDesc: { ...Theme.typography.caption, color: Theme.colors.textSecondary, textAlign: 'center', marginTop: 4 },
 });

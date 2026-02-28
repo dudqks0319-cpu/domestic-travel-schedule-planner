@@ -1,161 +1,132 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, FlatList } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Image,
+  ActivityIndicator, FlatList,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Theme } from '../../constants/Theme';
+import BottomSheet from '../common/BottomSheet';
+import { tourismApi } from '../../services/api';
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
-import BottomSheet from "../common/BottomSheet";
-import Button from "../common/Button";
-import { tourismApi } from "../../services/api";
+export type AccommodationType = 'hotel' | 'resort' | 'pension' | 'guesthouse' | 'pool_villa';
 
-export type AccommodationType = "hotel" | "resort" | "pension" | "guesthouse" | "pool_villa";
-
-interface StepAccommodationProps {
+interface Props {
   destination: string;
   accommodationType: AccommodationType | null;
-  onSelectAccommodation: (type: AccommodationType) => void;
-}
-
-interface AccommodationOption {
-  key: AccommodationType;
-  emoji: string;
-  title: string;
-  subtitle: string;
+  onSelectAccommodation: (t: AccommodationType) => void;
 }
 
 interface StayItem {
-  contentid: string;
-  title: string;
-  addr1: string;
-  firstimage?: string;
-  tel?: string;
-  mapx: string;
-  mapy: string;
+  contentid: string; title: string; addr1: string;
+  firstimage?: string; tel?: string;
 }
 
-const accommodationOptions: AccommodationOption[] = [
-  { key: "hotel", emoji: "🏨", title: "호텔", subtitle: "접근성 중심" },
-  { key: "resort", emoji: "🏝️", title: "리조트", subtitle: "휴양형" },
-  { key: "pension", emoji: "🏡", title: "펜션", subtitle: "단독/프라이빗" },
-  { key: "guesthouse", emoji: "🛏️", title: "게스트하우스", subtitle: "가성비형" },
-  { key: "pool_villa", emoji: "🏖️", title: "풀빌라", subtitle: "프리미엄" },
+const OPTIONS: { key: AccommodationType; emoji: string; title: string; desc: string }[] = [
+  { key: 'hotel', emoji: '🏨', title: '호텔', desc: '접근성 중심' },
+  { key: 'resort', emoji: '🏝️', title: '리조트', desc: '휴양형' },
+  { key: 'pension', emoji: '🏡', title: '펜션', desc: '단독/프라이빗' },
+  { key: 'guesthouse', emoji: '🛏️', title: '게스트하우스', desc: '가성비형' },
+  { key: 'pool_villa', emoji: '🏖️', title: '풀빌라', desc: '프리미엄' },
 ];
 
-export default function StepAccommodation({
-  destination,
-  accommodationType,
-  onSelectAccommodation,
-}: StepAccommodationProps) {
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+export default function StepAccommodation({ destination, accommodationType, onSelectAccommodation }: Props) {
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [stays, setStays] = useState<StayItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  const fetchAccommodation = useCallback(async () => {
+  const fetch_ = useCallback(async () => {
     if (!destination) return;
-    setLoading(true);
-    setError("");
+    setLoading(true); setError('');
     try {
-      const area = destination.replace(/도$|시$|군$|구$/g, "").trim();
-      const res = await tourismApi.getAttractions(area, 1, "32");
+      const area = destination.replace(/도$|시$|군$|구$/g, '').trim();
+      const res = await tourismApi.getAttractions(area, 1, '32');
       setStays((res.data.items ?? []) as StayItem[]);
-    } catch {
-      setError("숙소 정보를 불러올 수 없습니다");
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('숙소 정보를 불러올 수 없습니다'); }
+    finally { setLoading(false); }
   }, [destination]);
 
-  useEffect(() => {
-    void fetchAccommodation();
-  }, [destination, fetchAccommodation]);
+  useEffect(() => { fetch_(); }, [destination, fetch_]);
 
-  const filteredStays = useMemo(() => {
+  const filtered = useMemo(() => {
     if (!accommodationType) return stays;
-    const typeKeywords: Record<AccommodationType, string[]> = {
-      hotel: ["호텔", "hotel"],
-      resort: ["리조트", "resort"],
-      pension: ["펜션", "pension"],
-      guesthouse: ["게스트하우스", "민박", "guesthouse"],
-      pool_villa: ["풀빌라", "풀 빌라", "villa"],
+    const kw: Record<AccommodationType, string[]> = {
+      hotel: ['호텔', 'hotel'], resort: ['리조트', 'resort'],
+      pension: ['펜션', 'pension'], guesthouse: ['게스트하우스', '민박'],
+      pool_villa: ['풀빌라', '풀 빌라', 'villa'],
     };
-    const keywords = typeKeywords[accommodationType];
-    const filtered = stays.filter((s) =>
-      keywords.some((kw) => s.title.toLowerCase().includes(kw))
-    );
-    return filtered.length > 0 ? filtered : stays;
+    const f = stays.filter((s) => kw[accommodationType].some((k) => s.title.toLowerCase().includes(k)));
+    return f.length > 0 ? f : stays;
   }, [accommodationType, stays]);
-
-  const renderStay = ({ item }: { item: StayItem }) => (
-    <TouchableOpacity
-      style={styles.stayRow}
-      onPress={() => setIsSheetOpen(false)}
-      activeOpacity={0.7}
-    >
-      {item.firstimage ? (
-        <Image source={{ uri: item.firstimage }} style={styles.stayImage} />
-      ) : (
-        <View style={[styles.stayImage, styles.stayImagePlaceholder]}>
-          <Text>🏠</Text>
-        </View>
-      )}
-      <View style={styles.stayTextWrap}>
-        <Text style={styles.stayName} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.stayMeta} numberOfLines={1}>{item.addr1}</Text>
-        {item.tel ? <Text style={styles.stayPhone}>{item.tel}</Text> : null}
-      </View>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>🛌</Text>
-      <Text style={styles.title}>선호 숙소를 정해주세요</Text>
-      <Text style={styles.description}>숙소 타입은 동선 구성과 체크인 시간 배치에 반영됩니다.</Text>
+      <View style={styles.hero}>
+        <View style={styles.heroIcon}>
+          <Ionicons name="bed" size={32} color={Theme.colors.primary} />
+        </View>
+        <Text style={styles.title}>어떤 숙소를 선호하세요?</Text>
+        <Text style={styles.subtitle}>숙소 타입에 따라 체크인 시간과 동선이 달라져요</Text>
+      </View>
 
-      <View style={styles.optionGrid}>
-        {accommodationOptions.map((item) => {
-          const isSelected = accommodationType === item.key;
+      <View style={styles.grid}>
+        {OPTIONS.map((opt) => {
+          const sel = accommodationType === opt.key;
           return (
             <TouchableOpacity
-              key={item.key}
-              style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-              onPress={() => onSelectAccommodation(item.key)}
+              key={opt.key}
+              style={[styles.card, sel && styles.cardSel]}
+              onPress={() => onSelectAccommodation(opt.key)}
               activeOpacity={0.7}
             >
-              <Text style={styles.optionEmoji}>{item.emoji}</Text>
-              <Text style={[styles.optionTitle, isSelected && styles.optionTitleSelected]}>{item.title}</Text>
-              <Text style={styles.optionSubtitle}>{item.subtitle}</Text>
+              {sel && (
+                <View style={styles.check}>
+                  <Ionicons name="checkmark" size={14} color="#FFF" />
+                </View>
+              )}
+              <Text style={styles.emoji}>{opt.emoji}</Text>
+              <Text style={[styles.cardTitle, sel && styles.cardTitleSel]}>{opt.title}</Text>
+              <Text style={styles.cardDesc}>{opt.desc}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <Button
-        title={`추천 숙소 보기 (${filteredStays.length}곳)`}
-        onPress={() => setIsSheetOpen(true)}
-        variant="outline"
-        size="medium"
-        style={styles.sheetButton}
-      />
-
-      <BottomSheet
-        visible={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
-        title={`${destination} 숙소 (${filteredStays.length}곳)`}
+      <TouchableOpacity
+        style={styles.sheetBtn}
+        onPress={() => setSheetOpen(true)}
+        activeOpacity={0.7}
       >
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Ionicons name="search-outline" size={18} color={Theme.colors.primary} />
+        <Text style={styles.sheetBtnText}>추천 숙소 보기 ({filtered.length}곳)</Text>
+      </TouchableOpacity>
+
+      <BottomSheet visible={sheetOpen} onClose={() => setSheetOpen(false)} title={`${destination} 숙소`}>
+        {error ? <Text style={styles.errText}>{error}</Text> : null}
         {loading ? (
-          <ActivityIndicator color={Colors.young.primary} style={styles.loader} />
+          <ActivityIndicator color={Theme.colors.primary} style={{ marginVertical: 20 }} />
         ) : (
           <FlatList
-            data={filteredStays}
-            keyExtractor={(item) => item.contentid}
-            renderItem={renderStay}
-            style={styles.stayList}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>숙소 정보가 없습니다</Text>
-            }
+            data={filtered}
+            keyExtractor={(i) => i.contentid}
+            style={{ maxHeight: 400 }}
+            renderItem={({ item }) => (
+              <View style={styles.stayRow}>
+                {item.firstimage ? (
+                  <Image source={{ uri: item.firstimage }} style={styles.stayImg} />
+                ) : (
+                  <View style={[styles.stayImg, styles.stayImgPh]}>
+                    <Text style={{ fontSize: 20 }}>🏠</Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stayName} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.stayAddr} numberOfLines={1}>{item.addr1}</Text>
+                  {item.tel && <Text style={styles.stayTel}>{item.tel}</Text>}
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>숙소 정보가 없습니다</Text>}
           />
         )}
       </BottomSheet>
@@ -164,36 +135,52 @@ export default function StepAccommodation({
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: Spacing.screenPadding, paddingTop: Spacing.sm },
-  emoji: { fontSize: 48, textAlign: "center", marginBottom: Spacing.sm },
-  title: { ...Typography.normal.h2, color: Colors.common.black, textAlign: "center", marginBottom: Spacing.xs },
-  description: { ...Typography.normal.bodySmall, color: Colors.common.gray500, textAlign: "center", marginBottom: Spacing.xxl },
-  optionGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  optionCard: {
-    width: "48%", borderRadius: 16, borderWidth: 2, borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.white, padding: Spacing.lg, marginBottom: Spacing.sm,
+  container: { padding: Theme.spacing.xl },
+  hero: { alignItems: 'center', marginBottom: Theme.spacing.xxl },
+  heroIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: Theme.spacing.md,
   },
-  optionCardSelected: { borderColor: Colors.young.primary, backgroundColor: "#EBF5FF" },
-  optionEmoji: { fontSize: 26, marginBottom: Spacing.xs },
-  optionTitle: { ...Typography.normal.body, color: Colors.common.gray800, fontWeight: "700" },
-  optionTitleSelected: { color: Colors.young.primary },
-  optionSubtitle: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 2 },
-  sheetButton: { marginTop: Spacing.sm },
-  stayList: { maxHeight: 400 },
+  title: { ...Theme.typography.h2, color: Theme.colors.textPrimary },
+  subtitle: { ...Theme.typography.body2, color: Theme.colors.textSecondary, marginTop: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.md },
+  card: {
+    width: '47%', backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg, borderWidth: 2, borderColor: Theme.colors.border,
+    padding: Theme.spacing.xl, alignItems: 'center',
+    ...Theme.shadow.sm,
+  },
+  cardSel: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
+  check: {
+    position: 'absolute', top: 10, right: 10,
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  emoji: { fontSize: 32, marginBottom: Theme.spacing.sm },
+  cardTitle: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.textPrimary },
+  cardTitleSel: { color: Theme.colors.primaryDark },
+  cardDesc: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 4 },
+  sheetBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.lg,
+    borderWidth: 2, borderColor: Theme.colors.primary,
+    paddingVertical: 14, marginTop: Theme.spacing.xl,
+    ...Theme.shadow.sm,
+  },
+  sheetBtnText: { ...Theme.typography.button, color: Theme.colors.primary },
   stayRow: {
-    flexDirection: "row", alignItems: "center", borderRadius: 14, borderWidth: 1,
-    borderColor: Colors.common.gray200, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.md,
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.sm,
+    borderWidth: 1, borderColor: Theme.colors.borderLight,
   },
-  stayImage: { width: 60, height: 60, borderRadius: 10, marginRight: Spacing.md },
-  stayImagePlaceholder: {
-    backgroundColor: Colors.common.gray100, alignItems: "center", justifyContent: "center",
-  },
-  stayTextWrap: { flex: 1 },
-  stayName: { ...Typography.normal.bodySmall, color: Colors.common.gray800, fontWeight: "700" },
-  stayMeta: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 2 },
-  stayPhone: { ...Typography.normal.caption, color: Colors.common.info, marginTop: 2 },
-  errorText: { ...Typography.normal.bodySmall, color: Colors.common.error, textAlign: "center", marginBottom: Spacing.md },
-  emptyText: { ...Typography.normal.body, color: Colors.common.gray500, textAlign: "center", marginTop: Spacing.xl },
-  loader: { marginVertical: Spacing.xl },
+  stayImg: { width: 60, height: 60, borderRadius: Theme.radius.sm, marginRight: Theme.spacing.md },
+  stayImgPh: { backgroundColor: Theme.colors.background, alignItems: 'center', justifyContent: 'center' },
+  stayName: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.textPrimary },
+  stayAddr: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 2 },
+  stayTel: { ...Theme.typography.caption, color: Theme.colors.info, marginTop: 2 },
+  errText: { ...Theme.typography.body2, color: Theme.colors.error, textAlign: 'center', marginBottom: 12 },
+  emptyText: { ...Theme.typography.body2, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 20 },
 });
