@@ -9,7 +9,7 @@ import SelectCard from "../../components/common/SelectCard";
 import MultiSelectCard from "../../components/common/MultiSelectCard";
 import ProgressBar from "../../components/common/ProgressBar";
 import { clearSignupMemory, getSignupMemory } from "../../lib/signup-memory";
-import { setAuthToken, setUserProfile } from "../../lib/secure-storage";
+import { useAuth } from "../providers/auth-provider";
 
 import type {
   CompanionType,
@@ -23,6 +23,7 @@ import type {
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
+  const { setSession } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const signupMemoryRef = useRef(getSignupMemory());
   const invalidFlowHandledRef = useRef(false);
@@ -131,8 +132,13 @@ export default function ProfileSetupScreen() {
     };
 
     try {
-      await setUserProfile(userData);
-      await setAuthToken("temp_token_12345");
+      const tokenSeed = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      await setSession({
+        authToken: `signup_auth_${tokenSeed}`,
+        accessToken: `signup_access_${tokenSeed}`,
+        refreshToken: `signup_refresh_${tokenSeed}`,
+        user: userData
+      });
       clearSignupMemory();
       router.replace("/(tabs)");
     } catch {

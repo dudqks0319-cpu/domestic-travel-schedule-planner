@@ -15,10 +15,11 @@ import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
-import { setAuthToken } from "../../lib/secure-storage";
+import { useAuth } from "../providers/auth-provider";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { loginWithKakaoMock } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,9 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await setAuthToken("temp_token_12345");
+      const safeEmail = email.trim().toLowerCase();
+      const nickname = safeEmail.includes("@") ? safeEmail.split("@")[0] : "여행자";
+      await loginWithKakaoMock({ email: safeEmail, nickname });
       router.replace("/(tabs)");
     } catch {
       Alert.alert("오류", "로그인에 실패했어요.");

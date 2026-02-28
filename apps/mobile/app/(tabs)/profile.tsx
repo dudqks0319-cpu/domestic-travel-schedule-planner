@@ -5,12 +5,14 @@ import { useRouter } from "expo-router";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Button from "../../components/common/Button";
-import { clearAuthToken, clearUserProfile, getUserProfile } from "../../lib/secure-storage";
+import { getUserProfile } from "../../lib/secure-storage";
+import { useAuth } from "../providers/auth-provider";
 
 import type { UserSignupProfile } from "../../types";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { logout } = useAuth();
   const [userData, setUserData] = useState<UserSignupProfile | null>(null);
 
   useEffect(() => {
@@ -28,16 +30,22 @@ export default function ProfileScreen() {
     }
   };
 
+  const confirmLogout = async () => {
+    try {
+      await logout();
+      router.replace("/auth/login");
+    } catch {
+      Alert.alert("오류", "로그아웃에 실패했어요. 다시 시도해주세요.");
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
       { text: "취소", style: "cancel" },
       {
         text: "로그아웃",
         style: "destructive",
-        onPress: async () => {
-          await Promise.all([clearAuthToken(), clearUserProfile()]);
-          router.replace("/auth/login");
-        }
+        onPress: () => void confirmLogout()
       }
     ]);
   };

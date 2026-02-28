@@ -1,33 +1,46 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../constants/Colors";
-import { getAuthToken } from "../lib/secure-storage";
+import { useAuth, type AuthStatus } from "./providers/auth-provider";
 
 export default function SplashScreen() {
   const router = useRouter();
+  const { status } = useAuth();
+  const navigationHandledRef = useRef(false);
 
   useEffect(() => {
-    void checkFirstLaunch();
-  }, []);
+    if (status === "loading" || navigationHandledRef.current) {
+      return;
+    }
 
-  const checkFirstLaunch = async () => {
+    void checkFirstLaunch(status);
+  }, [status]);
+
+  const checkFirstLaunch = async (
+    authStatus: Extract<AuthStatus, "authenticated" | "unauthenticated">
+  ) => {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-      const userToken = await getAuthToken();
 
+      if (navigationHandledRef.current) {
+        return;
+      }
+
+      const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
+
+      navigationHandledRef.current = true;
       if (!hasSeenOnboarding) {
         router.replace("/onboarding");
-      } else if (!userToken) {
+      } else if (authStatus === "unauthenticated") {
         router.replace("/auth/login");
       } else {
-        router.replace("/");
         router.replace("/(tabs)");
       }
     } catch {
+      navigationHandledRef.current = true;
       router.replace("/onboarding");
     }
   };
