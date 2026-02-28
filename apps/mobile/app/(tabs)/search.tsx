@@ -1,25 +1,216 @@
-import { View, Text, StyleSheet } from "react-native";
+import React, { useCallback, useState } from "react";
+import {
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  FlatList, Image, ActivityIndicator, Keyboard,
+} from "react-native";
+import { useRouter } from "expo-router";
 
 import Colors from "../../constants/Colors";
+import Spacing from "../../constants/Spacing";
+import Typography from "../../constants/Typography";
+import { tourismApi, restaurantApi } from "../../services/api";
+
+type TabKey = "attractions" | "restaurants" | "festivals";
+
+interface SearchResultItem {
+  id: string;
+  title: string;
+  address: string;
+  image?: string;
+  category?: string;
+  tab: TabKey;
+}
+
+const TABS: { key: TabKey; label: string; emoji: string }[] = [
+  { key: "attractions", label: "관광지", emoji: "🏞️" },
+  { key: "restaurants", label: "맛집", emoji: "🍽️" },
+  { key: "festivals", label: "축제", emoji: "🎪" },
+];
 
 export default function SearchScreen() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<TabKey>("attractions");
+  const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = useCallback(async () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    Keyboard.dismiss();
+    setLoading(true);
+    setSearched(true);
+
+    try {
+      let items: SearchResultItem[] = [];
+
+      if (activeTab === "attractions") {
+        const res = await tourismApi.search(trimmed);
+        const raw = (res.data.items ?? []) as Array<{
+          contentid: string; title: string; addr1: string; firstimage?: string;
+        }>;
+        items = raw.map((r) => ({
+          id: r.contentid, title: r.title, address: r.addr1,
+          image: r.firstimage, tab: "attractions",
+        }));
+      } else if (activeTab === "restaurants") {
+        const res = await restaurantApi.search(trimmed, 20);
+        const raw = (res.data.items ?? []) as Array<{
+          title: string; roadAddress: string; address: string; category: string;
+        }>;
+        items = raw.map((r, i) => ({
+          id: `rest_${i}`, title: r.title, address: r.roadAddress || r.address,
+          category: r.category.split(">").pop()?.trim(), tab: "restaurants",
+        }));
+      } else {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const res = await tourismApi.getFestivals(today, trimmed);
+        const raw = (res.data.items ?? []) as Array<{
+          contentid: string; title: string; addr1: string; firstimage?: string;
+        }>;
+        items = raw.map((r) => ({
+          id: r.contentid, title: r.title, address: r.addr1,
+          image: r.firstimage, tab: "festivals",
+        }));
+      }
+
+      setResults(items);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [query, activeTab]);
+
+  const renderItem = ({ item }: { item: SearchResultItem }) => (
+    <TouchableOpacity style={styles.resultCard} activeOpacity={0.7}>
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.resultImage} />
+      ) : (
+        <View style={[styles.resultImage, styles.resultImagePlaceholder]}>
+          <Text style={{ fontSize: 24 }}>
+            {item.tab === "restaurants" ? "🍽️" : item.tab === "festivals" ? "🎪" : "📷"}
+          </Text>
+        </View>
+      )}
+      <View style={styles.resultContent}>
+        <Text style={styles.resultTitle} numberOfLines={1}>{item.title}</Text>
+        <Text style={styles.resultAddress} numberOfLines={1}>{item.address}</Text>
+        {item.category ? <Text style={styles.resultCategory}>{item.category}</Text> : null}
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>🔍</Text>
-      <Text style={styles.title}>검색</Text>
-      <Text style={styles.sub}>곧 만들어질 화면이에요.</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>검색</Text>
+      </View>
+
+      <View style={styles.searchBar}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="관광지, 맛집, 축제 검색..."
+          placeholderTextColor={Colors.common.gray400}
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={() => void handleSearch()}
+          returnKeyType="search"
+        />
+        <TouchableOpacity style={styles.searchButton} onPress={() => void handleSearch()}>
+          <Text style={styles.searchButtonText}>검색</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.tabRow}>
+        {TABS.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+            onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
+          >
+            <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {loading ? (
+        <ActivityIndicator color={Colors.young.primary} size="large" style={styles.loader} />
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            searched ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyEmoji}>🔍</Text>
+                <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyEmoji}>✨</Text>
+                <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
+              </View>
+            )
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8F9FA"
+  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  header: { paddingTop: 60, paddingHorizontal: Spacing.screenPadding, paddingBottom: 12 },
+  headerTitle: { fontSize: 28, fontWeight: "800", color: Colors.common.black },
+  searchBar: {
+    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
+    backgroundColor: "#FFF", borderRadius: 16, borderWidth: 1, borderColor: Colors.common.gray200,
+    overflow: "hidden", marginBottom: 12,
   },
-  emoji: { fontSize: 60, marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: Colors.common.gray800 },
-  sub: { fontSize: 14, color: Colors.common.gray500, marginTop: 8 }
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 16, color: Colors.common.black },
+  searchButton: {
+    backgroundColor: Colors.young.primary, paddingHorizontal: 20,
+    justifyContent: "center", alignItems: "center",
+  },
+  searchButtonText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  tabRow: {
+    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
+    marginBottom: 16, gap: 8,
+  },
+  tab: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 10, borderRadius: 12, backgroundColor: "#FFF",
+    borderWidth: 1, borderColor: Colors.common.gray200, gap: 4,
+  },
+  tabActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
+  tabEmoji: { fontSize: 16 },
+  tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.common.gray600 },
+  tabLabelActive: { color: Colors.young.primary },
+  listContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 30 },
+  resultCard: {
+    flexDirection: "row", backgroundColor: "#FFF", borderRadius: 16,
+    marginBottom: 10, overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  },
+  resultImage: { width: 90, height: 90 },
+  resultImagePlaceholder: { backgroundColor: Colors.common.gray100, alignItems: "center", justifyContent: "center" },
+  resultContent: { flex: 1, padding: 12, justifyContent: "center" },
+  resultTitle: { ...Typography.normal.body, fontWeight: "700", color: Colors.common.gray800 },
+  resultAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 4 },
+  resultCategory: {
+    ...Typography.normal.caption, color: Colors.young.primary, marginTop: 4,
+    backgroundColor: "#E8F4FD", paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 6, alignSelf: "flex-start", overflow: "hidden",
+  },
+  emptyWrap: { alignItems: "center", marginTop: 80 },
+  emptyEmoji: { fontSize: 48, marginBottom: 12 },
+  emptyText: { fontSize: 16, color: Colors.common.gray500 },
+  loader: { marginTop: 80 },
 });

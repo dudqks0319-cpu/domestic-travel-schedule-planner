@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -10,35 +10,30 @@ import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
 import { loadPersistedOptimizedRoute, type OptimizedRoute, type RoutePoint } from "../../services/routeApi";
 
-type TimelineEntry =
-  | {
-      id: string;
-      type: "stop";
-      point: RoutePoint;
-      timeMinutes: number;
-      order: number;
-      color: string;
-    }
-  | {
-      id: string;
-      type: "move";
-      from: RoutePoint;
-      to: RoutePoint;
-      distanceKm: number;
-      durationMin: number;
-      startMinutes: number;
-      endMinutes: number;
-      provider: string;
-    };
+interface TripMeta {
+  destination: string;
+  startDate: string;
+  endDate: string;
+}
 
-const DAY_COLORS = [
-  Colors.schedule.day1,
-  Colors.schedule.day2,
-  Colors.schedule.day3,
-  Colors.schedule.day4,
-  Colors.schedule.day5
-];
+interface DayTab {
+  key: string;
+  dayNumber: number;
+  dateText: string;
+  segmentStart: number;
+  segmentEndExclusive: number;
+}
+
+type DayRow = {
+  id: string;
+  type: "stop" | "move";
+  timeText: string;
+  title: string;
+  detail: string;
+};
+
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
+const STOP_DWELL_MINUTES = 60;
 
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -91,6 +86,45 @@ function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
     .filter((item): item is RoutePoint => item !== null);
 }
 
+function parseTripMeta(rawTrip: unknown): TripMeta {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return { destination: "여행", startDate: "", endDate: "" };
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  return {
+    destination: typeof value.destination === "string" && value.destination.trim().length > 0 ? value.destination : "여행",
+    startDate: typeof value.startDate === "string" ? value.startDate : "",
+    endDate: typeof value.endDate === "string" ? value.endDate : ""
+  };
+}
+
+function parseDateOnly(dateText: string): Date | null {
+  if (!dateText || !/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+    return null;
+  }
+
+  const parsed = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function daysBetweenInclusive(startDate: string, endDate: string): number {
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+
+  if (!start || !end) {
+    return 1;
+  }
+
+  const diffDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  if (diffDays < 1) return 1;
+  return Math.min(diffDays, 15);
+}
+
 function toRad(value: number): number {
   return (value * Math.PI) / 180;
 }
@@ -140,7 +174,6 @@ function formatClock(totalMinutes: number): string {
   const normalized = Math.max(0, Math.round(totalMinutes));
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
-
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
@@ -154,65 +187,109 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
-function pointLabel(point: RoutePoint, order: number): string {
-  return point.name ?? `지점 ${order + 1}`;
-}
-
-function buildTimeline(route: OptimizedRoute): TimelineEntry[] {
-  if (!route.orderedPoints.length) {
-    return [];
+function formatDateLabel(date: Date | null): string {
+  if (!date) {
+    return "날짜 미정";
   }
 
-  const timeline: TimelineEntry[] = [];
+  const weekLabel = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()] ?? "";
+  return `${date.getMonth() + 1}.${date.getDate()} (${weekLabel})`;
+}
+
+function buildDayTabs(route: OptimizedRoute, tripMeta: TripMeta): DayTab[] {
+  const segmentCount = route.segments.length;
+  const daysFromTrip = daysBetweenInclusive(tripMeta.startDate, tripMeta.endDate);
+  const daysCount = Math.max(1, Math.min(daysFromTrip, Math.max(1, segmentCount)));
+  const segmentChunk = Math.max(1, Math.ceil(segmentCount / daysCount));
+  const startDate = parseDateOnly(tripMeta.startDate);
+
+  return Array.from({ length: daysCount }).map((_, index) => {
+    const segmentStart = Math.min(segmentCount, index * segmentChunk);
+    const segmentEndExclusive = Math.min(segmentCount, (index + 1) * segmentChunk);
+
+    const currentDate = startDate ? new Date(startDate) : null;
+    if (currentDate) {
+      currentDate.setDate(currentDate.getDate() + index);
+    }
+
+    return {
+      key: `day-${index + 1}`,
+      dayNumber: index + 1,
+      dateText: formatDateLabel(currentDate),
+      segmentStart,
+      segmentEndExclusive
+    };
+  });
+}
+
+function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
+  const rows: DayRow[] = [];
+  const hasSegment = dayTab.segmentStart < dayTab.segmentEndExclusive;
+
+  if (!hasSegment) {
+    const firstPoint = route.orderedPoints[dayTab.segmentStart];
+    if (firstPoint) {
+      rows.push({
+        id: `${dayTab.key}-stop-alone`,
+        type: "stop",
+        timeText: "09:00",
+        title: firstPoint.name ?? "방문 지점",
+        detail: `위도 ${firstPoint.lat.toFixed(4)} · 경도 ${firstPoint.lng.toFixed(4)}`
+      });
+    }
+    return rows;
+  }
+
+  const firstSegment = route.segments[dayTab.segmentStart];
   let cursor = 9 * 60;
 
-  timeline.push({
-    id: `stop-0`,
+  rows.push({
+    id: `${dayTab.key}-stop-start`,
     type: "stop",
-    point: route.orderedPoints[0],
-    timeMinutes: cursor,
-    order: 0,
-    color: DAY_COLORS[0]
+    timeText: formatClock(cursor),
+    title: firstSegment.from.name ?? "출발 지점",
+    detail: `위도 ${firstSegment.from.lat.toFixed(4)} · 경도 ${firstSegment.from.lng.toFixed(4)}`
   });
 
-  route.segments.forEach((segment, index) => {
-    const startMinutes = cursor;
-    const duration = Math.max(1, Math.round(segment.durationMin));
-    const endMinutes = startMinutes + duration;
+  for (let index = dayTab.segmentStart; index < dayTab.segmentEndExclusive; index += 1) {
+    const segment = route.segments[index];
+    const moveStart = cursor;
+    const moveDuration = Math.max(1, Math.round(segment.durationMin));
+    const moveEnd = moveStart + moveDuration;
 
-    timeline.push({
-      id: `move-${index}`,
+    rows.push({
+      id: `${dayTab.key}-move-${index}`,
       type: "move",
-      from: segment.from,
-      to: segment.to,
-      distanceKm: segment.distanceKm,
-      durationMin: segment.durationMin,
-      startMinutes,
-      endMinutes,
-      provider: segment.provider
+      timeText: `${formatClock(moveStart)} - ${formatClock(moveEnd)}`,
+      title: `${segment.from.name} → ${segment.to.name}`,
+      detail: `${segment.distanceKm.toFixed(1)}km · ${formatDuration(segment.durationMin)} · ${segment.provider}`
     });
 
-    cursor = endMinutes;
+    cursor = moveEnd;
 
-    const arrivalPoint = route.orderedPoints[index + 1] ?? segment.to;
-    timeline.push({
-      id: `stop-${index + 1}`,
+    rows.push({
+      id: `${dayTab.key}-stop-${index}`,
       type: "stop",
-      point: arrivalPoint,
-      timeMinutes: cursor,
-      order: index + 1,
-      color: DAY_COLORS[(index + 1) % DAY_COLORS.length]
+      timeText: formatClock(cursor),
+      title: segment.to.name ?? "도착 지점",
+      detail: `위도 ${segment.to.lat.toFixed(4)} · 경도 ${segment.to.lng.toFixed(4)}`
     });
-  });
 
-  return timeline;
+    if (index < dayTab.segmentEndExclusive - 1) {
+      cursor += STOP_DWELL_MINUTES;
+    }
+  }
+
+  return rows;
 }
 
 export default function ScheduleScreen() {
   const router = useRouter();
   const [route, setRoute] = useState<OptimizedRoute | null>(null);
   const [currentTripPoints, setCurrentTripPoints] = useState<RoutePoint[]>([]);
+  const [tripMeta, setTripMeta] = useState<TripMeta>({ destination: "여행", startDate: "", endDate: "" });
   const [loading, setLoading] = useState(true);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -233,6 +310,7 @@ export default function ScheduleScreen() {
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
           setCurrentTripPoints(parseCurrentTripPoints(parsedCurrentTrip));
+          setTripMeta(parseTripMeta(parsedCurrentTrip));
         }
       } finally {
         if (mounted) {
@@ -250,110 +328,134 @@ export default function ScheduleScreen() {
 
   const fallbackRoute = useMemo(() => buildFallbackRoute(currentTripPoints), [currentTripPoints]);
   const displayedRoute = route ?? fallbackRoute;
-  const timeline = useMemo(() => (displayedRoute ? buildTimeline(displayedRoute) : []), [displayedRoute]);
+  const dayTabs = useMemo(
+    () => (displayedRoute ? buildDayTabs(displayedRoute, tripMeta) : []),
+    [displayedRoute, tripMeta]
+  );
+
+  useEffect(() => {
+    if (activeDayIndex >= dayTabs.length) {
+      setActiveDayIndex(0);
+    }
+  }, [activeDayIndex, dayTabs.length]);
+
+  const activeDay = dayTabs[activeDayIndex] ?? null;
+  const dayRows = useMemo(() => {
+    if (!displayedRoute || !activeDay) {
+      return [];
+    }
+
+    return buildDayRows(displayedRoute, activeDay);
+  }, [displayedRoute, activeDay]);
+
   const isFallbackTimeline = !route && !!fallbackRoute;
 
   return (
     <View style={styles.container}>
-      <Header
-        title="일정 타임라인"
-        subtitle="최적 경로 인포그래픽"
-        onBack={() => router.back()}
-      />
+      <View style={styles.frame}>
+        <Header
+          title={`${tripMeta.destination} 일정표`}
+          subtitle="일차별 타임라인"
+          onBack={() => router.back()}
+        />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {loading ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>일정을 불러오는 중...</Text>
-          </View>
-        ) : null}
-
-        {!loading && !displayedRoute ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyTitle}>표시할 일정 데이터가 없어요</Text>
-            <Text style={styles.emptyDescription}>
-              여행 생성 후 경로 최적화를 실행하면 일정 타임라인이 자동으로 생성됩니다.
-            </Text>
-            <View style={styles.emptyActions}>
-              <Button
-                title="경로 최적화 하러가기"
-                onPress={() => router.push("/trip/route-map")}
-              />
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {loading ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>일정을 불러오는 중...</Text>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        {displayedRoute ? (
-          <>
-            {isFallbackTimeline ? (
-              <View style={styles.fallbackNoticeCard}>
-                <Text style={styles.fallbackNoticeText}>
-                  최적화 결과가 없어 현재 여행의 저장된 경유지 순서로 임시 타임라인을 보여드리고 있어요.
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>총 거리</Text>
-                <Text style={styles.summaryValue}>{displayedRoute.totalDistanceKm.toFixed(1)} km</Text>
-              </View>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>총 이동시간</Text>
-                <Text style={styles.summaryValue}>{formatDuration(displayedRoute.totalDurationMin)}</Text>
-              </View>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryLabel}>구간 수</Text>
-                <Text style={styles.summaryValue}>{displayedRoute.segments.length}개</Text>
+          {!loading && !displayedRoute ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>표시할 일정 데이터가 없어요</Text>
+              <Text style={styles.emptyDescription}>
+                여행 생성 후 경로 최적화를 실행하면 일차별 일정표가 자동으로 생성됩니다.
+              </Text>
+              <View style={styles.emptyActions}>
+                <Button title="경로 최적화 하러가기" onPress={() => router.push("/trip/route-map")} />
               </View>
             </View>
+          ) : null}
 
-            <View style={styles.timelineContainer}>
-              {timeline.map((entry, index) => {
-                const hasNext = index < timeline.length - 1;
+          {displayedRoute ? (
+            <>
+              {isFallbackTimeline ? (
+                <View style={styles.fallbackNoticeCard}>
+                  <Text style={styles.fallbackNoticeText}>
+                    최적화 결과가 없어 현재 여행의 저장된 경유지 순서로 임시 일정표를 보여드리고 있어요.
+                  </Text>
+                </View>
+              ) : null}
 
-                return (
-                  <View key={entry.id} style={styles.timelineRow}>
-                    <View style={styles.railColumn}>
-                      <View
-                        style={[
-                          styles.railDot,
-                          entry.type === "stop" ? { backgroundColor: entry.color } : styles.moveDot
-                        ]}
-                      />
-                      {hasNext ? <View style={styles.railConnector} /> : null}
+              <View style={styles.summaryRow}>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>총 거리</Text>
+                  <Text style={styles.summaryValue}>{displayedRoute.totalDistanceKm.toFixed(1)} km</Text>
+                </View>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>이동 시간</Text>
+                  <Text style={styles.summaryValue}>{formatDuration(displayedRoute.totalDurationMin)}</Text>
+                </View>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>처리 일수</Text>
+                  <Text style={styles.summaryValue}>{dayTabs.length}일</Text>
+                </View>
+              </View>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabRow}>
+                {dayTabs.map((dayTab, index) => {
+                  const active = index === activeDayIndex;
+                  return (
+                    <TouchableOpacity
+                      key={dayTab.key}
+                      style={[styles.dayTab, active ? styles.dayTabActive : null]}
+                      onPress={() => setActiveDayIndex(index)}
+                    >
+                      <Text style={[styles.dayTabTitle, active ? styles.dayTabTitleActive : null]}>{`DAY ${dayTab.dayNumber}`}</Text>
+                      <Text style={[styles.dayTabDate, active ? styles.dayTabDateActive : null]}>{dayTab.dateText}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.tableCard}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderText, styles.timeCol]}>시간</Text>
+                  <Text style={[styles.tableHeaderText, styles.typeCol]}>구분</Text>
+                  <Text style={[styles.tableHeaderText, styles.contentCol]}>일정</Text>
+                </View>
+
+                {dayRows.length ? (
+                  dayRows.map((row) => (
+                    <View key={row.id} style={styles.tableRow}>
+                      <Text style={[styles.tableTime, styles.timeCol]}>{row.timeText}</Text>
+                      <View style={[styles.typeBadge, row.type === "move" ? styles.moveBadge : styles.stopBadge, styles.typeCol]}>
+                        <Text style={[styles.typeBadgeText, row.type === "move" ? styles.moveBadgeText : styles.stopBadgeText]}>
+                          {row.type === "move" ? "이동" : "방문"}
+                        </Text>
+                      </View>
+                      <View style={styles.contentCol}>
+                        <Text style={styles.tableTitle}>{row.title}</Text>
+                        <Text style={styles.tableDetail}>{row.detail}</Text>
+                      </View>
                     </View>
-
-                    <View style={[styles.timelineCard, entry.type === "stop" ? styles.stopCard : styles.moveCard]}>
-                      {entry.type === "stop" ? (
-                        <>
-                          <Text style={styles.entryTime}>{formatClock(entry.timeMinutes)}</Text>
-                          <Text style={styles.entryTitle}>{pointLabel(entry.point, entry.order)}</Text>
-                          <Text style={styles.entrySub}>
-                            {`위도 ${entry.point.lat.toFixed(4)} · 경도 ${entry.point.lng.toFixed(4)}`}
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text style={styles.entryTime}>
-                            {`${formatClock(entry.startMinutes)} → ${formatClock(entry.endMinutes)}`}
-                          </Text>
-                          <Text style={styles.entryTitle}>
-                            {`${entry.from.name ?? "출발"} → ${entry.to.name ?? "도착"}`}
-                          </Text>
-                          <Text style={styles.entrySub}>
-                            {`${entry.distanceKm.toFixed(1)} km · ${formatDuration(entry.durationMin)} · ${entry.provider}`}
-                          </Text>
-                        </>
-                      )}
-                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyDayRow}>
+                    <Text style={styles.emptyDayText}>선택한 날짜에 배정된 일정이 아직 없어요.</Text>
                   </View>
-                );
-              })}
-            </View>
-          </>
-        ) : null}
-      </ScrollView>
+                )}
+              </View>
+
+              <View style={styles.bottomActions}>
+                <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
+                <Button title="홈으로" onPress={() => router.replace("/(tabs)")} />
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -362,6 +464,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.common.gray50
+  },
+  frame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center"
   },
   scrollContent: {
     paddingHorizontal: Spacing.screenPadding,
@@ -402,66 +510,127 @@ const styles = StyleSheet.create({
     color: Colors.common.gray800,
     fontWeight: "700"
   },
-  timelineContainer: {
+  dayTabRow: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.md
+  },
+  dayTab: {
     backgroundColor: Colors.common.white,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.common.gray200,
-    padding: Spacing.lg
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minWidth: 116
   },
-  timelineRow: {
-    flexDirection: "row",
-    alignItems: "stretch"
+  dayTabActive: {
+    borderColor: Colors.young.primary,
+    backgroundColor: "#EAF4FF"
   },
-  railColumn: {
-    width: 28,
-    alignItems: "center"
-  },
-  railDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginTop: 12
-  },
-  moveDot: {
-    backgroundColor: Colors.schedule.travel
-  },
-  railConnector: {
-    width: 2,
-    flex: 1,
-    backgroundColor: Colors.common.gray300,
-    marginTop: 6
-  },
-  timelineCard: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: Spacing.md,
-    marginBottom: Spacing.md
-  },
-  stopCard: {
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.schedule.attraction
-  },
-  moveCard: {
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.schedule.travel
-  },
-  entryTime: {
+  dayTabTitle: {
     ...Typography.normal.caption,
-    color: Colors.common.gray600,
+    color: Colors.common.gray700,
     fontWeight: "700"
   },
-  entryTitle: {
+  dayTabTitleActive: {
+    color: Colors.young.primary
+  },
+  dayTabDate: {
+    ...Typography.normal.caption,
+    color: Colors.common.gray500,
+    marginTop: 2
+  },
+  dayTabDateActive: {
+    color: Colors.young.primary
+  },
+  tableCard: {
+    backgroundColor: Colors.common.white,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    overflow: "hidden"
+  },
+  tableHeaderRow: {
+    flexDirection: "row",
+    backgroundColor: Colors.common.gray100,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.common.gray200,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    gap: 10
+  },
+  tableHeaderText: {
+    ...Typography.normal.caption,
+    color: Colors.common.gray700,
+    fontWeight: "700"
+  },
+  tableRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.common.gray100
+  },
+  timeCol: {
+    width: 80
+  },
+  typeCol: {
+    width: 52
+  },
+  contentCol: {
+    flex: 1
+  },
+  tableTime: {
+    ...Typography.normal.caption,
+    color: Colors.common.gray700,
+    fontWeight: "700"
+  },
+  typeBadge: {
+    borderRadius: 999,
+    paddingVertical: 4,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  stopBadge: {
+    backgroundColor: "#EAF4FF"
+  },
+  moveBadge: {
+    backgroundColor: "#F4ECFF"
+  },
+  typeBadgeText: {
+    ...Typography.normal.caption,
+    fontWeight: "700"
+  },
+  stopBadgeText: {
+    color: Colors.young.primary
+  },
+  moveBadgeText: {
+    color: "#7A4CC9"
+  },
+  tableTitle: {
     ...Typography.normal.bodySmall,
     color: Colors.common.gray800,
-    marginTop: 4,
     fontWeight: "700"
   },
-  entrySub: {
+  tableDetail: {
     ...Typography.normal.caption,
     color: Colors.common.gray600,
     marginTop: 4
+  },
+  emptyDayRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 16
+  },
+  emptyDayText: {
+    ...Typography.normal.bodySmall,
+    color: Colors.common.gray500
+  },
+  bottomActions: {
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl
   },
   emptyCard: {
     backgroundColor: Colors.common.white,

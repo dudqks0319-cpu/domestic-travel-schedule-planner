@@ -651,18 +651,19 @@ export default function RouteMapScreen() {
 
   return (
     <View style={styles.container}>
-      <Header
-        title="최적 경로 지도"
-        subtitle="지도/리스트로 확인"
-        onBack={() => router.back()}
-        rightLabel="일정"
-        onRightPress={() => router.push("/trip/schedule")}
-      />
+      <View style={styles.frame}>
+        <Header
+          title="최적 경로 지도"
+          subtitle="지도/리스트로 확인"
+          onBack={() => router.back()}
+          rightLabel="일정"
+          onRightPress={() => router.push("/trip/schedule")}
+        />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.routeInfoCard}>
           <View style={styles.routeInfoTopRow}>
             <Text style={styles.routeInfoLabel}>경로</Text>
@@ -813,7 +814,8 @@ export default function RouteMapScreen() {
             size="large"
           />
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -822,6 +824,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.common.gray50
+  },
+  frame: {
+    flex: 1,
+    width: "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    alignSelf: "center"
   },
   scrollContainer: {
     paddingHorizontal: Spacing.screenPadding,
