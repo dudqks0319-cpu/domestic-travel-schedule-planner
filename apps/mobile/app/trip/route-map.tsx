@@ -17,8 +17,10 @@ import Button from "../../components/common/Button";
 import { RouteDetailCard, RouteMapView } from "../../components/map";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 import Typography from "../../constants/Typography";
 import {
+  clearPersistedOptimizedRoute,
   loadPersistedOptimizedRoute,
   optimizeRoute,
   persistOptimizedRoute,
@@ -192,8 +194,8 @@ function normalizeStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-function hasTripSelectionData(destination: string, attractions: string[], restaurants: string[]): boolean {
-  return destination.trim().length > 0 && (attractions.length > 0 || restaurants.length > 0);
+function hasTripSelectionData(destination: string, _attractions: string[], _restaurants: string[]): boolean {
+  return destination.trim().length > 0;
 }
 
 function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
@@ -311,6 +313,25 @@ function distanceKm(from: RoutePoint, to: RoutePoint): number {
   return radiusKm * c;
 }
 
+function isRouteAlignedWithTrip(route: OptimizedRoute, tripPoints: RoutePoint[]): boolean {
+  if (tripPoints.length < 2 || route.orderedPoints.length < 2) {
+    return false;
+  }
+
+  const routeStart = route.orderedPoints[0];
+  const routeEnd = route.orderedPoints[route.orderedPoints.length - 1];
+  const tripStart = tripPoints[0];
+  const tripEnd = tripPoints[tripPoints.length - 1];
+
+  if (!routeStart || !routeEnd || !tripStart || !tripEnd) {
+    return false;
+  }
+
+  const startDistanceKm = distanceKm(routeStart, tripStart);
+  const endDistanceKm = distanceKm(routeEnd, tripEnd);
+  return startDistanceKm <= 15 && endDistanceKm <= 15;
+}
+
 function averageSpeedKmPerHour(mode: RouteTransportMode | undefined): number {
   if (mode === "walking") {
     return 4.5;
@@ -321,6 +342,26 @@ function averageSpeedKmPerHour(mode: RouteTransportMode | undefined): number {
   }
 
   return 36;
+}
+
+function modeDistanceFactor(mode: RouteTransportMode): number {
+  if (mode === "walking") {
+    return 1.06;
+  }
+  if (mode === "transit") {
+    return 1.32;
+  }
+  return 1.22;
+}
+
+function modeTransferPenaltyMin(mode: RouteTransportMode): number {
+  if (mode === "walking") {
+    return 1;
+  }
+  if (mode === "transit") {
+    return 4;
+  }
+  return 2;
 }
 
 function buildFallbackPreviewRoute(request: OptimizeRouteRequest): OptimizedRoute | null {
@@ -359,6 +400,47 @@ function buildFallbackPreviewRoute(request: OptimizeRouteRequest): OptimizedRout
     totalDurationMin,
     source: "fallback",
     warnings: ["실시간 최적화 API 연결 전에는 직선 거리 기반 예상 경로를 표시합니다."]
+  };
+}
+
+function buildModeAdjustedRoute(
+  orderedPoints: RoutePoint[],
+  mode: RouteTransportMode,
+  reason: string
+): OptimizedRoute | null {
+  if (orderedPoints.length < 2) {
+    return null;
+  }
+
+  const speed = averageSpeedKmPerHour(mode);
+  const factor = modeDistanceFactor(mode);
+  const transferPenalty = modeTransferPenaltyMin(mode);
+
+  const segments = orderedPoints.slice(0, -1).map((from, index) => {
+    const to = orderedPoints[index + 1];
+    const baseDistance = distanceKm(from, to);
+    const adjustedDistanceKm = baseDistance * factor;
+    const durationMin = Math.max(
+      1,
+      Math.round((adjustedDistanceKm / speed) * 60 + transferPenalty)
+    );
+
+    return {
+      from,
+      to,
+      distanceKm: adjustedDistanceKm,
+      durationMin,
+      provider: "fallback" as const
+    };
+  });
+
+  return {
+    orderedPoints,
+    segments,
+    totalDistanceKm: segments.reduce((sum, segment) => sum + segment.distanceKm, 0),
+    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
+    source: "fallback",
+    warnings: [reason]
   };
 }
 
@@ -508,10 +590,11 @@ export default function RouteMapScreen() {
   const [tripMode, setTripMode] = useState<RouteTransportMode | null>(null);
   const [mode, setMode] = useState<RouteTransportMode>("driving");
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
+  const [optimizedMode, setOptimizedMode] = useState<RouteTransportMode | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const hasAutoOptimizedRef = useRef(false);
+  const autoRequestKeyRef = useRef<string>("");
 
   const requestConfig = useMemo(
     () =>
@@ -540,15 +623,26 @@ export default function RouteMapScreen() {
           return;
         }
 
-        if (savedRoute) {
-          setOptimizedRoute(savedRoute);
-        }
+        let parsedPoints: RoutePoint[] = [];
+        let parsedMode: RouteTransportMode | null = null;
 
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
-          const parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
           setTripPoints(parsedPoints);
-          setTripMode(parseCurrentTripMode(parsedCurrentTrip));
+          parsedMode = parseCurrentTripMode(parsedCurrentTrip);
+          setTripMode(parsedMode);
+        }
+
+        if (savedRoute && isRouteAlignedWithTrip(savedRoute, parsedPoints)) {
+          setOptimizedRoute(savedRoute);
+          setOptimizedMode(parsedMode ?? "driving");
+        } else {
+          setOptimizedRoute(null);
+          setOptimizedMode(null);
+          if (savedRoute) {
+            await clearPersistedOptimizedRoute();
+          }
         }
       } catch {
         // Ignore persistence read failures and continue with fresh optimization.
@@ -575,7 +669,38 @@ export default function RouteMapScreen() {
     () => (routeRequest ? buildFallbackPreviewRoute(routeRequest) : null),
     [routeRequest]
   );
-  const displayedRoute = requestConfig.hasInputPoints ? optimizedRoute ?? fallbackPreviewRoute : null;
+  const matchedOptimizedRoute =
+    optimizedRoute && optimizedMode === mode ? optimizedRoute : null;
+  const displayedRoute = useMemo(() => {
+    if (!requestConfig.hasInputPoints) {
+      return null;
+    }
+
+    const baseRoute = matchedOptimizedRoute ?? fallbackPreviewRoute;
+    if (!baseRoute) {
+      return null;
+    }
+
+    if (mode === "driving") {
+      return baseRoute;
+    }
+
+    const looksDrivingBased =
+      baseRoute.source === "kakao" ||
+      (baseRoute.source === "mixed" &&
+        baseRoute.segments.every((segment) => segment.provider === "kakao"));
+
+    if (!looksDrivingBased && baseRoute.source !== "fallback") {
+      return baseRoute;
+    }
+
+    const adjusted = buildModeAdjustedRoute(
+      baseRoute.orderedPoints,
+      mode,
+      "이동수단별 예상값이 분리되도록 모드 보정 경로를 적용했습니다."
+    );
+    return adjusted ?? baseRoute;
+  }, [fallbackPreviewRoute, matchedOptimizedRoute, mode, requestConfig.hasInputPoints]);
   const isFallbackRoute = displayedRoute?.source === "fallback";
   const routeTitleText = !hydrated
     ? "저장된 여행 경로를 불러오는 중이에요."
@@ -618,6 +743,7 @@ export default function RouteMapScreen() {
     try {
       const result = await optimizeRoute(routeRequest);
       setOptimizedRoute(result);
+      setOptimizedMode(routeRequest.mode ?? mode);
       await persistOptimizedRoute(result);
     } catch (error) {
       const technicalMessage = error instanceof Error ? error.message : "";
@@ -632,16 +758,40 @@ export default function RouteMapScreen() {
     } finally {
       setLoading(false);
     }
-  }, [routeRequest]);
+  }, [mode, routeRequest]);
+
+  const routeRequestKey = useMemo(() => {
+    if (!hydrated || !routeRequest || !requestConfig.hasInputPoints) {
+      return "";
+    }
+
+    const points = [
+      routeRequest.start,
+      ...(routeRequest.waypoints ?? []),
+      ...(routeRequest.end ? [routeRequest.end] : [])
+    ];
+    const pointSignature = points
+      .map((point) => `${point.lat.toFixed(5)},${point.lng.toFixed(5)}`)
+      .join("|");
+    return `${routeRequest.mode ?? mode}:${pointSignature}`;
+  }, [hydrated, mode, requestConfig.hasInputPoints, routeRequest]);
 
   useEffect(() => {
-    if (!hydrated || hasAutoOptimizedRef.current || !routeRequest || mode !== requestConfig.mode) {
+    if (!routeRequestKey || !routeRequest) {
+      autoRequestKeyRef.current = "";
       return;
     }
 
-    hasAutoOptimizedRef.current = true;
+    if (autoRequestKeyRef.current === routeRequestKey) {
+      return;
+    }
+
+    autoRequestKeyRef.current = routeRequestKey;
+    if (optimizedMode !== mode) {
+      setOptimizedRoute(null);
+    }
     void optimizeRouteNow({ silent: true });
-  }, [hydrated, mode, optimizeRouteNow, requestConfig.mode, routeRequest]);
+  }, [mode, optimizedMode, optimizeRouteNow, routeRequest, routeRequestKey]);
 
   useEffect(() => {
     if (!requestConfig.hasInputPoints) {
@@ -825,25 +975,26 @@ export default function RouteMapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.common.gray50
+    backgroundColor: Theme.colors.background
   },
   frame: {
     flex: 1,
     width: "100%",
-    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    maxWidth: Platform.OS === "web" ? 500 : "100%",
     alignSelf: "center"
   },
   scrollContainer: {
     paddingHorizontal: Spacing.screenPadding,
-    paddingBottom: 36,
-    gap: Spacing.lg
+    paddingBottom: 28,
+    gap: 12
   },
   routeInfoCard: {
-    backgroundColor: Colors.common.white,
-    borderRadius: 20,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    padding: Spacing.lg
+    borderColor: Theme.colors.borderLight,
+    padding: 14,
+    ...Theme.shadow.sm
   },
   routeInfoTopRow: {
     flexDirection: "row",
@@ -852,11 +1003,11 @@ const styles = StyleSheet.create({
   },
   routeInfoLabel: {
     ...Typography.normal.caption,
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   routeStatusBadge: {
     borderRadius: 999,
-    backgroundColor: Colors.young.primary,
+    backgroundColor: Theme.colors.primary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 5,
     flexDirection: "row",
@@ -867,7 +1018,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.young.primary
   },
   routeStatusBadgeMuted: {
-    backgroundColor: Colors.common.gray100
+    backgroundColor: Theme.colors.borderLight
   },
   routeStatusBadgeFallback: {
     backgroundColor: "#FFF4E6"
@@ -886,13 +1037,13 @@ const styles = StyleSheet.create({
   routeInfoValue: {
     ...Typography.normal.bodySmall,
     fontWeight: "700",
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     marginTop: Spacing.xs,
     lineHeight: 21
   },
   routeInfoHint: {
     ...Typography.normal.caption,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     marginTop: Spacing.sm,
     lineHeight: 18
   },
@@ -907,28 +1058,28 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: Colors.common.gray300,
-    backgroundColor: Colors.common.gray50,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.background,
     alignItems: "center"
   },
   modeChipActive: {
-    borderColor: Colors.young.primary,
-    backgroundColor: "#EAF4FF"
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
   },
   modeChipText: {
     ...Typography.normal.caption,
-    color: Colors.common.gray600,
+    color: Theme.colors.textSecondary,
     fontWeight: "600"
   },
   modeChipTextActive: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   toggleWrap: {
     flexDirection: "row",
-    backgroundColor: Colors.common.white,
+    backgroundColor: Theme.colors.surface,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
+    borderColor: Theme.colors.border,
     padding: 4
   },
   toggleButton: {
@@ -939,11 +1090,11 @@ const styles = StyleSheet.create({
     paddingVertical: 9
   },
   toggleButtonActive: {
-    backgroundColor: Colors.young.primary
+    backgroundColor: Theme.colors.primary
   },
   toggleText: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray600,
+    color: Theme.colors.textSecondary,
     fontWeight: "700"
   },
   toggleTextActive: {
@@ -955,24 +1106,25 @@ const styles = StyleSheet.create({
   emptyListCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.white,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
     padding: Spacing.lg
   },
   emptyListText: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray600
+    color: Theme.colors.textSecondary
   },
   summaryCard: {
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    backgroundColor: Colors.common.white,
-    padding: Spacing.lg
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: Theme.colors.surface,
+    padding: 14,
+    ...Theme.shadow.sm
   },
   summaryTitle: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray700,
+    color: Theme.colors.textPrimary,
     fontWeight: "700",
     marginBottom: Spacing.sm
   },
@@ -983,11 +1135,11 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     ...Typography.normal.caption,
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   summaryValue: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   warningCard: {

@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
+import Theme from "../../constants/Theme";
 import { tripsApi } from "../../services/api";
 
 interface PlaceMarker {
@@ -46,11 +52,11 @@ let kakaoMapSdkPromise: Promise<KakaoGlobal> | null = null;
 
 const KOREA_CENTER = { lat: 36.35, lng: 127.9 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  attraction: Colors.common.markerAttraction,
-  restaurant: Colors.common.markerRestaurant,
-  cafe: Colors.common.markerCafe,
-  hotel: Colors.common.markerHotel
+const CATEGORY_META: Record<string, { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  attraction: { label: "관광지", color: "#4A90E2", icon: "camera-outline" },
+  restaurant: { label: "맛집", color: "#FF7A59", icon: "restaurant-outline" },
+  cafe: { label: "카페", color: "#8C7AE6", icon: "cafe-outline" },
+  hotel: { label: "숙소", color: "#24B47E", icon: "bed-outline" }
 };
 
 function readKakaoMapWebKey(): string | undefined {
@@ -63,7 +69,6 @@ function readKakaoMapWebKey(): string | undefined {
   ).process;
 
   const candidate = maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-
   const trimmed = candidate?.trim();
   return trimmed ? trimmed : undefined;
 }
@@ -128,13 +133,11 @@ function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
 export default function TabMapViewWeb() {
   const [markers, setMarkers] = useState<PlaceMarker[]>([]);
   const [loadingMarkers, setLoadingMarkers] = useState(true);
+  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
   const kakaoMapKey = useMemo(() => readKakaoMapWebKey(), []);
   const [kakaoStatus, setKakaoStatus] = useState<KakaoMapStatus>(kakaoMapKey ? "idle" : "no-key");
   const [kakaoError, setKakaoError] = useState<string | null>(null);
-  const mapContainerId = useMemo(
-    () => `tripmate-kakao-map-tab-${Math.random().toString(36).slice(2)}`,
-    []
-  );
+  const mapContainerId = useMemo(() => `tripmate-kakao-map-tab-${Math.random().toString(36).slice(2)}`, []);
 
   const loadMarkers = useCallback(async () => {
     setLoadingMarkers(true);
@@ -163,8 +166,10 @@ export default function TabMapViewWeb() {
       }
 
       setMarkers(allMarkers);
+      setSelectedMarkerId(allMarkers[0]?.id ?? null);
     } catch {
       setMarkers([]);
+      setSelectedMarkerId(null);
     } finally {
       setLoadingMarkers(false);
     }
@@ -203,6 +208,7 @@ export default function TabMapViewWeb() {
 
         if (markers.length > 0) {
           const bounds = new kakao.maps.LatLngBounds();
+
           markers.forEach((marker, index) => {
             const latLng = new kakao.maps.LatLng(marker.lat, marker.lng);
             bounds.extend(latLng);
@@ -214,24 +220,24 @@ export default function TabMapViewWeb() {
             mapMarker.setMap(map);
 
             const badge = document.createElement("div");
-            badge.style.minWidth = "20px";
-            badge.style.height = "20px";
+            badge.style.minWidth = "24px";
+            badge.style.height = "24px";
             badge.style.padding = "0 6px";
-            badge.style.borderRadius = "10px";
-            badge.style.background = CATEGORY_COLORS[marker.category] ?? Colors.young.primary;
+            badge.style.borderRadius = "12px";
+            badge.style.background = CATEGORY_META[marker.category]?.color ?? Theme.colors.primary;
             badge.style.color = "#fff";
             badge.style.fontWeight = "700";
             badge.style.fontSize = "11px";
             badge.style.display = "flex";
             badge.style.alignItems = "center";
             badge.style.justifyContent = "center";
-            badge.style.border = "1px solid #fff";
+            badge.style.border = "2px solid #fff";
             badge.textContent = String(index + 1);
 
             const overlay = new kakao.maps.CustomOverlay({
               position: latLng,
               content: badge,
-              yAnchor: 1.9
+              yAnchor: 1.8
             });
             overlay.setMap(map);
           });
@@ -254,104 +260,240 @@ export default function TabMapViewWeb() {
     };
   }, [kakaoMapKey, mapContainerId, markers]);
 
+  const selectedMarker = markers.find((marker) => marker.id === selectedMarkerId) ?? null;
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>내 여행 지도</Text>
-        <Text style={styles.headerSub}>
+      <View style={styles.summaryCard}>
+        <Text style={styles.title}>내 여행 지도</Text>
+        <Text style={styles.subtitle}>
           {loadingMarkers
-            ? "여행 장소를 불러오는 중..."
+            ? "장소 불러오는 중..."
             : markers.length > 0
-              ? `${markers.length}곳 표시 중`
-              : "로그인/일정 생성 후 마커가 표시됩니다"}
+              ? `${markers.length}개 장소가 지도에 표시됩니다`
+              : "생성된 여행 일정이 아직 없습니다"}
         </Text>
+
+        <View style={styles.legendRow}>
+          {Object.entries(CATEGORY_META).map(([key, value]) => (
+            <View key={key} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: value.color }]} />
+              <Text style={styles.legendText}>{value.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      <View nativeID={mapContainerId} style={styles.kakaoMap} />
+      <View style={styles.mapCard}>
+        <View nativeID={mapContainerId} style={styles.kakaoMap} />
+        {kakaoStatus !== "ready" ? (
+          <View style={styles.noticeOverlay}>
+            {kakaoStatus === "loading" ? (
+              <>
+                <ActivityIndicator size="small" color={Theme.colors.primary} />
+                <Text style={styles.noticeText}>카카오 지도 로딩 중...</Text>
+              </>
+            ) : kakaoStatus === "no-key" ? (
+              <Text style={styles.noticeText}>`EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` 설정이 필요합니다.</Text>
+            ) : (
+              <Text style={styles.noticeText}>지도 로드 실패: {kakaoError ?? "알 수 없는 오류"}</Text>
+            )}
+          </View>
+        ) : null}
+      </View>
 
-      {kakaoStatus !== "ready" ? (
-        <View style={styles.noticeCard}>
-          {kakaoStatus === "loading" ? (
-            <>
-              <ActivityIndicator size="small" color={Colors.young.primary} />
-              <Text style={styles.noticeText}>카카오 지도를 불러오는 중입니다...</Text>
-            </>
-          ) : kakaoStatus === "no-key" ? (
-            <View style={styles.noticeTextWrap}>
-              <Text style={styles.noticeTitle}>카카오 웹 지도 키 필요</Text>
-              <Text style={styles.noticeText}>`EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`를 설정해주세요.</Text>
-            </View>
-          ) : (
-            <View style={styles.noticeTextWrap}>
-              <Text style={styles.noticeTitle}>카카오 지도 로드 실패</Text>
-              <Text style={styles.noticeText}>원인: {kakaoError ?? "알 수 없는 오류"}</Text>
-              <Text style={styles.noticeText}>카카오 개발자 콘솔 `앱 설정 → 플랫폼 → Web` 도메인에 `http://localhost:8081`, `http://127.0.0.1:8081`을 등록해주세요.</Text>
-              <Text style={styles.noticeText}>`제품 링크 관리`가 아니라 `플랫폼(Web)` 페이지입니다.</Text>
-            </View>
-          )}
+      {selectedMarker ? (
+        <View style={styles.selectedCard}>
+          <View style={styles.selectedHeader}>
+            <View
+              style={[
+                styles.selectedDot,
+                { backgroundColor: CATEGORY_META[selectedMarker.category]?.color ?? Theme.colors.primary }
+              ]}
+            />
+            <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
+          </View>
+          <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
+          <Text style={styles.selectedCoord}>
+            {selectedMarker.lat.toFixed(4)}, {selectedMarker.lng.toFixed(4)}
+          </Text>
         </View>
       ) : null}
 
-      {loadingMarkers ? (
-        <View style={styles.infoCard}>
-          <ActivityIndicator size="small" color={Colors.young.primary} />
-          <Text style={styles.infoText}>마커 데이터 조회 중...</Text>
-        </View>
-      ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.markerScroll}>
+        {markers.map((marker) => {
+          const active = marker.id === selectedMarkerId;
+          const meta = CATEGORY_META[marker.category] ?? CATEGORY_META.attraction;
+          return (
+            <Pressable
+              key={marker.id}
+              style={[styles.markerChip, active && styles.markerChipActive]}
+              onPress={() => setSelectedMarkerId(marker.id)}
+            >
+              <Ionicons
+                name={meta.icon}
+                size={14}
+                color={active ? Theme.colors.primary : Theme.colors.textSecondary}
+              />
+              <Text numberOfLines={1} style={[styles.markerChipText, active && styles.markerChipTextActive]}>
+                {marker.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA", padding: Spacing.screenPadding, gap: Spacing.md },
-  header: {
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.common.gray100,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm
-  },
-  headerTitle: { ...Typography.normal.h3, color: Colors.common.black },
-  headerSub: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 4 },
-  kakaoMap: {
+  container: {
     flex: 1,
-    minHeight: 440,
+    backgroundColor: Theme.colors.background,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 12
+  },
+  summaryCard: {
+    backgroundColor: Theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
+    borderColor: Theme.colors.borderLight,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    ...Theme.shadow.sm
+  },
+  title: {
+    fontSize: 21,
+    lineHeight: 27,
+    fontWeight: "800",
+    color: Theme.colors.textPrimary
+  },
+  subtitle: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  legendRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4
+  },
+  legendText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  mapCard: {
+    flex: 1,
+    minHeight: 320,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
     overflow: "hidden",
     backgroundColor: "#EAF4FF"
   },
-  noticeCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#FFE58F",
-    backgroundColor: "#FFFBE6",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: Spacing.xs
+  kakaoMap: {
+    flex: 1,
+    minHeight: 300
   },
-  noticeTextWrap: { flex: 1 },
-  noticeTitle: {
-    ...Typography.normal.bodySmall,
-    color: "#8C6D1F",
-    fontWeight: "700",
-    marginBottom: 2
+  noticeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    gap: 8
   },
-  noticeText: { ...Typography.normal.caption, color: "#8C6D1F", lineHeight: 18 },
-  infoCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
+  noticeText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textPrimary,
+    fontWeight: "600",
+    textAlign: "center"
+  },
+  selectedCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    borderColor: Theme.colors.border,
+    padding: 12,
+    ...Theme.shadow.sm
+  },
+  selectedHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm
+    gap: 6
   },
-  infoText: { ...Typography.normal.caption, color: Colors.common.gray600 },
+  selectedDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5
+  },
+  selectedTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  selectedSub: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  selectedCoord: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textTertiary,
+    fontWeight: "600"
+  },
+  markerScroll: {
+    gap: 8,
+    paddingRight: 20
+  },
+  markerChip: {
+    minWidth: 120,
+    maxWidth: 180,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 9
+  },
+  markerChipActive: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
+  },
+  markerChipText: {
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  markerChipTextActive: {
+    color: Theme.colors.primary
+  }
 });

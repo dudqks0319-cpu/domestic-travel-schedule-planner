@@ -7,6 +7,7 @@ import Button from "../../components/common/Button";
 import Header from "../../components/common/Header";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 import Typography from "../../constants/Typography";
 import { loadPersistedOptimizedRoute, type OptimizedRoute, type RoutePoint } from "../../services/routeApi";
 
@@ -34,6 +35,25 @@ type DayRow = {
 
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 const STOP_DWELL_MINUTES = 60;
+
+const DESTINATION_CENTERS: Record<string, { lat: number; lng: number }> = {
+  제주: { lat: 33.4996, lng: 126.5312 },
+  부산: { lat: 35.1796, lng: 129.0756 },
+  서울: { lat: 37.5665, lng: 126.978 },
+  강릉: { lat: 37.7519, lng: 128.8761 },
+  여수: { lat: 34.7604, lng: 127.6622 },
+  경주: { lat: 35.8562, lng: 129.2247 },
+  전주: { lat: 35.8242, lng: 127.148 },
+  인천: { lat: 37.4563, lng: 126.7052 },
+  속초: { lat: 38.207, lng: 128.5918 },
+  포항: { lat: 36.019, lng: 129.3435 }
+};
+
+const FALLBACK_POINT_OFFSETS = [
+  { lat: 0, lng: 0 },
+  { lat: 0.012, lng: 0.014 },
+  { lat: -0.011, lng: -0.009 }
+];
 
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -69,6 +89,33 @@ function toRoutePoint(raw: unknown, index: number): RoutePoint | null {
   return { id, name, lat, lng };
 }
 
+function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
+  const normalized = destination.trim();
+  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
+  if (entry) {
+    return entry[1];
+  }
+
+  return { lat: 37.5665, lng: 126.978 };
+}
+
+function buildFallbackTripPoints(destination: string): RoutePoint[] {
+  const safeDestination = destination.trim();
+  if (!safeDestination) {
+    return [];
+  }
+
+  const center = resolveDestinationCenter(safeDestination);
+  const names = [`${safeDestination} 출발`, `${safeDestination} 추천 스팟`, `${safeDestination} 마무리`];
+
+  return names.map((name, index) => ({
+    id: `trip-fallback-${index + 1}`,
+    name,
+    lat: center.lat + FALLBACK_POINT_OFFSETS[index].lat,
+    lng: center.lng + FALLBACK_POINT_OFFSETS[index].lng
+  }));
+}
+
 function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
   if (!rawTrip || typeof rawTrip !== "object") {
     return [];
@@ -76,14 +123,21 @@ function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
 
   const value = rawTrip as Record<string, unknown>;
   const routePoints = value.routePoints;
+  const destination = typeof value.destination === "string" ? value.destination : "";
 
   if (!Array.isArray(routePoints)) {
-    return [];
+    return buildFallbackTripPoints(destination);
   }
 
-  return routePoints
+  const parsed = routePoints
     .map((item, index) => toRoutePoint(item, index))
     .filter((item): item is RoutePoint => item !== null);
+
+  if (parsed.length >= 2) {
+    return parsed;
+  }
+
+  return buildFallbackTripPoints(destination);
 }
 
 function parseTripMeta(rawTrip: unknown): TripMeta {
@@ -138,6 +192,25 @@ function distanceKm(from: RoutePoint, to: RoutePoint): number {
     Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) * Math.sin(lngDiff / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return radiusKm * c;
+}
+
+function isRouteAlignedWithTrip(route: OptimizedRoute, tripPoints: RoutePoint[]): boolean {
+  if (tripPoints.length < 2 || route.orderedPoints.length < 2) {
+    return false;
+  }
+
+  const routeStart = route.orderedPoints[0];
+  const routeEnd = route.orderedPoints[route.orderedPoints.length - 1];
+  const tripStart = tripPoints[0];
+  const tripEnd = tripPoints[tripPoints.length - 1];
+
+  if (!routeStart || !routeEnd || !tripStart || !tripEnd) {
+    return false;
+  }
+
+  const startDistanceKm = distanceKm(routeStart, tripStart);
+  const endDistanceKm = distanceKm(routeEnd, tripEnd);
+  return startDistanceKm <= 15 && endDistanceKm <= 15;
 }
 
 function buildFallbackRoute(points: RoutePoint[]): OptimizedRoute | null {
@@ -305,13 +378,20 @@ export default function ScheduleScreen() {
           return;
         }
 
-        setRoute(savedRoute);
-
+        let parsedPoints: RoutePoint[] = [];
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
-          setCurrentTripPoints(parseCurrentTripPoints(parsedCurrentTrip));
+          parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          setCurrentTripPoints(parsedPoints);
           setTripMeta(parseTripMeta(parsedCurrentTrip));
+        } else {
+          setCurrentTripPoints([]);
+          setTripMeta({ destination: "여행", startDate: "", endDate: "" });
         }
+
+        const alignedSavedRoute =
+          savedRoute && isRouteAlignedWithTrip(savedRoute, parsedPoints) ? savedRoute : null;
+        setRoute(alignedSavedRoute);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -469,18 +549,18 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.common.gray50
+    backgroundColor: Theme.colors.background
   },
   frame: {
     flex: 1,
     width: "100%",
-    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    maxWidth: Platform.OS === "web" ? 500 : "100%",
     alignSelf: "center"
   },
   scrollContent: {
     paddingHorizontal: Spacing.screenPadding,
-    paddingBottom: 36,
-    gap: Spacing.lg
+    paddingBottom: 28,
+    gap: 12
   },
   fallbackNoticeCard: {
     backgroundColor: "#FFF9DB",
@@ -495,89 +575,91 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: "row",
-    gap: Spacing.sm
+    gap: 10
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: Colors.common.white,
-    borderRadius: 14,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.sm
+    borderColor: Theme.colors.borderLight,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    ...Theme.shadow.sm
   },
   summaryLabel: {
     ...Typography.normal.caption,
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   summaryValue: {
     ...Typography.normal.bodySmall,
-    marginTop: 4,
-    color: Colors.common.gray800,
+    marginTop: 5,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   dayTabRow: {
-    gap: Spacing.sm,
-    paddingRight: Spacing.md
+    gap: 8,
+    paddingRight: 12
   },
   dayTab: {
-    backgroundColor: Colors.common.white,
-    borderRadius: 12,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 13,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    borderColor: Theme.colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     minWidth: 116
   },
   dayTabActive: {
-    borderColor: Colors.young.primary,
-    backgroundColor: "#EAF4FF"
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
   },
   dayTabTitle: {
     ...Typography.normal.caption,
-    color: Colors.common.gray700,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   dayTabTitleActive: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   dayTabDate: {
     ...Typography.normal.caption,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     marginTop: 2
   },
   dayTabDateActive: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   tableCard: {
-    backgroundColor: Colors.common.white,
+    backgroundColor: Theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.common.gray200,
-    overflow: "hidden"
+    borderColor: Theme.colors.borderLight,
+    overflow: "hidden",
+    ...Theme.shadow.sm
   },
   activeDaySummary: {
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: "#F7FAFF",
+    backgroundColor: "#F3F8FF",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.common.gray200
+    borderBottomColor: Theme.colors.borderLight
   },
   activeDaySummaryTitle: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   activeDaySummaryDate: {
     ...Typography.normal.caption,
-    color: Colors.common.gray600,
+    color: Theme.colors.textSecondary,
     marginTop: 3
   },
   tableHeaderRow: {
     flexDirection: "row",
-    backgroundColor: "#EEF3FA",
+    backgroundColor: "#EEF4FC",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.common.gray200,
+    borderBottomColor: Theme.colors.borderLight,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: "center",
@@ -585,7 +667,7 @@ const styles = StyleSheet.create({
   },
   tableHeaderText: {
     ...Typography.normal.caption,
-    color: Colors.common.gray700,
+    color: Theme.colors.textSecondary,
     fontWeight: "700"
   },
   tableRow: {
@@ -601,7 +683,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FBFF"
   },
   tableRowMove: {
-    backgroundColor: "#FBF8FF"
+    backgroundColor: "#FBF9FF"
   },
   timeCol: {
     width: 92
@@ -614,7 +696,7 @@ const styles = StyleSheet.create({
   },
   tableTime: {
     ...Typography.normal.caption,
-    color: Colors.common.gray700,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   typeBadge: {
@@ -624,29 +706,29 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   stopBadge: {
-    backgroundColor: "#EAF4FF"
+    backgroundColor: Theme.colors.primaryLight
   },
   moveBadge: {
-    backgroundColor: "#F4ECFF"
+    backgroundColor: "#EFE9FF"
   },
   typeBadgeText: {
     ...Typography.normal.caption,
     fontWeight: "700"
   },
   stopBadgeText: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   moveBadgeText: {
     color: "#7A4CC9"
   },
   tableTitle: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
   tableDetail: {
     ...Typography.normal.caption,
-    color: Colors.common.gray600,
+    color: Theme.colors.textSecondary,
     marginTop: 4
   },
   emptyDayRow: {
@@ -655,7 +737,7 @@ const styles = StyleSheet.create({
   },
   emptyDayText: {
     ...Typography.normal.bodySmall,
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   bottomActions: {
     gap: Spacing.sm,

@@ -1,198 +1,299 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, RefreshControl, Platform } from "react-native";
+import React from "react";
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Button from "../../components/common/Button";
-import { getUserProfile } from "../../lib/secure-storage";
+import Theme from "../../constants/Theme";
 import { useAuth } from "../providers/auth-provider";
-import { tripsApi } from "../../services/api";
 
-import type { UserSignupProfile } from "../../types";
+const EARN_ITEMS = [
+  { id: "earn-review", icon: "create-outline" as const, label: "리뷰 작성", point: "+50P" },
+  { id: "earn-photo", icon: "images-outline" as const, label: "사진 업로드", point: "+50P" },
+  { id: "earn-daily", icon: "calendar-outline" as const, label: "매일 방문", point: "+50P" },
+  { id: "earn-like", icon: "heart-outline" as const, label: "좋아요 클릭", point: "+50P" }
+];
 
-const companionLabel: Record<string, string> = {
-  solo: "혼자", friends: "친구", couple: "커플",
-  family_kids: "가족(아이)", family_no_kids: "가족", parents: "부모님과",
-};
-const styleLabel: Record<string, string> = { J: "계획형", P: "여유형" };
-const transportLabel: Record<string, string> = { car: "자차", transit: "대중교통", walk: "도보" };
+const USE_ITEMS = [
+  { id: "use-premium", icon: "card-outline" as const, label: "프리미엄 구독", point: "2,000P" },
+  { id: "use-coupon", icon: "ticket-outline" as const, label: "할인 쿠폰", point: "500P" },
+  { id: "use-gift", icon: "cafe-outline" as const, label: "스타벅스", point: "300P" }
+];
+
+const TRIPS = [
+  { id: "trip-1", title: "성산일출봉", image: "https://images.unsplash.com/photo-1573270689103-d7a4e42b6096?w=500&q=80" },
+  { id: "trip-2", title: "한라산", image: "https://images.unsplash.com/photo-1528127269322-539801943592?w=500&q=80" },
+  { id: "trip-3", title: "우도", image: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=500&q=80" }
+];
+
+function ActionCard({ icon, label, point }: { icon: keyof typeof Ionicons.glyphMap; label: string; point: string }) {
+  return (
+    <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
+      <Ionicons name={icon} size={22} color={Theme.colors.textPrimary} />
+      <Text style={styles.actionLabel}>{label}</Text>
+      <Text style={styles.actionPoint}>{point}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { logout } = useAuth();
-  const [userData, setUserData] = useState<UserSignupProfile | null>(null);
-  const [tripCount, setTripCount] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      const data = await getUserProfile<UserSignupProfile>();
-      if (data) setUserData(data);
-    } catch { setUserData(null); }
-
-    try {
-      const res = await tripsApi.list();
-      setTripCount(res.data.trips?.length ?? 0);
-    } catch { setTripCount(0); }
-  }, []);
-
-  useEffect(() => { void loadData(); }, [loadData]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  const confirmLogout = async () => {
-    try { await logout(); router.replace("/auth/login"); }
-    catch { Alert.alert("오류", "로그아웃에 실패했어요."); }
-  };
+  const point = 1850;
+  const nextTierPoint = 2000;
+  const progress = Math.min(1, point / nextTierPoint);
 
   const handleLogout = () => {
     Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
       { text: "취소", style: "cancel" },
-      { text: "로그아웃", style: "destructive", onPress: () => { void confirmLogout(); } },
+      {
+        text: "로그아웃",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          router.replace("/auth/login");
+        }
+      }
     ]);
   };
 
-  const initial = userData?.nickname?.[0]?.toUpperCase() ?? "?";
-  const tags: string[] = [];
-  if (userData?.companion) tags.push(companionLabel[userData.companion] ?? userData.companion);
-  if (userData?.travelStyle) tags.push(styleLabel[userData.travelStyle] ?? userData.travelStyle);
-  if (userData?.transport) tags.push(transportLabel[userData.transport] ?? userData.transport);
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-    >
-      <View style={styles.profileCard}>
-        <View style={styles.avatarRing}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+    <View style={styles.container}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.profileTop}>
+          <Image
+            source={{ uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80" }}
+            style={styles.avatar}
+          />
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>지현</Text>
+            <View style={styles.badge}>
+              <Ionicons name="checkmark-circle" size={13} color="#111827" />
+              <Text style={styles.badgeText}>Star Reviewer</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.nickname}>{userData?.nickname ?? "여행자"}</Text>
-        <Text style={styles.email}>{userData?.email ?? ""}</Text>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{tripCount}</Text>
-            <Text style={styles.statLabel}>여행</Text>
+        <View style={styles.pointCard}>
+          <Text style={styles.pointValue}>{point.toLocaleString()}P</Text>
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>리뷰</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>0P</Text>
-            <Text style={styles.statLabel}>포인트</Text>
+
+          <Text style={styles.progressText}>프리미엄까지 {nextTierPoint - point}P</Text>
+
+          <View style={styles.tierRow}>
+            <Ionicons name="medal-outline" size={16} color={Theme.colors.textPrimary} />
+            <Text style={styles.tierText}>실버 등급</Text>
           </View>
         </View>
-      </View>
 
-      {tags.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>나의 여행 스타일</Text>
-          <View style={styles.tagRow}>
-            {tags.map((tag) => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
+        <Text style={styles.sectionTitle}>포인트 적립</Text>
+        <View style={styles.grid4}>
+          {EARN_ITEMS.map((item) => (
+            <ActionCard key={item.id} icon={item.icon} label={item.label} point={item.point} />
+          ))}
         </View>
-      )}
 
-      <View style={styles.menuSection}>
-        {[
-          { emoji: "📅", title: "내 여행 일정", value: `${tripCount}개` },
-          { emoji: "🔔", title: "알림 설정", value: "" },
-          { emoji: "📱", title: "앱 정보", value: "v0.1.0" },
-          { emoji: "📝", title: "피드백 보내기", value: "" },
-        ].map((item, index, arr) => (
-          <TouchableOpacity
-            key={item.title}
-            style={[styles.menuItem, index === arr.length - 1 && styles.menuItemLast]}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.menuEmoji}>{item.emoji}</Text>
-            <Text style={styles.menuTitle}>{item.title}</Text>
-            {item.value ? <Text style={styles.menuValue}>{item.value}</Text> : null}
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        <Text style={styles.sectionTitle}>포인트 사용</Text>
+        <View style={styles.grid3}>
+          {USE_ITEMS.map((item) => (
+            <ActionCard key={item.id} icon={item.icon} label={item.label} point={item.point} />
+          ))}
+        </View>
 
-      <View style={styles.logoutArea}>
-        <Button
-          title="로그아웃"
-          onPress={handleLogout}
-          variant="outline"
-          size="medium"
-          color={Colors.common.error}
-        />
-      </View>
-    </ScrollView>
+        <Text style={styles.sectionTitle}>내 여행</Text>
+        <View style={styles.tripRow}>
+          {TRIPS.map((trip) => (
+            <TouchableOpacity key={trip.id} style={styles.tripItem} activeOpacity={0.85}>
+              <Image source={{ uri: trip.image }} style={styles.tripImage} />
+              <Text style={styles.tripTitle}>{trip.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.75}>
+          <Text style={styles.logoutText}>로그아웃</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: Theme.colors.background },
   content: {
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingTop: 42,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
     width: "100%",
-    maxWidth: Platform.OS === "web" ? 520 : "100%",
+    maxWidth: Platform.OS === "web" ? 500 : "100%",
     alignSelf: "center"
   },
-  profileCard: {
-    backgroundColor: "#FFF", marginHorizontal: Spacing.screenPadding,
-    borderRadius: 24, padding: 28, alignItems: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 5,
-  },
-  avatarRing: {
-    width: 84, height: 84, borderRadius: 42, borderWidth: 3,
-    borderColor: Colors.young.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: 12,
+  profileTop: {
+    alignItems: "center",
+    marginBottom: 16
   },
   avatar: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: Colors.young.primary, alignItems: "center", justifyContent: "center",
+    width: 84,
+    height: 84,
+    borderRadius: 42
   },
-  avatarText: { fontSize: 28, fontWeight: "800", color: "#FFF" },
-  nickname: { fontSize: 22, fontWeight: "800", color: Colors.common.black },
-  email: { fontSize: 14, color: Colors.common.gray500, marginTop: 4 },
-  statsRow: {
-    flexDirection: "row", marginTop: 20, paddingTop: 20,
-    borderTopWidth: 1, borderTopColor: Colors.common.gray100, width: "100%",
+  nameRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
   },
-  statItem: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 20, fontWeight: "800", color: Colors.young.primary },
-  statLabel: { fontSize: 12, color: Colors.common.gray500, marginTop: 4 },
-  statDivider: { width: 1, backgroundColor: Colors.common.gray200 },
-  section: { marginTop: 24, paddingHorizontal: Spacing.screenPadding },
-  sectionTitle: { fontSize: 17, fontWeight: "700", color: Colors.common.gray800, marginBottom: 12 },
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tag: { backgroundColor: "#EBF5FF", borderRadius: 12, paddingVertical: 8, paddingHorizontal: 14 },
-  tagText: { fontSize: 14, fontWeight: "600", color: Colors.young.primary },
-  menuSection: {
-    marginTop: 24, marginHorizontal: Spacing.screenPadding,
-    backgroundColor: "#FFF", borderRadius: 20, overflow: "hidden",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  name: {
+    fontSize: 52,
+    lineHeight: 56,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
   },
-  menuItem: {
-    flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 20,
-    borderBottomWidth: 1, borderBottomColor: Colors.common.gray100,
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
-  menuItemLast: { borderBottomWidth: 0 },
-  menuEmoji: { fontSize: 22, marginRight: 14 },
-  menuTitle: { flex: 1, fontSize: 16, fontWeight: "500", color: Colors.common.gray700 },
-  menuValue: { fontSize: 14, color: Colors.common.gray400, marginRight: 8 },
-  menuArrow: { fontSize: 22, color: Colors.common.gray400 },
-  logoutArea: { marginTop: 28, paddingHorizontal: Spacing.screenPadding, alignItems: "center" },
+  badgeText: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  pointCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 18,
+    alignItems: "center",
+    ...Theme.shadow.sm
+  },
+  pointValue: {
+    fontSize: 66,
+    lineHeight: 72,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  progressTrack: {
+    marginTop: 12,
+    width: "100%",
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "#E5E7EB",
+    overflow: "hidden"
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#B0B0B0"
+  },
+  progressText: {
+    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  tierRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.borderLight,
+    paddingTop: 10,
+    width: "100%",
+    justifyContent: "center"
+  },
+  tierText: {
+    fontSize: 16,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  sectionTitle: {
+    marginTop: 20,
+    marginBottom: 10,
+    fontSize: 42,
+    lineHeight: 46,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  grid4: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
+  grid3: {
+    flexDirection: "row",
+    gap: 10
+  },
+  actionCard: {
+    flex: 1,
+    minWidth: "22%",
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    ...Theme.shadow.sm
+  },
+  actionLabel: {
+    marginTop: 6,
+    fontSize: 15,
+    lineHeight: 19,
+    textAlign: "center",
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  actionPoint: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  tripRow: {
+    flexDirection: "row",
+    gap: 10
+  },
+  tripItem: {
+    flex: 1
+  },
+  tripImage: {
+    width: "100%",
+    height: 74,
+    borderRadius: 10
+  },
+  tripTitle: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 18,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700",
+    textAlign: "center"
+  },
+  logoutButton: {
+    marginTop: 22,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.error,
+    paddingVertical: 12,
+    alignItems: "center"
+  },
+  logoutText: {
+    fontSize: 14,
+    color: Theme.colors.error,
+    fontWeight: "800"
+  }
 });
