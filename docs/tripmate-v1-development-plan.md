@@ -1310,3 +1310,27 @@ Verification completed:
 Remaining risks:
 - This is a static contract check; it complements but does not replace live Worker smoke against local/preview D1/KV/R2 bindings.
 - Local `check:dev` still reports expected warnings for missing local env files and placeholder preview/production Cloudflare resource ids.
+
+## Production Fallback Guard Contract Result Record
+
+Plan:
+- Re-check mobile fallback/synthetic coordinate surfaces.
+- Make fallback timeline copy production-safe.
+- Extend release contract checks so production synthetic-place and estimated-route labeling cannot regress silently.
+
+Completed:
+- Replaced the schedule fallback timeline copy that implied the view was development-only.
+- Added release contract checks for development/test-only synthetic preview point guards in schedule and route-map screens.
+- Added release contract checks for production fallback warning copy on the route-map screen.
+- Added release contract checks for estimated route notices and dashed estimated polylines in native and web map views.
+- Added a release contract check that route optimization does not silently fallback on non-recoverable provider errors.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is still a static check; final release needs device/browser smoke to verify the warning and dashed route affordances render correctly.

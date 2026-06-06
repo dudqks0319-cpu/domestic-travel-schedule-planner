@@ -91,6 +91,11 @@ const monetizationRoutes = readText("services/api-worker/src/routes/monetization
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
 const indexRoutes = readText("services/api-worker/src/index.ts");
+const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
+const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
+const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
+const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
+const routeApi = readText("apps/mobile/services/routeApi.ts");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
@@ -131,6 +136,69 @@ for (const [content, routeText, label] of routeContracts) {
   if (!content.includes(routeText)) {
     errors.push(`Missing Worker route contract: ${label}`);
   }
+}
+
+const productionFallbackContracts = [
+  [
+    scheduleScreen,
+    'const ALLOW_DEVELOPMENT_PREVIEW_POINTS =\n  CURRENT_NODE_ENV === "development" || CURRENT_NODE_ENV === "test";',
+    "schedule synthetic preview points must be development/test gated"
+  ],
+  [
+    routeMapScreen,
+    'const ALLOW_DEVELOPMENT_PREVIEW_POINTS =\n  CURRENT_NODE_ENV === "development" || CURRENT_NODE_ENV === "test";',
+    "route-map synthetic preview points must be development/test gated"
+  ],
+  [
+    routeMapScreen,
+    "shouldShowProductionFallbackWarning",
+    "route-map must show production fallback warning"
+  ],
+  [
+    routeMapScreen,
+    "실제 길찾기 결과가 아닙니다",
+    "route-map production fallback copy must be explicit"
+  ],
+  [
+    scheduleScreen,
+    "예상 일정표입니다",
+    "schedule fallback timeline copy must be explicit"
+  ],
+  [
+    nativeRouteMapView,
+    "실제 길찾기 provider 결과가 아닌 예상 이동시간과 예상 연결선입니다.",
+    "native map estimated-route copy must be explicit"
+  ],
+  [
+    nativeRouteMapView,
+    "lineDashPattern={isEstimatedRoute",
+    "native map estimated route must be dashed"
+  ],
+  [
+    webRouteMapView,
+    'strokeStyle: isEstimatedRoute ? "dash" : "solid"',
+    "web map estimated route must be dashed"
+  ],
+  [
+    webRouteMapView,
+    "실제 길찾기 provider 결과가 아닌 예상 이동시간과 예상 연결선입니다.",
+    "web map estimated-route copy must be explicit"
+  ],
+  [
+    routeApi,
+    "if (!fallbackAllowed) {\n        throw error;\n      }",
+    "route API must not silently fallback on non-recoverable provider errors"
+  ]
+];
+
+for (const [content, expectedText, label] of productionFallbackContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing production fallback guard: ${label}`);
+  }
+}
+
+if (scheduleScreen.includes("개발 환경에서만 저장된 경유지")) {
+  errors.push("Schedule fallback copy must not claim production-visible fallback timelines are development-only.");
 }
 
 const requiredTables = [

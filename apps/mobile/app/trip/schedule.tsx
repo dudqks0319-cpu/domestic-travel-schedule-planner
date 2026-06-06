@@ -1282,7 +1282,7 @@ export default function ScheduleScreen() {
               {isFallbackTimeline ? (
                 <View style={styles.fallbackNoticeCard}>
                   <Text style={styles.fallbackNoticeText}>
-                    개발 환경에서만 저장된 경유지 순서로 임시 일정표를 보여드리고 있어요.
+                    저장된 장소 좌표와 경유지 순서를 바탕으로 만든 예상 일정표입니다. 실제 이동시간은 경로 최적화 후 확인해 주세요.
                   </Text>
                 </View>
               ) : null}
