@@ -312,6 +312,49 @@ if (sharePageRoutes.includes("공유 토큰:") || sharePageRoutes.includes("shar
   errors.push("Public share page must not render share token fragments.");
 }
 
+const publicShareApiPrivacyContracts = [
+  [
+    tripRoutes,
+    "setPublicShareResponseHeaders",
+    "Public share API must set privacy/security headers"
+  ],
+  [
+    tripRoutes,
+    "setPublicShareResponseHeaders(c);",
+    "Public share API route must apply privacy/security headers"
+  ],
+  [
+    tripRoutes,
+    "private, no-store",
+    "Public share API must prevent shared itinerary caching"
+  ],
+  [
+    tripRoutes,
+    "noindex, nofollow",
+    "Public share API must prevent indexing"
+  ],
+  [
+    workerSmokeScript,
+    "share create should return public token",
+    "Worker smoke must use the generated public share token"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should not echo the bearer token",
+    "Worker smoke must verify public share token redaction"
+  ]
+];
+
+for (const [content, expectedText, label] of publicShareApiPrivacyContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing public share API privacy contract: ${label}`);
+  }
+}
+
+if (tripRoutes.includes("token: sharedTrip.share_token")) {
+  errors.push("Public share API must not echo sharedTrip.share_token.");
+}
+
 const premiumStorageContracts = [
   [
     tripRoutes,

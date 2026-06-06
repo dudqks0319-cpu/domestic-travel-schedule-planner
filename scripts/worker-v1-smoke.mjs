@@ -352,9 +352,11 @@ await step("trip, day, place, and share CRUD", async () => {
 
   const share = await request("POST", `/api/v1/trips/${tripId}/share`);
   assertStatus(share, 201, "POST /api/v1/trips/:tripId/share");
-  shareId = share.body?.share?.id ?? "";
-  assert(shareId, "share create should return id");
-  assertOk(await request("GET", `/api/v1/share/${shareId}`, { auth: false }), "GET /api/v1/share/:shareId");
+  shareId = share.body?.share?.token ?? "";
+  assert(shareId, "share create should return public token");
+  const publicShare = await request("GET", `/api/v1/share/${shareId}`, { auth: false });
+  assertOk(publicShare, "GET /api/v1/share/:shareId");
+  assert(!publicShare.body?.share?.token, "public share read should not echo the bearer token");
 });
 
 await step("free saved trip limit", async () => {

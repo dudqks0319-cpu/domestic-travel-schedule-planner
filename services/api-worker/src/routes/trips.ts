@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import type { AppBindings } from "../bindings";
 import { createAuditLog } from "../db/audit";
@@ -41,6 +41,13 @@ export const tripRoutes = new Hono<AppBindings>();
 export const shareRoutes = new Hono<AppBindings>();
 
 const FREE_TRIP_SAVE_LIMIT = 3;
+
+function setPublicShareResponseHeaders(c: Context<AppBindings>): void {
+  c.header("cache-control", "private, no-store");
+  c.header("x-robots-tag", "noindex, nofollow");
+  c.header("referrer-policy", "no-referrer");
+  c.header("x-content-type-options", "nosniff");
+}
 
 function currentUserId(c: { get: (key: "userId") => string | undefined }): string {
   const userId = c.get("userId");
@@ -1260,6 +1267,8 @@ tripRoutes.post("/:tripId/share", async (c) => {
 });
 
 shareRoutes.get("/:shareId", async (c) => {
+  setPublicShareResponseHeaders(c);
+
   const sharedTrip = await getSharedTrip(c.env.DB, c.req.param("shareId"));
   if (!sharedTrip) {
     return errorResponse(c, 404, "SHARE_NOT_FOUND", "공유 링크를 찾을 수 없습니다.");
@@ -1282,7 +1291,6 @@ shareRoutes.get("/:shareId", async (c) => {
     ok: true,
     share: {
       id: sharedTrip.share_id,
-      token: sharedTrip.share_token,
       expiresAt: sharedTrip.share_expires_at
     },
     trip: {

@@ -1847,3 +1847,32 @@ Remaining risks:
 - Live Worker/browser smoke is still needed to inspect response headers from a deployed preview Worker.
 - Public share URLs remain bearer links by design; users should treat them as sensitive until an optional password or recipient-scoped sharing model is added.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Public Share API Token Redaction Result Record
+
+Plan:
+- Keep owner-only share creation returning the public token because mobile needs it to build share URLs.
+- Remove bearer token echoing from unauthenticated public share JSON reads.
+- Add no-store/noindex/no-referrer response headers to public share JSON reads.
+- Update Worker smoke and static release contracts so public share reads use the generated token but do not return it.
+
+Completed:
+- Added public share JSON response headers for cache prevention, indexing prevention, referrer privacy, and content-type hardening.
+- Removed `share.token` from `GET /api/v1/share/:shareId` responses.
+- Updated Worker smoke to call the public share endpoint with the generated token and assert the response does not echo that bearer token.
+- Added release contract checks for public share JSON headers and token redaction.
+- Added the public share JSON privacy requirement to `docs/privacy-security-checklist.md`.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Worker smoke with D1 is still required to execute the public share token-redaction assertion against a real database.
+- Public share URLs remain bearer links; recipient-scoped access or password-protected sharing remains a future privacy hardening option.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
