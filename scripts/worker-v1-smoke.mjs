@@ -73,6 +73,20 @@ function smokeName(prefix) {
   return `${prefix}-${Date.now()}`;
 }
 
+function buildLongExportPlaces() {
+  return Array.from({ length: 46 }, (_, index) => ({
+    clientId: `smoke-export-place-${index + 1}`,
+    providerPlaceId: `smoke-export-provider-${index + 1}`,
+    name: `강릉 PDF 다중 페이지 검증 장소 ${index + 1}`,
+    category: index % 3 === 0 ? "카페" : index % 3 === 1 ? "관광지" : "맛집",
+    address: `강원 강릉시 PDF 검증로 ${100 + index}`,
+    lat: 37.75 + index * 0.001,
+    lng: 128.89 + index * 0.001,
+    dayNumber: 1,
+    sortOrder: index + 1
+  }));
+}
+
 async function loginWithDevKakao(label) {
   const result = await request("POST", "/api/v1/auth/login/kakao", {
     auth: false,
@@ -559,6 +573,18 @@ await step("monetization events and entitlement", async () => {
 });
 
 await step("premium trip export", async () => {
+  const longExportSync = await request("PATCH", `/api/v1/trips/${tripId}/places/sync`, {
+    json: {
+      pruneMissing: false,
+      places: buildLongExportPlaces()
+    }
+  });
+  assertOk(longExportSync, "PATCH /api/v1/trips/:tripId/places/sync long export fixture");
+  assert(
+    Array.isArray(longExportSync.body?.sync?.items) && longExportSync.body.sync.items.length === 46,
+    "long export fixture should sync enough places for multi-page PDF"
+  );
+
   const createdExport = await request("POST", `/api/v1/trips/${tripId}/exports`, {
     json: { format: "pdf" }
   });
@@ -587,6 +613,10 @@ await step("premium trip export", async () => {
       downloadedExport.body.includes("TripMate"),
     "premium export download should return binary TripMate PDF content"
   );
+  assert(
+    /\/Count\s+([2-9]|\d{2,})/.test(downloadedExport.body),
+    "premium export download should contain a multi-page PDF page count"
+  );
 
   const sharedDownloadedExport = await request(
     "GET",
@@ -603,6 +633,10 @@ await step("premium trip export", async () => {
       sharedDownloadedExport.body.startsWith("%PDF-") &&
       sharedDownloadedExport.body.includes("TripMate"),
     "shared export download should return binary TripMate PDF content"
+  );
+  assert(
+    /\/Count\s+([2-9]|\d{2,})/.test(sharedDownloadedExport.body),
+    "shared export download should contain a multi-page PDF page count"
   );
 
   const publicShareWithExports = await request("GET", `/api/v1/share/${shareToken}`, { auth: false });

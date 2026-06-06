@@ -1192,8 +1192,23 @@ const exportDownloadContracts = [
   ],
   [
     workerSmokeScript,
+    "long export fixture should sync enough places for multi-page PDF",
+    "Worker smoke must create enough itinerary places to exercise multi-page PDF exports"
+  ],
+  [
+    workerSmokeScript,
+    "premium export download should contain a multi-page PDF page count",
+    "Worker smoke must verify owned PDF exports render multiple pages for long itineraries"
+  ],
+  [
+    workerSmokeScript,
     "shared export download should return binary TripMate PDF content",
     "Worker smoke must verify binary shared PDF content"
+  ],
+  [
+    workerSmokeScript,
+    "shared export download should contain a multi-page PDF page count",
+    "Worker smoke must verify shared PDF exports render multiple pages for long itineraries"
   ],
   [
     workerSmokeScript,

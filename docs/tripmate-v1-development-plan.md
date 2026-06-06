@@ -3535,3 +3535,32 @@ Verification completed:
 
 Remaining risks:
 - PDF visual QA with real Korean itinerary data in a preview Worker/browser is still needed before production handoff.
+
+## Worker Multi-Page PDF Smoke Result Record
+
+Plan:
+- Make the Worker smoke test prove multi-page PDF behavior with runtime data, not only source-level release contracts.
+- Add a long itinerary fixture through the existing trip place sync endpoint before premium export generation.
+- Verify both owned and shared PDF downloads expose a PDF `/Count` greater than one.
+- Keep the fixture coordinate-safe in user-facing assertions and avoid adding external PDF parsing dependencies.
+
+Completed:
+- Added a 46-place long itinerary fixture to `scripts/worker-v1-smoke.mjs`.
+- Synced the fixture before creating the premium PDF export.
+- Added owned PDF download assertion for a multi-page `/Count`.
+- Added shared PDF download assertion for a multi-page `/Count`.
+- Updated the release contract check so future smoke edits cannot drop the long PDF coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This smoke checks PDF structure in text form; preview Worker visual QA is still needed to inspect Korean text rendering and page layout.
