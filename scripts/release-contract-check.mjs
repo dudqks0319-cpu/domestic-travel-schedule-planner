@@ -115,6 +115,7 @@ const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
+const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
@@ -157,6 +158,26 @@ const routeContracts = [
 for (const [content, routeText, label] of routeContracts) {
   if (!content.includes(routeText)) {
     errors.push(`Missing Worker route contract: ${label}`);
+  }
+}
+
+for (const text of [
+  "Placeholder trip-day and trip-place mutation endpoints",
+  "must be completed before app-store release"
+]) {
+  if (cloudflareDeploymentDoc.includes(text)) {
+    errors.push(`Cloudflare deployment docs contain stale Worker endpoint placeholder wording: ${text}`);
+  }
+}
+
+for (const text of [
+  "trip-day mutations",
+  "trip-place mutations",
+  "export preparation/downloads",
+  "operations endpoints"
+]) {
+  if (!cloudflareDeploymentDoc.includes(text)) {
+    errors.push(`Cloudflare deployment docs must describe current Worker endpoint scope: ${text}`);
   }
 }
 

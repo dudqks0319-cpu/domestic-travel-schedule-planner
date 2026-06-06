@@ -2465,3 +2465,27 @@ Verification completed:
 Remaining risks:
 - Web users without Clipboard API support must retry after enabling clipboard permission or use a supported browser; this avoids exposing bearer links in persistent UI notices.
 - Device/browser smoke is still needed for native share sheet and web clipboard permission-denied behavior.
+
+## Cloudflare Deployment Endpoint Scope Doc Result Record
+
+Plan:
+- Re-check the deployment documentation against the implemented Worker trip-day and trip-place mutation routes.
+- Remove stale wording that still described those routes as placeholder release blockers.
+- Add release contract checks so deployment docs keep reflecting the current Worker endpoint scope.
+
+Completed:
+- Updated `docs/deployment-cloudflare.md` Required Endpoints to include auth, trip-day mutations, trip-place mutations, export preparation/downloads, monetization, and operations endpoints.
+- Removed stale placeholder wording about incomplete trip-day and trip-place mutation endpoints.
+- Added release contract checks that fail if the stale placeholder wording returns or current endpoint scope terms disappear.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Preview/production deployment still requires real Cloudflare binding IDs, Worker domains, secrets, and live smoke evidence.
+- Historical phase notes may still mention earlier placeholder states; the canonical deployment document now reflects the current implementation.

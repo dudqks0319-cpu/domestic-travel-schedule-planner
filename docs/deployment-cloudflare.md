@@ -65,7 +65,7 @@ Production gates:
 
 ## Required Endpoints
 
-The Worker exposes the v1 release contract under `/api/v1`, including health, places, planner, routes, trips, share links, and monetization endpoints. Placeholder trip-day and trip-place mutation endpoints must be completed before app-store release if the mobile edit UI depends on remote persistence.
+The Worker exposes the v1 release contract under `/api/v1`, including health, auth, places, planner, routes, trips, trip-day mutations, trip-place mutations, share links, export preparation/downloads, monetization, and operations endpoints. Trip-day and trip-place editing routes are part of the release contract and are checked by `npm run check:release-contract`.
 
 ## Operational Events
 
