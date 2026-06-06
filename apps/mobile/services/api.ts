@@ -120,6 +120,7 @@ export const plannerApi = {
     destination: string;
     startDate: string;
     endDate: string;
+    styleKey?: string;
     transport?: string;
     companions?: string;
     keyword?: string;

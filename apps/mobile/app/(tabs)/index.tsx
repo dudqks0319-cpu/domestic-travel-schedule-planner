@@ -12,6 +12,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
+import {
+  DEFAULT_TRAVEL_STYLE_KEY,
+  TRAVEL_STYLE_OPTIONS,
+  type TravelStyleKey
+} from "../../constants/travelStyles";
 
 interface TravelRegion {
   id: string;
@@ -105,8 +110,6 @@ const REGIONS: TravelRegion[] = [
   }
 ];
 
-const STYLE_CHIPS = ["바다+카페", "맛집", "역사 산책", "아이와 함께", "비 오는 날"];
-
 export default function HomeScreen() {
   const router = useRouter();
   const [selectedRegionId, setSelectedRegionId] = useState(REGIONS[1].id);
@@ -116,10 +119,13 @@ export default function HomeScreen() {
     [selectedRegionId]
   );
 
-  const startTrip = (regionName = selectedRegion.name) => {
+  const startTrip = (
+    regionName = selectedRegion.name,
+    styleKey: TravelStyleKey = DEFAULT_TRAVEL_STYLE_KEY
+  ) => {
     router.push({
       pathname: "/trip/create",
-      params: { destination: regionName }
+      params: { destination: regionName, styleKey }
     });
   };
 
@@ -216,19 +222,16 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>스타일별 빠른 시작</Text>
         </View>
         <View style={styles.chipGrid}>
-          {STYLE_CHIPS.map((style) => (
+          {TRAVEL_STYLE_OPTIONS.map((style) => (
             <TouchableOpacity
-              key={style}
+              key={style.styleKey}
               style={styles.largeChip}
               activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/trip/create",
-                  params: { destination: selectedRegion.name, style }
-                })
-              }
+              onPress={() => startTrip(selectedRegion.name, style.styleKey)}
+              accessibilityRole="button"
+              accessibilityLabel={`${style.title} 일정 만들기`}
             >
-              <Text style={styles.largeChipText}>{style}</Text>
+              <Text style={styles.largeChipText}>{style.shortTitle}</Text>
               <Ionicons name="chevron-forward" size={16} color={Theme.colors.textTertiary} />
             </TouchableOpacity>
           ))}

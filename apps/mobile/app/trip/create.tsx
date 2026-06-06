@@ -16,75 +16,33 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import StepDates from "../../components/trip/StepDates";
 import StepDestination from "../../components/trip/StepDestination";
 import { Theme } from "../../constants/Theme";
+import {
+  DEFAULT_TRAVEL_STYLE_KEY,
+  TRAVEL_STYLE_OPTIONS,
+  getTravelStyleOption,
+  isTravelStyleKey,
+  type TravelStyleKey
+} from "../../constants/travelStyles";
 import { plannerApi } from "../../services/api";
 import { clearPersistedOptimizedRoute } from "../../services/routeApi";
-import type { CompanionType, TransportType, TripRouteMapPoint } from "../../types";
+import type { CurrentTripStorage, TransportType, TripRouteMapPoint } from "../../types";
 
 const TOTAL_STEPS = 3;
 const STEP_LABELS = ["지역", "날짜", "스타일"] as const;
 const STEP_ICONS = ["map-outline", "calendar-outline", "sparkles-outline"] as const;
 
-interface TravelStyleOption {
-  key: string;
-  title: string;
-  desc: string;
-  keywordSuffix: string;
-  transport: TransportType;
-  companion: CompanionType;
-  icon: keyof typeof Ionicons.glyphMap;
-}
-
-const STYLE_OPTIONS: TravelStyleOption[] = [
-  {
-    key: "sea_cafe_food",
-    title: "바다+카페+맛집",
-    desc: "해변, 로컬 카페, 식사 시간을 균형 있게 배치합니다.",
-    keywordSuffix: "바다 카페 맛집",
-    transport: "car",
-    companion: "friends",
-    icon: "cafe-outline"
-  },
-  {
-    key: "history_walk",
-    title: "역사 산책",
-    desc: "문화유산과 걷기 좋은 거리를 무리 없이 묶습니다.",
-    keywordSuffix: "역사 산책 문화",
-    transport: "walk",
-    companion: "solo",
-    icon: "footsteps-outline"
-  },
-  {
-    key: "family_easy",
-    title: "아이와 함께",
-    desc: "이동 거리를 줄이고 쉬는 시간을 넉넉히 둡니다.",
-    keywordSuffix: "가족 아이 실내",
-    transport: "car",
-    companion: "family_kids",
-    icon: "happy-outline"
-  },
-  {
-    key: "rainy_backup",
-    title: "비 오는 날",
-    desc: "실내 관광지와 식사/카페 동선을 우선합니다.",
-    keywordSuffix: "실내 전시 카페",
-    transport: "transit",
-    companion: "couple",
-    icon: "rainy-outline"
-  }
-];
-
 interface StepState {
   destination: string;
   startDate: string;
   endDate: string;
-  styleKey: string;
+  styleKey: TravelStyleKey;
 }
 
 const INITIAL: StepState = {
   destination: "",
   startDate: "",
   endDate: "",
-  styleKey: STYLE_OPTIONS[0].key
+  styleKey: DEFAULT_TRAVEL_STYLE_KEY
 };
 
 function parseDate(value: string): Date | null {
@@ -100,6 +58,15 @@ function getParamValue(value: string | string[] | undefined): string | undefined
     return value[0];
   }
   return value;
+}
+
+function resolveParamStyleKey(styleKey: string | undefined, legacyStyle: string | undefined): TravelStyleKey {
+  if (isTravelStyleKey(styleKey)) {
+    return styleKey;
+  }
+
+  const matchedLegacyStyle = getTravelStyleOption(legacyStyle);
+  return matchedLegacyStyle.styleKey;
 }
 
 function normalizeMode(transport: TransportType): "driving" | "transit" | "walking" {
@@ -140,8 +107,8 @@ function StepTravelStyle({
   selectedStyleKey,
   onSelectStyle
 }: {
-  selectedStyleKey: string;
-  onSelectStyle: (styleKey: string) => void;
+  selectedStyleKey: TravelStyleKey;
+  onSelectStyle: (styleKey: TravelStyleKey) => void;
 }) {
   return (
     <View style={styles.stepContainer}>
@@ -154,13 +121,13 @@ function StepTravelStyle({
       </View>
 
       <View style={styles.styleList}>
-        {STYLE_OPTIONS.map((option) => {
-          const selected = selectedStyleKey === option.key;
+        {TRAVEL_STYLE_OPTIONS.map((option) => {
+          const selected = selectedStyleKey === option.styleKey;
           return (
             <TouchableOpacity
-              key={option.key}
+              key={option.styleKey}
               style={[styles.styleCard, selected && styles.styleCardSelected]}
-              onPress={() => onSelectStyle(option.key)}
+              onPress={() => onSelectStyle(option.styleKey)}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={`${option.title} 선택`}
@@ -176,7 +143,7 @@ function StepTravelStyle({
                 <Text style={[styles.styleTitle, selected && styles.styleTitleSelected]}>
                   {option.title}
                 </Text>
-                <Text style={styles.styleDesc}>{option.desc}</Text>
+                <Text style={styles.styleDesc}>{option.description}</Text>
               </View>
               <View style={[styles.radio, selected && styles.radioSelected]}>
                 {selected ? <View style={styles.radioDot} /> : null}
@@ -191,22 +158,22 @@ function StepTravelStyle({
 
 export default function TripCreateScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ destination?: string; style?: string }>();
+  const params = useLocalSearchParams<{ destination?: string; style?: string; styleKey?: string }>();
   const scrollRef = useRef<ScrollView>(null);
   const paramStyle = getParamValue(params.style);
+  const paramStyleKey = getParamValue(params.styleKey);
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<StepState>(() => {
-    const matchedStyle = STYLE_OPTIONS.find((option) => option.title === paramStyle);
     return {
       ...INITIAL,
       destination: getParamValue(params.destination) ?? "",
-      styleKey: matchedStyle?.key ?? INITIAL.styleKey
+      styleKey: resolveParamStyleKey(paramStyleKey, paramStyle)
     };
   });
   const [isSaving, setIsSaving] = useState(false);
 
   const selectedStyle = useMemo(
-    () => STYLE_OPTIONS.find((option) => option.key === draft.styleKey) ?? STYLE_OPTIONS[0],
+    () => getTravelStyleOption(draft.styleKey),
     [draft.styleKey]
   );
 
@@ -285,56 +252,59 @@ export default function TripCreateScreen() {
     setIsSaving(true);
     const destination = draft.destination.trim();
     const keyword = `${destination} ${selectedStyle.keywordSuffix}`;
+    const mode = normalizeMode(selectedStyle.defaultTransport);
 
     try {
       const response = await plannerApi.generate({
         destination,
         startDate: draft.startDate,
         endDate: draft.endDate,
-        transport: selectedStyle.transport,
-        companions: selectedStyle.companion,
+        styleKey: selectedStyle.styleKey,
+        transport: selectedStyle.defaultTransport,
+        companions: selectedStyle.defaultCompanion,
         keyword
       });
       const trip = response.data.trip;
       const routePoints = extractRoutePoints(trip);
+      const currentTrip: CurrentTripStorage = {
+        id: String(trip.id),
+        title: String(trip.title),
+        destination: String(trip.destination),
+        startDate: String(trip.startDate),
+        endDate: String(trip.endDate),
+        style: selectedStyle.title,
+        styleKey: selectedStyle.styleKey,
+        transport: selectedStyle.defaultTransport,
+        mode,
+        providerStatus: routePoints.length >= 2 ? "ready" : "empty",
+        routePoints,
+        createdAt: String(trip.createdAt)
+      };
 
       await Promise.all([
-        AsyncStorage.setItem(
-          "currentTrip",
-          JSON.stringify({
-            id: trip.id,
-            title: trip.title,
-            destination: trip.destination,
-            startDate: trip.startDate,
-            endDate: trip.endDate,
-            style: selectedStyle.title,
-            transport: selectedStyle.transport,
-            mode: normalizeMode(selectedStyle.transport),
-            providerStatus: routePoints.length >= 2 ? "ready" : "empty",
-            routePoints,
-            createdAt: trip.createdAt
-          })
-        ),
+        AsyncStorage.setItem("currentTrip", JSON.stringify(currentTrip)),
         clearPersistedOptimizedRoute()
       ]);
       router.push("/trip/route-map");
     } catch {
       Alert.alert("", "추천 데이터를 불러오지 못했어요. 빈 일정 초안으로 저장합니다.");
+      const currentTrip: CurrentTripStorage = {
+        id: `trip_${Date.now()}`,
+        title: `${destination} 여행`,
+        destination,
+        startDate: draft.startDate,
+        endDate: draft.endDate,
+        style: selectedStyle.title,
+        styleKey: selectedStyle.styleKey,
+        transport: selectedStyle.defaultTransport,
+        mode,
+        providerStatus: "unavailable",
+        routePoints: [],
+        createdAt: new Date().toISOString()
+      };
       await AsyncStorage.setItem(
         "currentTrip",
-        JSON.stringify({
-          id: `trip_${Date.now()}`,
-          title: `${destination} 여행`,
-          destination,
-          startDate: draft.startDate,
-          endDate: draft.endDate,
-          style: selectedStyle.title,
-          transport: selectedStyle.transport,
-          mode: normalizeMode(selectedStyle.transport),
-          providerStatus: "unavailable",
-          routePoints: [],
-          createdAt: new Date().toISOString()
-        })
+        JSON.stringify(currentTrip)
       );
       await clearPersistedOptimizedRoute();
       router.push("/trip/route-map");

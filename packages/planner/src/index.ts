@@ -6,3 +6,23 @@ export type { Coordinate } from "./geo";
 
 export { improveRouteTwoOpt, nearestNeighborTsp, optimizeOrder } from "./nearest-neighbor";
 export type { TspLocation, TspResult } from "./nearest-neighbor";
+
+export type {
+  NormalizedPlace,
+  NormalizedRoute,
+  NormalizedRoutePoint,
+  NormalizedRouteSegment,
+  PlaceProviderAdapter,
+  PlaceProviderSearchInput,
+  ProviderKind,
+  ProviderWarning,
+  RegenerationHint,
+  RouteProviderKind,
+  RouteSummary,
+  TravelMode,
+  TravelStyleKey,
+  TripDayPlan,
+  TripPlacePlan,
+  TripPlanInput,
+  TripPlanResult
+} from "./domain";

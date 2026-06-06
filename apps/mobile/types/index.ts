@@ -17,6 +17,10 @@ export type TravelStyle = "J" | "P";
 
 export type TransportType = "car" | "transit" | "walk";
 
+export type TripTravelMode = "driving" | "transit" | "walking";
+
+export type TripProviderStatus = "ready" | "empty" | "unavailable";
+
 export type TargetGroup = "young" | "family" | "senior";
 
 export type FoodPreference =
@@ -66,6 +70,21 @@ export interface TripRouteMapPoint {
   name: string;
   latitude: number;
   longitude: number;
+}
+
+export interface CurrentTripStorage {
+  id: string;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  style: string;
+  styleKey: string;
+  transport: TransportType;
+  mode: TripTravelMode;
+  providerStatus: TripProviderStatus;
+  routePoints: TripRouteMapPoint[];
+  createdAt: string;
 }
 
 export interface TripScheduleItem {
