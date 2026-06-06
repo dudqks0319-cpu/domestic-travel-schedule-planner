@@ -739,3 +739,30 @@ Verification completed:
 Remaining risks:
 - PDF export still returns a queued preparation job until a renderer and signed download URL flow are implemented.
 - Device-level smoke is needed with an authenticated premium account to verify the full mobile request path.
+
+## Export Asset Download Result Record
+
+Plan:
+- Move export jobs beyond manifest-only output by creating an owned downloadable asset.
+- Generate a print-ready export page in R2 for premium PDF requests without adding a rendering dependency.
+- Add an authenticated download endpoint so R2 object keys are not exposed to clients.
+- Open the returned export URL from the mobile schedule PDF action when the asset is ready.
+
+Completed:
+- Added Worker export download URLs for ready export records.
+- Added `GET /api/v1/trips/:tripId/exports/:exportId/download` with auth and trip export ownership checks.
+- Stored print-ready HTML export assets in R2 for PDF export requests and marked those jobs `ready`.
+- Kept image export requests as queued server jobs because mobile still handles image capture locally.
+- Connected mobile schedule PDF export to open the returned ready export URL.
+- Updated the Worker README to distinguish current R2-backed download support from remaining binary renderer work.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The current PDF path provides a print-ready HTML page for PDF saving; a true binary PDF renderer is still needed for one-tap PDF file delivery.
+- Download access is authenticated rather than publicly signed; shared export links need a separate token model if required later.

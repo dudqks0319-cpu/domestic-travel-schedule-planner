@@ -23,10 +23,11 @@ export interface TripExportInput {
   format: TripExportFormat;
   status: TripExportStatus;
   manifestKey: string;
+  assetKey?: string;
   expiresAt?: string;
 }
 
-export function toPublicTripExport(record: TripExportRecord) {
+export function toPublicTripExport(record: TripExportRecord, downloadUrl?: string | null) {
   return {
     id: record.id,
     tripId: record.trip_id,
@@ -35,7 +36,7 @@ export function toPublicTripExport(record: TripExportRecord) {
     expiresAt: record.expires_at,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
-    downloadUrl: null as string | null
+    downloadUrl: downloadUrl ?? null
   };
 }
 
@@ -46,8 +47,8 @@ export async function createTripExport(
   await db
     .prepare(
       `INSERT INTO trip_exports (
-        id, user_id, trip_id, format, status, manifest_key, expires_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        id, user_id, trip_id, format, status, manifest_key, asset_key, expires_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       input.id,
@@ -56,6 +57,7 @@ export async function createTripExport(
       input.format,
       input.status,
       input.manifestKey,
+      input.assetKey ?? null,
       input.expiresAt ?? null
     )
     .run();

@@ -764,7 +764,18 @@ export default function ScheduleScreen() {
     setExportNotice(null);
     try {
       const response = await tripsApi.createExport(tripId, "pdf");
-      setExportNotice(`PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`);
+      const downloadUrl = response.data.export.downloadUrl;
+      if (downloadUrl) {
+        const canOpen = await Linking.canOpenURL(downloadUrl);
+        if (canOpen) {
+          await Linking.openURL(downloadUrl);
+          setExportNotice("PDF 저장용 인쇄 페이지를 열었어요.");
+        } else {
+          setExportNotice(`PDF 저장용 페이지가 준비됐어요: ${downloadUrl}`);
+        }
+      } else {
+        setExportNotice(`PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`);
+      }
     } catch {
       setExportNotice("PDF 내보내기 작업을 만들지 못했어요. 프리미엄 상태나 네트워크를 확인해 주세요.");
     } finally {
