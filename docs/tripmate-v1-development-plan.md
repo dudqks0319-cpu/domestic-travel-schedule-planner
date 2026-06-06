@@ -3589,3 +3589,32 @@ Verification completed:
 
 Remaining risks:
 - This validates local Miniflare/D1/R2 behavior only; preview smoke still needs real Cloudflare bindings, real provider secrets, and strict `--require-provider naver`.
+
+## Worker Local Smoke Gate Result Record
+
+Plan:
+- Convert the manual local Worker smoke sequence into a repeatable root script.
+- Apply all local D1 migrations before starting the Worker.
+- Start `worker:dev`, wait for `/health`, run the existing v1 write smoke, then stop the Worker.
+- Document the command and add release contract checks so it remains available.
+
+Completed:
+- Added `scripts/worker-local-smoke.mjs`.
+- Added root script `worker:smoke:local`.
+- Made the local gate skip `0004_user_profile_image.sql` when `users.profile_image` already exists, so repeated local smoke runs do not fail on the raw `ALTER TABLE`.
+- Added release contract checks for migration application, Worker startup, full smoke execution, and server cleanup.
+- Updated README, API Worker README, and Cloudflare deployment docs with the local smoke gate.
+
+Verification completed:
+- `node --check scripts/worker-local-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm run worker:smoke:local`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The local smoke gate validates local bindings; preview smoke still needs real Cloudflare D1/KV/R2 resources and provider secrets.

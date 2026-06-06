@@ -16,6 +16,7 @@ TripMate v1.0 production API is `services/api-worker`. The reference `services/a
 ```sh
 npm run worker:dev
 npm run worker:typecheck
+npm run worker:smoke:local
 ```
 
 Apply local D1 migrations before endpoint smoke tests:
@@ -135,6 +136,7 @@ curl "http://localhost:8787/cdn-cgi/handler/scheduled?format=json"
 Worker v1 smoke:
 
 ```sh
+npm run worker:smoke:local
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"

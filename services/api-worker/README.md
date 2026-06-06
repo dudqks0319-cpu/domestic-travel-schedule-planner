@@ -10,9 +10,12 @@ The current production-reference implementation remains in `services/api` until 
 npm --prefix services/api-worker run dev
 npm --prefix services/api-worker run typecheck
 npm --prefix services/api-worker run deploy:preview
+npm run worker:smoke:local
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
+
+`worker:smoke:local` is the preferred local runtime gate. It applies local D1 migrations, starts `wrangler dev --local`, runs the full v1 write smoke, and stops the Worker process.
 
 `worker:smoke:naver` is the strict preview provider smoke. It requires live Naver Search and Naver Cloud Maps geocode, reverse-geocode, planner route enrichment, and route optimization responses. It still refuses write smoke outside `ENVIRONMENT=local` or `preview`.
 

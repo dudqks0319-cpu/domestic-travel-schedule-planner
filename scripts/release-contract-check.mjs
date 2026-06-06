@@ -62,6 +62,7 @@ const requiredRootScripts = [
   "planner:build",
   "worker:typecheck",
   "worker:smoke",
+  "worker:smoke:local",
   "worker:smoke:naver",
   "worker:deploy:preview"
 ];
@@ -88,7 +89,8 @@ for (const file of [
   "services/api-worker/migrations/0002_trip_exports.sql",
   "services/api-worker/migrations/0003_operational_events.sql",
   "services/api-worker/migrations/0004_user_profile_image.sql",
-  "scripts/check-cloudflare-secrets.mjs"
+  "scripts/check-cloudflare-secrets.mjs",
+  "scripts/worker-local-smoke.mjs"
 ]) {
   requireFile(file);
 }
@@ -137,9 +139,59 @@ const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
+const workerLocalSmokeScript = readText("scripts/worker-local-smoke.mjs");
 const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 const apiWorkerReadme = readText("services/api-worker/README.md");
+
+const workerLocalSmokeContracts = [
+  [
+    packageJson.scripts?.["worker:smoke:local"] ?? "",
+    "scripts/worker-local-smoke.mjs",
+    "Root package must expose the local Worker smoke gate"
+  ],
+  [
+    workerLocalSmokeScript,
+    "0001_initial.sql",
+    "Local Worker smoke gate must apply the initial D1 migration"
+  ],
+  [
+    workerLocalSmokeScript,
+    "0004_user_profile_image.sql",
+    "Local Worker smoke gate must apply the latest D1 migration"
+  ],
+  [
+    workerLocalSmokeScript,
+    "pragma_table_info('users')",
+    "Local Worker smoke gate must detect already-applied profile image migration"
+  ],
+  [
+    workerLocalSmokeScript,
+    "users.profile_image already exists",
+    "Local Worker smoke gate must skip the idempotent local profile image migration when needed"
+  ],
+  [
+    workerLocalSmokeScript,
+    '["run", "worker:dev"]',
+    "Local Worker smoke gate must start wrangler dev through the root worker:dev script"
+  ],
+  [
+    workerLocalSmokeScript,
+    '["run", "worker:smoke", "--", "--base-url", baseUrl]',
+    "Local Worker smoke gate must run the full Worker v1 smoke script"
+  ],
+  [
+    workerLocalSmokeScript,
+    "stopWorker()",
+    "Local Worker smoke gate must stop the dev server after smoke execution"
+  ]
+];
+
+for (const [content, expectedText, label] of workerLocalSmokeContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing local Worker smoke contract: ${label}`);
+  }
+}
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],

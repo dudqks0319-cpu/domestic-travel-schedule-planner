@@ -29,6 +29,7 @@
     "worker:dev": "npm --prefix services/api-worker run dev",
     "worker:typecheck": "npm --prefix services/api-worker run typecheck",
     "worker:smoke": "node scripts/worker-v1-smoke.mjs",
+    "worker:smoke:local": "node scripts/worker-local-smoke.mjs",
     "worker:smoke:naver": "node scripts/worker-v1-smoke.mjs --require-provider naver",
     "worker:deploy:preview": "npm --prefix services/api-worker run deploy:preview",
     "gate:local": "npm run -s check:env && npm run -s mobile:typecheck && npm run -s api:build && npm run -s planner:build && npm run -s api:smoke:gate"
