@@ -3049,3 +3049,34 @@ Verification completed:
 Remaining risks:
 - Actual browser visual verification still needs rerunning under Node 20/22 LTS with `npm run mobile:web:qa`.
 - The QA command reduces LAN/network variance but does not make Node 25+ a supported Expo web runtime.
+
+## Naver Directions Provider Result Record
+
+Plan:
+- Reduce provider parity risk by replacing the Naver directions no-op with a real server-side Directions 5 call.
+- Keep provider secrets server-only by using existing Worker `NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` bindings as NCP API key id/key headers.
+- Route optimization should prefer Naver, fall back to Kakao, then fall back to clearly labeled expected movement-time routes.
+- Separate Naver, Kakao, and fallback route cache scopes so a recovered provider route is not masked by an older fallback cache entry.
+
+Completed:
+- Implemented `NaverPlaceAdapter.getDirections()` against Naver Directions 5 driving API.
+- Normalized Naver total distance/duration into `NormalizedRoute` with provider `naver`.
+- Allocated per-segment distance/duration from Naver total route output when waypoints are present and returned a provider warning for that approximation.
+- Updated provider orchestration to try Naver before Kakao for driving directions.
+- Updated route optimization cache lookup/write logic to support Naver and Kakao provider scopes before fallback.
+- Updated provider policy documentation and release contract checks for Naver Directions parity.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Naver directions success requires Naver Cloud Maps Directions 5 enabled for the configured key pair.
+- Naver Directions 5 returns total route summary; waypoint segment timing is proportionally allocated until a richer per-leg provider result is available.

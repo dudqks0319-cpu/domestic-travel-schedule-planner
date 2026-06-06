@@ -53,7 +53,7 @@ export interface PlaceProviderAdapter {
   geocode(input: { address: string }): Promise<{ lat: number; lng: number } | null>;
   reverseGeocode(input: { lat: number; lng: number }): Promise<{ address: string } | null>;
   getDirections(input: {
-    points: Array<{ lat: number; lng: number; name?: string }>;
+    points: Array<{ id?: string; lat: number; lng: number; name?: string }>;
     mode: TravelMode;
   }): Promise<NormalizedRoute | null>;
 }

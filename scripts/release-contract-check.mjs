@@ -411,6 +411,31 @@ for (const [content, expectedText, label] of providerTimeoutContracts) {
 
 const directionsProviderContracts = [
   [
+    naverProvider,
+    "https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving",
+    "Naver provider must call the Naver Directions 5 driving API"
+  ],
+  [
+    naverProvider,
+    '"x-ncp-apigw-api-key-id"',
+    "Naver directions provider must use server-only NCP key id"
+  ],
+  [
+    naverProvider,
+    '"x-ncp-apigw-api-key"',
+    "Naver directions provider must use server-only NCP API key"
+  ],
+  [
+    naverProvider,
+    'provider: "naver"',
+    "Naver directions provider must return normalized Naver routes"
+  ],
+  [
+    providerIndex,
+    "new NaverPlaceAdapter(env),\n    new KakaoPlaceAdapter(env)",
+    "Directions orchestration must try Naver before Kakao"
+  ],
+  [
     kakaoProvider,
     "https://apis-navi.kakaomobility.com/v1/directions",
     "Kakao provider must call the Kakao Mobility directions API"
@@ -452,8 +477,13 @@ const directionsProviderContracts = [
   ],
   [
     routeRoutes,
-    'canUseKakaoDirections ? "kakao" : "fallback"',
+    "providerCacheScopes(c.env, selectedMode)",
     "Route optimize must separate provider and fallback cache scopes"
+  ],
+  [
+    routeRoutes,
+    "await createRouteCacheKey(selectedMode, points, providerResult.route.provider)",
+    "Route optimize must cache provider routes under the actual winning provider"
   ],
   [
     routeCacheDb,
@@ -462,8 +492,8 @@ const directionsProviderContracts = [
   ],
   [
     workerSmokeScript,
-    "route optimize should return explicit fallback or Kakao provider route",
-    "Worker smoke must accept real Kakao directions or explicit fallback"
+    "route optimize should return explicit fallback, Naver, or Kakao provider route",
+    "Worker smoke must accept real Naver/Kakao directions or explicit fallback"
   ]
 ];
 
@@ -639,7 +669,7 @@ const routeCacheContracts = [
   ],
   [
     routeRoutes,
-    "const cachedRoute = await getCachedRoute(c.env.DB, routeCacheKey);",
+    "const cachedProviderRoute = await getFirstCachedProviderRoute(c.env.DB, selectedMode, points, providerScopes);",
     "Route optimize must read from route_cache before computing"
   ],
   [

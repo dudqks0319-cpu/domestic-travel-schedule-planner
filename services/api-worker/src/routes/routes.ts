@@ -6,7 +6,7 @@ import { createRouteCacheKey, getCachedRoute, upsertRouteCache } from "../db/rou
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import { getProviderDirections } from "../providers";
-import type { NormalizedRoute, TravelMode } from "../providers/types";
+import type { NormalizedRoute, RouteProviderKind, TravelMode } from "../providers/types";
 
 export const routeRoutes = new Hono<AppBindings>();
 
@@ -66,6 +66,37 @@ function parsePoints(value: unknown): RoutePointInput[] {
   });
 }
 
+function providerCacheScopes(env: AppBindings["Bindings"], selectedMode: TravelMode): RouteProviderKind[] {
+  if (selectedMode !== "driving") {
+    return [];
+  }
+
+  const scopes: RouteProviderKind[] = [];
+  if (env.NAVER_CLIENT_ID && env.NAVER_CLIENT_SECRET) {
+    scopes.push("naver");
+  }
+  if (env.KAKAO_REST_API_KEY) {
+    scopes.push("kakao");
+  }
+  return scopes;
+}
+
+async function getFirstCachedProviderRoute(
+  db: D1Database,
+  selectedMode: TravelMode,
+  points: RoutePointInput[],
+  providerScopes: RouteProviderKind[]
+): Promise<{ route: NormalizedRoute; providerScope: RouteProviderKind } | null> {
+  for (const providerScope of providerScopes) {
+    const cacheKey = await createRouteCacheKey(selectedMode, points, providerScope);
+    const route = await getCachedRoute(db, cacheKey);
+    if (route) {
+      return { route, providerScope };
+    }
+  }
+  return null;
+}
+
 function buildFallbackRoute(
   points: RoutePointInput[],
   selectedMode: TravelMode,
@@ -110,38 +141,34 @@ routeRoutes.post("/optimize", async (c) => {
   }
 
   const selectedMode = mode(raw.mode);
-  const canUseKakaoDirections = selectedMode === "driving" && Boolean(c.env.KAKAO_REST_API_KEY);
-  const routeCacheKey = await createRouteCacheKey(
-    selectedMode,
-    points,
-    canUseKakaoDirections ? "kakao" : "fallback"
-  );
-  const cachedRoute = await getCachedRoute(c.env.DB, routeCacheKey);
-  if (cachedRoute) {
+  const providerScopes = providerCacheScopes(c.env, selectedMode);
+  const cachedProviderRoute = await getFirstCachedProviderRoute(c.env.DB, selectedMode, points, providerScopes);
+  if (cachedProviderRoute) {
     await recordOperationalEvent(c.env.DB, {
       eventType: "route_optimize",
       target: "routes.optimize",
-      status: cachedRoute.warnings.length ? "warning" : "success",
+      status: cachedProviderRoute.route.warnings.length ? "warning" : "success",
       durationMs: Date.now() - startedAt,
       requestId: c.get("requestId"),
       metadata: {
         cacheStatus: "hit",
+        provider: cachedProviderRoute.providerScope,
         mode: selectedMode,
         pointCount: points.length,
-        segmentCount: cachedRoute.segments.length,
-        warningCount: cachedRoute.warnings.length
+        segmentCount: cachedProviderRoute.route.segments.length,
+        warningCount: cachedProviderRoute.route.warnings.length
       }
     });
 
     return c.json({
       ok: true,
-      route: cachedRoute,
+      route: cachedProviderRoute.route,
       cacheStatus: "hit",
       requestId: c.get("requestId")
     });
   }
 
-  const providerResult = canUseKakaoDirections
+  const providerResult = providerScopes.length
     ? await getProviderDirections(c.env, { points, mode: selectedMode })
     : { route: null, warnings: [] };
   const fallbackCacheKey = await createRouteCacheKey(selectedMode, points, "fallback");
@@ -149,6 +176,7 @@ routeRoutes.post("/optimize", async (c) => {
   const route = providerResult.route ?? cachedFallbackRoute ?? buildFallbackRoute(points, selectedMode, providerResult.warnings);
 
   if (providerResult.route) {
+    const routeCacheKey = await createRouteCacheKey(selectedMode, points, providerResult.route.provider);
     await upsertRouteCache(c.env.DB, {
       cacheKey: routeCacheKey,
       route
@@ -168,6 +196,7 @@ routeRoutes.post("/optimize", async (c) => {
     requestId: c.get("requestId"),
     metadata: {
       cacheStatus: cachedFallbackRoute ? "hit" : "miss",
+      provider: route.provider,
       mode: selectedMode,
       pointCount: points.length,
       segmentCount: route.segments.length,

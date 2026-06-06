@@ -192,8 +192,8 @@ await step("route optimize", async () => {
   });
   assertOk(result, "POST /api/v1/routes/optimize");
   assert(
-    result.body?.route?.provider === "fallback" || result.body?.route?.provider === "kakao",
-    "route optimize should return explicit fallback or Kakao provider route"
+    ["fallback", "naver", "kakao"].includes(result.body?.route?.provider),
+    "route optimize should return explicit fallback, Naver, or Kakao provider route"
   );
   assert(
     result.body?.cacheStatus === "hit" || result.body?.cacheStatus === "miss",
