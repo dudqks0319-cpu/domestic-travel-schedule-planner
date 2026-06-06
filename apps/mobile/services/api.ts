@@ -66,7 +66,7 @@ apiClient.interceptors.response.use(
     }
     const refreshToken = await getRefreshToken();
     if (!refreshToken) {
-      await clearLocalAuthState();
+      await clearLocalAuthState("expired-session");
       return Promise.reject(error);
     }
     originalRequest._retry = true;
@@ -77,7 +77,7 @@ apiClient.interceptors.response.use(
       applyAuthorizationHeader(originalRequest, newToken);
       return apiClient(originalRequest as AxiosRequestConfig);
     } catch {
-      await clearLocalAuthState();
+      await clearLocalAuthState("expired-session");
     }
     return Promise.reject(error);
   }

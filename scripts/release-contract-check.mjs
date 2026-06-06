@@ -572,17 +572,42 @@ const mobileAuthPrivacyContracts = [
   ],
   [
     authCleanup,
+    "subscribeLocalAuthStateCleared",
+    "Mobile auth cleanup must notify AuthProvider when interceptor clears local state"
+  ],
+  [
+    authCleanup,
+    "notifyLocalAuthStateCleared(reason)",
+    "Mobile auth cleanup must emit the cleanup reason after local state is cleared"
+  ],
+  [
+    authCleanup,
     "clearLocalTripDraftData()",
     "Mobile logout/account cleanup must clear local trip drafts and cached routes"
   ],
   [
     authProvider,
-    "await clearLocalAuthState();",
-    "Mobile logout and invalid-session cleanup must use local auth cleanup"
+    "subscribeLocalAuthStateCleared(() =>",
+    "Mobile AuthProvider must listen for interceptor-driven local auth cleanup"
+  ],
+  [
+    authProvider,
+    "await clearLocalAuthState(\"logout\");",
+    "Mobile logout must use reasoned local auth cleanup"
+  ],
+  [
+    authProvider,
+    "await clearLocalAuthState(\"account-deleted\");",
+    "Mobile account deletion must use reasoned local auth cleanup"
+  ],
+  [
+    authProvider,
+    "await clearLocalAuthState(\"invalid-session\");",
+    "Mobile invalid-session cleanup must use reasoned local auth cleanup"
   ],
   [
     mobileApi,
-    "await clearLocalAuthState();",
+    "await clearLocalAuthState(\"expired-session\");",
     "Mobile API interceptor must clear local auth/profile/trip state when refresh cannot recover"
   ]
 ];

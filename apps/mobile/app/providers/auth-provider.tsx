@@ -18,7 +18,7 @@ import {
   setRefreshToken,
   setUserProfile
 } from "../../lib/secure-storage";
-import { clearLocalAuthState } from "../../services/authCleanup";
+import { clearLocalAuthState, subscribeLocalAuthStateCleared } from "../../services/authCleanup";
 
 import type { UserSignupProfile } from "../../types";
 
@@ -93,14 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await authApi.logout().catch(() => undefined);
-    await clearLocalAuthState();
+    await clearLocalAuthState("logout");
     setUser(null);
     setStatus("unauthenticated");
   }, []);
 
   const deleteAccount = useCallback(async () => {
     await authApi.deleteMe();
-    await clearLocalAuthState();
+    await clearLocalAuthState("account-deleted");
     setUser(null);
     setStatus("unauthenticated");
   }, []);
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(mergedProfile ?? null);
           setStatus("authenticated");
         } catch {
-          await clearLocalAuthState();
+          await clearLocalAuthState("invalid-session");
           if (!isActive) {
             return;
           }
@@ -194,6 +194,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => subscribeLocalAuthStateCleared(() => {
+    setUser(null);
+    setStatus("unauthenticated");
+  }), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -2147,3 +2147,31 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to expire/rotate tokens and confirm app navigation/state resets cleanly after interceptor cleanup.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Expired Session Auth State Sync Result Record
+
+Plan:
+- Notify AuthProvider when shared local auth cleanup is triggered outside AuthProvider.
+- Preserve reasoned cleanup paths for logout, account deletion, invalid session, and expired session.
+- Ensure API interceptor refresh failure updates React auth state to `unauthenticated` without waiting for app restart.
+- Add release contract coverage for the cleanup event subscription.
+
+Completed:
+- Added `LocalAuthClearReason`, listener registration, and cleanup notification to `authCleanup`.
+- Updated AuthProvider to subscribe to local auth cleanup events and clear in-memory user/status state.
+- Added reasoned cleanup calls for logout, account deletion, invalid-session bootstrap failure, and API interceptor expired-session failures.
+- Extended release contract checks for cleanup events, AuthProvider subscription, and reasoned cleanup calls.
+- Updated the privacy/security checklist with expired-session AuthProvider state sync.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to force a refresh failure and confirm navigation surfaces react immediately to unauthenticated state.
+- The cleanup listener is in-memory only; if cleanup occurs before AuthProvider mounts, bootstrap still handles persisted state on next mount.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
