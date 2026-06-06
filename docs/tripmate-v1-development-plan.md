@@ -495,3 +495,28 @@ Verification completed:
 Remaining risks:
 - The saved trip rail still fetches places sequentially through the marker loader; a server aggregate endpoint remains the scalable path.
 - A dedicated trip list/detail screen would give more room for edit/delete/share actions than the map tab rail.
+
+## Mobile Share Link Result Record
+
+Plan:
+- Connect the existing Worker `POST /trips/:tripId/share` endpoint from mobile.
+- Add a schedule-screen share action for saved server trips.
+- Keep guest/local drafts blocked from share creation with a clear login/save message.
+- Use native share sheet where available and clipboard fallback on web.
+
+Completed:
+- Added typed `TripShareDto`, `tripsApi.createShare()`, and `buildTripShareUrl()`.
+- Added "공유 링크 만들기" to the schedule screen.
+- Created read-only Worker share URLs from returned share tokens.
+- Added web clipboard copy and native `Share.share()` handling.
+- Added user-facing failure and local-draft guard messages.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The share URL currently points to the Worker JSON read-only endpoint; a user-friendly public share page remains a release polish item.
+- Mobile share creation still requires an authenticated saved trip, which is intentional for v1 privacy and ownership enforcement.

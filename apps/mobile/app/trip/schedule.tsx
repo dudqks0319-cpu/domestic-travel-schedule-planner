@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -15,7 +15,7 @@ import {
   loadEntitlementState,
   type PremiumEntitlementState
 } from "../../services/monetization";
-import { tripsApi } from "../../services/api";
+import { buildTripShareUrl, tripsApi } from "../../services/api";
 import {
   clearPersistedOptimizedRoute,
   loadPersistedOptimizedRoute,
@@ -473,6 +473,8 @@ export default function ScheduleScreen() {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -629,6 +631,45 @@ export default function ScheduleScreen() {
     }
 
     await tripsApi.deletePlaceById(tripId, point.tripPlaceId);
+  };
+
+  const shareCurrentTrip = async () => {
+    const tripId = currentServerTripId();
+    if (!tripId) {
+      setShareNotice("공유 링크는 로그인 후 저장된 여행에서 만들 수 있어요.");
+      return;
+    }
+
+    setShareLoading(true);
+    setShareNotice(null);
+
+    try {
+      const response = await tripsApi.createShare(tripId);
+      const shareUrl = buildTripShareUrl(response.data.share.token);
+      const message = `${tripMeta.destination} 여행 일정표\n${shareUrl}`;
+
+      if (Platform.OS === "web") {
+        const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
+          .navigator?.clipboard;
+        if (clipboard) {
+          await clipboard.writeText(shareUrl);
+          setShareNotice("공유 링크를 클립보드에 복사했어요.");
+        } else {
+          setShareNotice(`공유 링크가 생성됐어요: ${shareUrl}`);
+        }
+      } else {
+        await Share.share({ message, url: shareUrl, title: `${tripMeta.destination} 여행 일정표` });
+        setShareNotice("공유 링크를 만들었어요.");
+      }
+    } catch {
+      const message = "공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.";
+      setShareNotice(message);
+      if (Platform.OS !== "web") {
+        Alert.alert("공유 실패", message);
+      }
+    } finally {
+      setShareLoading(false);
+    }
   };
 
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
@@ -802,6 +843,12 @@ export default function ScheduleScreen() {
               {savedPlaceSection}
               <View style={styles.bottomActions}>
                 <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
+                <Button
+                  title={shareLoading ? "공유 링크 생성 중..." : "공유 링크 만들기"}
+                  variant="outline"
+                  onPress={() => { void shareCurrentTrip(); }}
+                />
+                {shareNotice ? <Text style={styles.shareNoticeText}>{shareNotice}</Text> : null}
                 <Button title="홈으로" onPress={() => router.replace("/(tabs)")} />
               </View>
             </>
@@ -887,6 +934,12 @@ export default function ScheduleScreen() {
 
               <View style={styles.bottomActions}>
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
+                <Button
+                  title={shareLoading ? "공유 링크 생성 중..." : "공유 링크 만들기"}
+                  variant="outline"
+                  onPress={() => { void shareCurrentTrip(); }}
+                />
+                {shareNotice ? <Text style={styles.shareNoticeText}>{shareNotice}</Text> : null}
                 <Button title="홈으로" onPress={() => router.replace("/(tabs)")} />
               </View>
 
@@ -1236,6 +1289,11 @@ const styles = StyleSheet.create({
   bottomActions: {
     gap: Spacing.sm,
     marginBottom: Spacing.xl
+  },
+  shareNoticeText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    textAlign: "center"
   },
   emptyCard: {
     backgroundColor: Colors.common.white,

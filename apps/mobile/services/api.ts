@@ -160,6 +160,18 @@ export interface TripDto {
   updatedAt?: string;
 }
 
+export interface TripShareDto {
+  id: string;
+  token: string;
+  tripId: string;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+export function buildTripShareUrl(token: string): string {
+  return `${API_BASE.replace(/\/$/, "")}${API_PREFIX}/share/${encodeURIComponent(token)}`;
+}
+
 export const placesApi = {
   search: (params: {
     query: string;
@@ -208,6 +220,8 @@ export const tripsApi = {
   update: (tripId: string, data: Record<string, unknown>) =>
     apiClient.patch(`/trips/${tripId}`, data),
   delete: (tripId: string) => apiClient.delete(`/trips/${tripId}`),
+  createShare: (tripId: string) =>
+    apiClient.post<{ ok: true; share: TripShareDto }>(`/trips/${tripId}/share`),
   getDays: (tripId: string) => apiClient.get(`/trips/${tripId}/days`),
   createDay: (tripId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days`, data),
