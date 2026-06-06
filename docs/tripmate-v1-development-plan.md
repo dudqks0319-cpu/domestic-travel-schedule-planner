@@ -715,3 +715,27 @@ Verification completed:
 Remaining risks:
 - The endpoint prepares a manifest and queued job record; a separate renderer is still needed for final PDF/image files.
 - Signed URLs and final asset expiry policy still need to be implemented before production export downloads.
+
+## Mobile Export API Connection Result Record
+
+Plan:
+- Add typed mobile API methods for Worker trip export jobs.
+- Connect the schedule PDF export button to the premium-gated Worker endpoint.
+- Keep free users and guest/local drafts on safe explanatory notices.
+- Avoid exposing R2 keys or assuming a final PDF download exists before renderer work is complete.
+
+Completed:
+- Added `TripExportDto`, `tripsApi.createExport()`, and `tripsApi.getExport()` to the mobile API client.
+- Connected schedule PDF export to `POST /api/v1/trips/:tripId/exports`.
+- Kept entitlement, saved-trip, and network failure states user-visible on the schedule screen.
+- Reused the same export loading state for image capture and server PDF export preparation.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- PDF export still returns a queued preparation job until a renderer and signed download URL flow are implemented.
+- Device-level smoke is needed with an authenticated premium account to verify the full mobile request path.

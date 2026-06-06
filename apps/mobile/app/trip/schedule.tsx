@@ -754,7 +754,22 @@ export default function ScheduleScreen() {
       return;
     }
 
-    setExportNotice("PDF 내보내기는 서버/R2 export 작업으로 연결할 준비가 되어 있습니다. 현재 빌드에서는 이미지 내보내기를 먼저 사용해 주세요.");
+    const tripId = currentServerTripId();
+    if (!tripId) {
+      setExportNotice("PDF 내보내기는 로그인 후 저장된 여행에서 요청할 수 있어요.");
+      return;
+    }
+
+    setExportLoading(true);
+    setExportNotice(null);
+    try {
+      const response = await tripsApi.createExport(tripId, "pdf");
+      setExportNotice(`PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`);
+    } catch {
+      setExportNotice("PDF 내보내기 작업을 만들지 못했어요. 프리미엄 상태나 네트워크를 확인해 주세요.");
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
@@ -927,9 +942,13 @@ export default function ScheduleScreen() {
           onPress={() => { void exportScheduleImage(); }}
           disabled={exportLoading}
         >
-          <Text style={styles.exportButtonText}>{exportLoading ? "이미지 생성 중..." : "이미지 내보내기"}</Text>
+          <Text style={styles.exportButtonText}>{exportLoading ? "내보내기 처리 중..." : "이미지 내보내기"}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.exportButton} onPress={() => { void exportSchedulePdf(); }}>
+        <TouchableOpacity
+          style={styles.exportButton}
+          onPress={() => { void exportSchedulePdf(); }}
+          disabled={exportLoading}
+        >
           <Text style={styles.exportButtonText}>PDF 내보내기</Text>
         </TouchableOpacity>
       </View>

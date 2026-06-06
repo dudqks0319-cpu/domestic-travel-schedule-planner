@@ -172,6 +172,17 @@ export interface TripShareDto {
   createdAt: string;
 }
 
+export interface TripExportDto {
+  id: string;
+  tripId: string;
+  format: "pdf" | "image";
+  status: "queued" | "ready" | "failed" | "expired";
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  downloadUrl: string | null;
+}
+
 export function buildTripShareUrl(token: string): string {
   return `${API_BASE.replace(/\/$/, "")}/share/${encodeURIComponent(token)}`;
 }
@@ -230,6 +241,10 @@ export const tripsApi = {
   delete: (tripId: string) => apiClient.delete(`/trips/${tripId}`),
   createShare: (tripId: string) =>
     apiClient.post<{ ok: true; share: TripShareDto }>(`/trips/${tripId}/share`),
+  createExport: (tripId: string, format: "pdf" | "image") =>
+    apiClient.post<{ ok: true; export: TripExportDto }>(`/trips/${tripId}/exports`, { format }),
+  getExport: (tripId: string, exportId: string) =>
+    apiClient.get<{ ok: true; export: TripExportDto }>(`/trips/${tripId}/exports/${exportId}`),
   getDays: (tripId: string) => apiClient.get(`/trips/${tripId}/days`),
   createDay: (tripId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days`, data),
