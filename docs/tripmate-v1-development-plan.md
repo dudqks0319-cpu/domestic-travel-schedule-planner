@@ -960,3 +960,29 @@ Verification completed:
 Remaining risks:
 - Adapter events are not emitted on cache hits because no external provider call occurs.
 - Provider-specific aggregation dashboards are still not implemented; the raw events are available in D1.
+
+## Ops Summary API Result Record
+
+Plan:
+- Add a small admin-only endpoint for release operations without exposing raw events.
+- Protect operational summaries with a server-only `OPS_ADMIN_TOKEN`.
+- Summarize operational events, ad events, affiliate clicks, and entitlement counts.
+- Document the required secret and usage.
+
+Completed:
+- Added `OPS_ADMIN_TOKEN` to Worker bindings and environment documentation.
+- Added `GET /api/v1/ops/summary?hours=24`.
+- Protected `/api/v1/ops/*` with `Authorization: Bearer` or `x-ops-token`.
+- Summarized grouped operational events with counts and duration aggregates.
+- Summarized ad events, affiliate clicks, and entitlement states.
+- Updated Cloudflare deployment docs with the admin summary curl example.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- This is an API-only admin surface, not a UI dashboard.
+- Token rotation and audit for ops summary access are not implemented yet.

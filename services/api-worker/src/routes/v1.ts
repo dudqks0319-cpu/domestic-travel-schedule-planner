@@ -4,6 +4,7 @@ import type { AppBindings } from "../bindings";
 import { authRoutes } from "./auth";
 import { healthRoutes } from "./health";
 import { monetizationRoutes } from "./monetization";
+import { opsRoutes } from "./ops";
 import { placeRoutes } from "./places";
 import { plannerRoutes } from "./planner";
 import { routeRoutes } from "./routes";
@@ -25,3 +26,5 @@ v1Routes.route("/trips", tripRoutes);
 v1Routes.route("/share", shareRoutes);
 
 v1Routes.route("/monetization", monetizationRoutes);
+
+v1Routes.route("/ops", opsRoutes);

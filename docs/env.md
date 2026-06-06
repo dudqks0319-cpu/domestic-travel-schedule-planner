@@ -50,7 +50,10 @@ wrangler secret put DATA_GO_KR_API_KEY
 wrangler secret put ODSAY_API_KEY
 wrangler secret put APPLE_SHARED_SECRET
 wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+wrangler secret put OPS_ADMIN_TOKEN
 ```
+
+`OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token. Do not put it in mobile env or client code.
 
 ## Cloudflare Bindings
 
@@ -70,3 +73,4 @@ Configured in `services/api-worker/wrangler.toml`:
 - `JWT_REFRESH_SECRET`
 - `APPLE_SHARED_SECRET`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- `OPS_ADMIN_TOKEN`

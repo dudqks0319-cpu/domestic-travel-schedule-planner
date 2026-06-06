@@ -52,6 +52,7 @@ Production gates:
 - local or preview Worker smoke for `/health`
 - D1 migration reviewed
 - provider keys set as Cloudflare secrets
+- `OPS_ADMIN_TOKEN` set as a Cloudflare secret for `/api/v1/ops/*`
 - no provider secrets in mobile env or bundle
 - gitleaks pre-push passes
 
@@ -62,3 +63,12 @@ The Worker exposes the v1 release contract under `/api/v1`, including health, pl
 ## Operational Events
 
 The Worker persists privacy-safe operational events in D1 for place search, provider adapter search, planner generation, and route optimization. These records store endpoint/provider target, status, duration, request id where available, counts, mode/style/cache status, and warning count. They must not store raw request bodies, provider payloads, tokens, receipts, or precise coordinates.
+
+Admin summary:
+
+```sh
+curl -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  "https://<worker-host>/api/v1/ops/summary?hours=24"
+```
+
+The summary endpoint returns grouped operational events, ad events, affiliate clicks, and entitlement counts. It requires `OPS_ADMIN_TOKEN` and must not be called from mobile clients.

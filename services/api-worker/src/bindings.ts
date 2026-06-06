@@ -14,6 +14,7 @@ export interface Env {
   ODSAY_API_KEY?: string;
   APPLE_SHARED_SECRET?: string;
   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON?: string;
+  OPS_ADMIN_TOKEN?: string;
 }
 
 export interface RequestContextVariables {
