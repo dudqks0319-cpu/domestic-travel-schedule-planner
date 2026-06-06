@@ -1137,6 +1137,16 @@ const exportDownloadContracts = [
   ],
   [
     tripRoutes,
+    "const pages: Array",
+    "PDF export must support multiple pages for longer itineraries"
+  ],
+  [
+    tripRoutes,
+    "/Count ${pages.length}",
+    "PDF pages object must reflect the generated page count"
+  ],
+  [
+    tripRoutes,
     'contentType: "application/pdf"',
     "PDF export asset must use application/pdf content type"
   ],
@@ -1631,6 +1641,11 @@ const rewardedExportContracts = [
     scheduleScreen,
     "openPreparedExport",
     "Schedule PDF and image exports must share authenticated download URL handling"
+  ],
+  [
+    scheduleScreen,
+    "PDF 파일을 열었어요.",
+    "Schedule PDF export copy must refer to the generated PDF file"
   ],
   [
     scheduleScreen,

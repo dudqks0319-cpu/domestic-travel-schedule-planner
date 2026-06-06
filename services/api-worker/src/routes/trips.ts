@@ -144,68 +144,91 @@ function renderPdfTripExport(input: {
   unassignedPlaces: Array<ReturnType<typeof toPublicTripPlace>>;
 }): Uint8Array {
   const encoder = new TextEncoder();
-  const lines: Array<{ text: string; size: number; y: number }> = [
-    { text: "TripMate", size: 18, y: 800 },
-    { text: pdfLine(input.title, 36), size: 16, y: 772 },
-    { text: pdfLine(`${input.destination} · ${input.startDate} - ${input.endDate}`, 48), size: 11, y: 748 },
-    { text: pdfLine(`생성 시각: ${input.generatedAt}`, 48), size: 9, y: 730 }
-  ];
+  const pages: Array<Array<{ text: string; size: number; y: number }>> = [[]];
+  let y = 800;
 
-  let y = 700;
+  const currentPage = () => pages[pages.length - 1]!;
+  const addPage = () => {
+    pages.push([]);
+    y = 800;
+  };
+  const addLine = (text: string, size = 10, advance = 17) => {
+    if (y < 66) {
+      addPage();
+    }
+    currentPage().push({ text, size, y });
+    y -= advance;
+  };
+
+  addLine("TripMate", 18, 28);
+  addLine(pdfLine(input.title, 36), 16, 24);
+  addLine(pdfLine(`${input.destination} · ${input.startDate} - ${input.endDate}`, 48), 11, 18);
+  addLine(pdfLine(`생성 시각: ${input.generatedAt}`, 48), 9, 30);
+
   for (const day of input.days) {
-    if (y < 72) break;
-    lines.push({ text: pdfLine(`${day.dayNumber}일차 · ${day.title} · ${day.date}`, 48), size: 12, y });
-    y -= 20;
+    if (y < 104) {
+      addPage();
+    }
+    addLine(pdfLine(`${day.dayNumber}일차 · ${day.title} · ${day.date}`, 48), 12, 20);
     const places = day.places.length ? day.places : [];
     if (!places.length) {
-      lines.push({ text: "  담긴 장소가 없습니다.", size: 10, y });
-      y -= 17;
+      addLine("  담긴 장소가 없습니다.");
       continue;
     }
     for (const [index, place] of places.entries()) {
-      if (y < 72) break;
       const time = [place.startTime, place.endTime].filter(Boolean).join("-");
-      lines.push({
-        text: pdfLine(`  ${index + 1}. ${place.name} · ${place.category}${time ? ` · ${time}` : ""}`, 54),
-        size: 10,
-        y
-      });
-      y -= 17;
-      if (place.address && y >= 72) {
-        lines.push({ text: pdfLine(`     ${place.address}`, 54), size: 8, y });
-        y -= 15;
+      addLine(pdfLine(`  ${index + 1}. ${place.name} · ${place.category}${time ? ` · ${time}` : ""}`, 54));
+      if (place.address) {
+        addLine(pdfLine(`     ${place.address}`, 54), 8, 15);
       }
     }
     y -= 8;
   }
 
-  if (input.unassignedPlaces.length && y >= 72) {
-    lines.push({ text: "미배정 장소", size: 12, y });
-    y -= 20;
+  if (input.unassignedPlaces.length) {
+    if (y < 104) {
+      addPage();
+    }
+    addLine("미배정 장소", 12, 20);
     for (const [index, place] of input.unassignedPlaces.entries()) {
-      if (y < 72) break;
-      lines.push({ text: pdfLine(`  ${index + 1}. ${place.name} · ${place.category}`, 54), size: 10, y });
-      y -= 17;
+      addLine(pdfLine(`  ${index + 1}. ${place.name} · ${place.category}`, 54));
     }
   }
 
-  if (y >= 46) {
-    lines.push({ text: "장소 좌표 원문은 PDF에 표시하지 않습니다.", size: 8, y: 44 });
+  for (const [pageIndex, page] of pages.entries()) {
+    page.push({
+      text: `장소 좌표 원문은 PDF에 표시하지 않습니다. · ${pageIndex + 1}/${pages.length}`,
+      size: 8,
+      y: 44
+    });
   }
 
-  const content = [
-    "BT",
-    ...lines.map((line) => `/F1 ${line.size} Tf\n1 0 0 1 48 ${line.y} Tm\n<${utf16BeHex(line.text)}> Tj`),
-    "ET"
-  ].join("\n");
-  const contentLength = encoder.encode(content).byteLength;
+  const pageObjects: string[] = [];
+  const pageRefs: number[] = [];
+  const contentObjects = pages.map((lines) => {
+    const content = [
+      "BT",
+      ...lines.map((line) => `/F1 ${line.size} Tf\n1 0 0 1 48 ${line.y} Tm\n<${utf16BeHex(line.text)}> Tj`),
+      "ET"
+    ].join("\n");
+    return content;
+  });
+  const baseObjectCount = 4;
+  contentObjects.forEach((content, index) => {
+    const pageRef = baseObjectCount + index * 2 + 1;
+    const contentRef = pageRef + 1;
+    pageRefs.push(pageRef);
+    pageObjects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentRef} 0 R >>`,
+      `<< /Length ${encoder.encode(content).byteLength} >>\nstream\n${content}\nendstream`
+    );
+  });
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 6 0 R >>",
-    "<< /Type /Font /Subtype /Type0 /BaseFont /HYGoThic-Medium /Encoding /UniKS-UCS2-H /DescendantFonts [5 0 R] >>",
+    `<< /Type /Pages /Kids [${pageRefs.map((ref) => `${ref} 0 R`).join(" ")}] /Count ${pages.length} >>`,
+    "<< /Type /Font /Subtype /Type0 /BaseFont /HYGoThic-Medium /Encoding /UniKS-UCS2-H /DescendantFonts [4 0 R] >>",
     "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /HYGoThic-Medium /CIDSystemInfo << /Registry (Adobe) /Ordering (Korea1) /Supplement 2 >> >>",
-    `<< /Length ${contentLength} >>\nstream\n${content}\nendstream`,
+    ...pageObjects,
     "<< /Producer (TripMate Worker) /Title (TripMate Export) >>"
   ];
 
@@ -220,7 +243,7 @@ function renderPdfTripExport(input: {
   for (let index = 1; index <= objects.length; index += 1) {
     pdf += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
   }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R /Info 7 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R /Info ${objects.length} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
 
   return encoder.encode(pdf);
 }

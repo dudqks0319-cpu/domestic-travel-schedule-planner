@@ -3503,4 +3503,35 @@ Verification completed:
 - `npm run check:dev`
 
 Remaining risks:
-- The PDF renderer is intentionally simple and single-page; visual QA with real Korean itinerary data in a preview Worker/browser is still needed before production handoff.
+- The PDF renderer is intentionally simple; visual QA with real Korean itinerary data in a preview Worker/browser is still needed before production handoff.
+
+## Worker Multi-Page PDF Export Result Record
+
+Plan:
+- Remove the single-page PDF truncation risk by paginating long itinerary exports.
+- Keep the Worker PDF renderer dependency-free and R2-backed.
+- Keep coordinate-safe footer copy on every generated page.
+- Align mobile PDF export copy with the generated file instead of the old print-page wording.
+- Add release contract coverage for multi-page PDF generation.
+
+Completed:
+- Changed `renderPdfTripExport()` to build PDF pages dynamically from itinerary lines.
+- Added generated page count to the PDF `/Pages` object.
+- Added a coordinate-safe footer with page numbering to each page.
+- Updated the mobile schedule PDF success/prepared copy to refer to a PDF file.
+- Updated the API Worker README and release contract checks for multi-page binary PDF exports.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- PDF visual QA with real Korean itinerary data in a preview Worker/browser is still needed before production handoff.

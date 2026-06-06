@@ -1112,8 +1112,8 @@ export default function ScheduleScreen() {
     try {
       const response = await tripsApi.createExport(tripId, "pdf");
       await openPreparedExport(response.data.export.downloadUrl, {
-        ready: "PDF 저장용 인쇄 페이지를 열었어요.",
-        prepared: "PDF 저장용 페이지가 준비됐어요",
+        ready: "PDF 파일을 열었어요.",
+        prepared: "PDF 파일이 준비됐어요",
         statusPrefix: `PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`
       });
     } catch {
