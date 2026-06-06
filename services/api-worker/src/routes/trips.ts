@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { createAuditLog } from "../db/audit";
 import {
   createTripExport,
   getOwnedTripExport,
@@ -44,6 +45,10 @@ function currentUserId(c: { get: (key: "userId") => string | undefined }): strin
     throw new Error("Missing authenticated user id.");
   }
   return userId;
+}
+
+function requestId(c: { get: (key: "requestId") => string | undefined }): string {
+  return c.get("requestId") ?? "unknown";
 }
 
 function stringValue(value: unknown): string | null {
@@ -358,7 +363,15 @@ tripRoutes.post("/", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_INPUT", "여행 생성 필수값이 부족합니다.");
   }
 
-  const trip = await createTrip(c.env.DB, currentUserId(c), input);
+  const userId = currentUserId(c);
+  const trip = await createTrip(c.env.DB, userId, input);
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip.create",
+    entityType: "trip",
+    entityId: trip.id,
+    requestId: requestId(c)
+  });
   return c.json({ ok: true, trip: toPublicTrip(trip), requestId: c.get("requestId") }, 201);
 });
 
@@ -382,11 +395,20 @@ tripRoutes.post("/:tripId/days", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_DAY_INPUT", "일차 필수값을 확인해주세요.");
   }
 
-  const day = await createTripDay(c.env.DB, currentUserId(c), c.req.param("tripId"), input);
+  const userId = currentUserId(c);
+  const day = await createTripDay(c.env.DB, userId, c.req.param("tripId"), input);
   if (!day) {
     return errorResponse(c, 404, "TRIP_NOT_FOUND", "여행을 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_day.create",
+    entityType: "trip_day",
+    entityId: day.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: day.day_number }
+  });
   return c.json({ ok: true, day: toPublicTripDay(day), requestId: c.get("requestId") }, 201);
 });
 
@@ -401,9 +423,10 @@ tripRoutes.patch("/:tripId/days/:dayId", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_DAY_INPUT", "일차 수정 값을 확인해주세요.");
   }
 
+  const userId = currentUserId(c);
   const day = await updateTripDay(
     c.env.DB,
-    currentUserId(c),
+    userId,
     c.req.param("tripId"),
     c.req.param("dayId"),
     input
@@ -412,6 +435,14 @@ tripRoutes.patch("/:tripId/days/:dayId", async (c) => {
     return errorResponse(c, 404, "TRIP_DAY_NOT_FOUND", "일차를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_day.update",
+    entityType: "trip_day",
+    entityId: day.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: day.day_number }
+  });
   return c.json({ ok: true, day: toPublicTripDay(day), requestId: c.get("requestId") });
 });
 
@@ -449,11 +480,20 @@ tripRoutes.post("/:tripId/places", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_PLACE_INPUT", "장소 필수값을 확인해주세요.");
   }
 
-  const place = await createTripPlace(c.env.DB, currentUserId(c), c.req.param("tripId"), input);
+  const userId = currentUserId(c);
+  const place = await createTripPlace(c.env.DB, userId, c.req.param("tripId"), input);
   if (!place) {
     return errorResponse(c, 404, "TRIP_OR_DAY_NOT_FOUND", "여행 또는 일차를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.create",
+    entityType: "trip_place",
+    entityId: place.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
+  });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") }, 201);
 });
 
@@ -468,11 +508,20 @@ tripRoutes.post("/:tripId/days/:dayId/places", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_PLACE_INPUT", "장소 필수값을 확인해주세요.");
   }
 
-  const place = await createTripPlace(c.env.DB, currentUserId(c), c.req.param("tripId"), input);
+  const userId = currentUserId(c);
+  const place = await createTripPlace(c.env.DB, userId, c.req.param("tripId"), input);
   if (!place) {
     return errorResponse(c, 404, "TRIP_OR_DAY_NOT_FOUND", "여행 또는 일차를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.create",
+    entityType: "trip_place",
+    entityId: place.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
+  });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") }, 201);
 });
 
@@ -487,9 +536,10 @@ tripRoutes.patch("/:tripId/places/:placeId", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_PLACE_INPUT", "장소 수정 값을 확인해주세요.");
   }
 
+  const userId = currentUserId(c);
   const place = await updateTripPlace(
     c.env.DB,
-    currentUserId(c),
+    userId,
     c.req.param("tripId"),
     c.req.param("placeId"),
     input
@@ -498,6 +548,14 @@ tripRoutes.patch("/:tripId/places/:placeId", async (c) => {
     return errorResponse(c, 404, "TRIP_PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.update",
+    entityType: "trip_place",
+    entityId: place.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
+  });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") });
 });
 
@@ -512,9 +570,10 @@ tripRoutes.patch("/:tripId/days/:dayId/places/:placeId", async (c) => {
     return errorResponse(c, 400, "INVALID_TRIP_PLACE_INPUT", "장소 수정 값을 확인해주세요.");
   }
 
+  const userId = currentUserId(c);
   const place = await updateTripPlace(
     c.env.DB,
-    currentUserId(c),
+    userId,
     c.req.param("tripId"),
     c.req.param("placeId"),
     input
@@ -523,13 +582,22 @@ tripRoutes.patch("/:tripId/days/:dayId/places/:placeId", async (c) => {
     return errorResponse(c, 404, "TRIP_PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.update",
+    entityType: "trip_place",
+    entityId: place.id,
+    requestId: requestId(c),
+    metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
+  });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") });
 });
 
 tripRoutes.delete("/:tripId/places/:placeId", async (c) => {
+  const userId = currentUserId(c);
   const deleted = await deleteTripPlace(
     c.env.DB,
-    currentUserId(c),
+    userId,
     c.req.param("tripId"),
     c.req.param("placeId")
   );
@@ -537,13 +605,21 @@ tripRoutes.delete("/:tripId/places/:placeId", async (c) => {
     return errorResponse(c, 404, "TRIP_PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.delete",
+    entityType: "trip_place",
+    entityId: c.req.param("placeId"),
+    requestId: requestId(c)
+  });
   return c.json({ ok: true, deleted: true, requestId: c.get("requestId") });
 });
 
 tripRoutes.delete("/:tripId/days/:dayId/places/:placeId", async (c) => {
+  const userId = currentUserId(c);
   const deleted = await deleteTripPlace(
     c.env.DB,
-    currentUserId(c),
+    userId,
     c.req.param("tripId"),
     c.req.param("placeId")
   );
@@ -551,6 +627,13 @@ tripRoutes.delete("/:tripId/days/:dayId/places/:placeId", async (c) => {
     return errorResponse(c, 404, "TRIP_PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.delete",
+    entityType: "trip_place",
+    entityId: c.req.param("placeId"),
+    requestId: requestId(c)
+  });
   return c.json({ ok: true, deleted: true, requestId: c.get("requestId") });
 });
 
@@ -637,6 +720,14 @@ tripRoutes.post("/:tripId/exports", async (c) => {
     expiresAt
   });
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_export.create",
+    entityType: "trip_export",
+    entityId: exportRecord.id,
+    requestId: requestId(c),
+    metadata: { format: exportRecord.format, status: exportRecord.status, placeCount: publicPlaces.length }
+  });
   return c.json({
     ok: true,
     export: toPublicTripExport(
@@ -740,24 +831,47 @@ tripRoutes.patch("/:tripId", async (c) => {
     return errorResponse(c, 404, "TRIP_NOT_FOUND", "여행을 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip.update",
+    entityType: "trip",
+    entityId: trip.id,
+    requestId: requestId(c)
+  });
   return c.json({ ok: true, trip: toPublicTrip(trip), requestId: c.get("requestId") });
 });
 
 tripRoutes.delete("/:tripId", async (c) => {
-  const deleted = await deleteTrip(c.env.DB, currentUserId(c), c.req.param("tripId"));
+  const userId = currentUserId(c);
+  const deleted = await deleteTrip(c.env.DB, userId, c.req.param("tripId"));
   if (!deleted) {
     return errorResponse(c, 404, "TRIP_NOT_FOUND", "여행을 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip.delete",
+    entityType: "trip",
+    entityId: c.req.param("tripId"),
+    requestId: requestId(c)
+  });
   return c.json({ ok: true, deleted: true, requestId: c.get("requestId") });
 });
 
 tripRoutes.post("/:tripId/share", async (c) => {
-  const shareLink = await createShareLink(c.env.DB, currentUserId(c), c.req.param("tripId"));
+  const userId = currentUserId(c);
+  const shareLink = await createShareLink(c.env.DB, userId, c.req.param("tripId"));
   if (!shareLink) {
     return errorResponse(c, 404, "TRIP_NOT_FOUND", "공유할 여행을 찾을 수 없습니다.");
   }
 
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "share_link.create",
+    entityType: "share_link",
+    entityId: shareLink.id,
+    requestId: requestId(c)
+  });
   return c.json({
     ok: true,
     share: {

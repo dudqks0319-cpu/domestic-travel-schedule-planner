@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 
 import { verifyToken } from "../auth/tokens";
 import type { AppBindings } from "../bindings";
+import { createAuditLog } from "../db/audit";
 import {
   createAdEvent,
   createAffiliateClick,
@@ -252,6 +253,21 @@ monetizationRoutes.post("/entitlements/verify", requireAuth, async (c) => {
     status: verification.status,
     ...(expiresAt ? { expiresAt } : {}),
     ...(receiptSource ? { receiptHash: await sha256Hex(receiptSource) } : {})
+  });
+
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "entitlement.verify",
+    entityType: "subscription_entitlement",
+    entityId: entitlement.id,
+    requestId: c.get("requestId"),
+    metadata: {
+      platform,
+      productId,
+      status: entitlement.status,
+      verificationMode: verification.verificationMode,
+      reason: verification.reason
+    }
   });
 
   return c.json({

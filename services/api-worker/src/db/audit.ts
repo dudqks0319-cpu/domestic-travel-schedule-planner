@@ -1,0 +1,56 @@
+export interface AuditLogInput {
+  userId?: string;
+  action: string;
+  entityType: string;
+  entityId?: string;
+  requestId?: string;
+  metadata?: Record<string, string | number | boolean | null | undefined>;
+}
+
+const ALLOWED_METADATA_KEYS = new Set([
+  "format",
+  "status",
+  "platform",
+  "productId",
+  "verificationMode",
+  "reason",
+  "dayNumber",
+  "placeCount",
+  "hasSponsored"
+]);
+
+function sanitizeMetadata(
+  metadata: AuditLogInput["metadata"]
+): Record<string, string | number | boolean | null> {
+  if (!metadata) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(metadata)
+      .filter(([key, value]) => ALLOWED_METADATA_KEYS.has(key) && value !== undefined)
+      .map(([key, value]) => [key, value ?? null])
+  );
+}
+
+export async function createAuditLog(db: D1Database, input: AuditLogInput): Promise<string> {
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO audit_logs (
+        id, user_id, action, entity_type, entity_id, request_id, metadata_json
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(
+      id,
+      input.userId ?? null,
+      input.action,
+      input.entityType,
+      input.entityId ?? null,
+      input.requestId ?? null,
+      JSON.stringify(sanitizeMetadata(input.metadata))
+    )
+    .run();
+
+  return id;
+}

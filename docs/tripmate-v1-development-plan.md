@@ -817,3 +817,29 @@ Verification completed:
 Remaining risks:
 - KV increments are not atomic, so extremely concurrent bursts may exceed the exact limit slightly.
 - Production limits should be tuned after real Cloudflare analytics and provider quota data are available.
+
+## Audit Logging Result Record
+
+Plan:
+- Start using the existing `audit_logs` table for security-relevant write operations.
+- Keep audit metadata privacy-safe with an allowlist and no raw payload storage.
+- Record request correlation id and entity ids for operational investigation.
+- Cover trip, schedule edit, sharing, export, and entitlement verification writes.
+
+Completed:
+- Added `services/api-worker/src/db/audit.ts` with allowlisted metadata persistence.
+- Added audit records for trip create/update/delete.
+- Added audit records for trip day and trip place create/update/delete.
+- Added audit records for share link creation and trip export creation.
+- Added audit records for entitlement verification without storing raw receipts or transaction ids.
+- Updated the privacy/security checklist with audit metadata and write-operation coverage rules.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Audit logs currently do not have a retention/deletion policy beyond D1 data ownership cleanup.
+- Provider latency/error metrics are still structured-log oriented and not yet persisted as operational counters.

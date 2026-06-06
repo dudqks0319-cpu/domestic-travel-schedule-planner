@@ -43,3 +43,5 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Provider calls have timeout and cache behavior.
 - [ ] Provider quota/rate-limit failures are tracked.
 - [ ] Audit logs avoid personal data and secrets.
+- [ ] Audit metadata is allowlisted and excludes tokens, receipts, raw provider payloads, and precise coordinates.
+- [ ] Trip, trip day, trip place, share link, export, and entitlement write operations create audit records.
