@@ -833,6 +833,7 @@ for (const text of [
 
 for (const text of [
   "npm ci",
+  "npm run check:env",
   "npm run check:release-contract",
   "npm test",
   "npm run check:health",

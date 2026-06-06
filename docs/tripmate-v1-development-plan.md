@@ -2336,3 +2336,27 @@ Verification completed:
 Remaining risks:
 - EAS preview/production API base URLs are intentionally placeholders until real Cloudflare Worker domains are assigned, so `npm run check:env:preview` and `npm run check:env:production` should fail before deployment setup.
 - EAS remote secret storage and native SDK keys still require direct console/CI review before store submission.
+
+## CI Env Readiness Gate Result Record
+
+Plan:
+- Run the strengthened env/security readiness check in the GitHub v1 release gate.
+- Ensure mobile env, EAS env, and Worker wrangler secret boundary regressions fail in CI, not only locally.
+- Extend release contract checks so the CI env step cannot be removed silently.
+
+Completed:
+- Added an `Environment readiness` step to `.github/workflows/tripmate-v1-gate.yml`.
+- The CI gate now runs `npm run check:env` before release contract, tests, and build/typecheck health checks.
+- Updated `scripts/release-contract-check.mjs` to require the CI `npm run check:env` step.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- CI uses local target checks by default; preview/production placeholder failures still require explicit `check:env:preview` and `check:env:production` before deployment.
+- Live GitHub Actions execution remains to be observed after pushing this commit.
