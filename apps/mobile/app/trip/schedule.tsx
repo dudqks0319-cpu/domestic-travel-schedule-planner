@@ -479,6 +479,13 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
+function routeProviderLabel(provider: string): string {
+  if (provider === "naver") return "네이버 경로";
+  if (provider === "kakao") return "카카오 경로";
+  if (provider === "odsay") return "대중교통 경로";
+  return "예상 이동";
+}
+
 function formatDateLabel(date: Date | null): string {
   if (!date) {
     return "날짜 미정";
@@ -574,7 +581,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
       type: "move",
       timeText: `${formatClock(moveStart)} - ${formatClock(moveEnd)}`,
       title: `${segment.from.name} → ${segment.to.name}`,
-      detail: `${segment.distanceKm.toFixed(1)}km · ${formatDuration(segment.durationMin)} · ${segment.provider}`
+      detail: `${segment.distanceKm.toFixed(1)}km · ${formatDuration(segment.durationMin)} · ${routeProviderLabel(segment.provider)}`
     });
 
     cursor = moveEnd;

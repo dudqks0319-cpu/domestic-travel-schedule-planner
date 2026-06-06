@@ -2862,3 +2862,30 @@ Remaining risks:
 - Live Kakao directions success still requires a preview Worker with `KAKAO_REST_API_KEY` and Kakao Mobility API access enabled.
 - Transit/walking remain fallback estimates until a suitable provider is connected.
 - Naver Directions parity remains future provider work.
+
+## Mobile Route Provider Status Result Record
+
+Plan:
+- Preserve Worker route `cacheStatus` in the mobile route API client.
+- Show route provider/cache state on the route map screen without exposing raw provider codes.
+- Replace raw provider values in the schedule timeline with user-facing movement labels.
+- Add release contract checks so provider/cache route status cannot regress silently.
+
+Completed:
+- Added optional `RouteCacheStatus` to `OptimizedRoute` and normalized Worker `cacheStatus` from `/routes/optimize`.
+- Updated the route map header and summary to distinguish live provider routes, cached routes, and local preview routes.
+- Added Naver/Kakao/fallback source copy for route summaries.
+- Updated the schedule timeline move rows to show “카카오 경로”, “네이버 경로”, or “예상 이동” instead of raw provider strings.
+- Added release contract checks for mobile route cache/provider status handling.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is a client contract/UI state pass; live provider-positive rendering still needs preview smoke with real Kakao directions enabled.
+- Route map visual verification should be run in Expo after the next UI-focused batch.

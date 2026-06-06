@@ -623,6 +623,60 @@ for (const [content, expectedText, label] of routeCacheContracts) {
   }
 }
 
+const mobileRouteProviderContracts = [
+  [
+    routeApi,
+    "RouteCacheStatus",
+    "Mobile route API must type route cache status"
+  ],
+  [
+    routeApi,
+    "cacheStatus?: RouteCacheStatus",
+    "Mobile optimized route must preserve Worker cache status"
+  ],
+  [
+    routeApi,
+    "normalizeWorkerRoute(payload?.route, payload?.cacheStatus)",
+    "Mobile route API must read cacheStatus from route optimize responses"
+  ],
+  [
+    routeMapScreen,
+    "cacheStatusLabel",
+    "Route map screen must expose provider cache status in user-facing copy"
+  ],
+  [
+    routeMapScreen,
+    "네이버 길찾기",
+    "Route map source labels must include Naver provider copy"
+  ],
+  [
+    routeMapScreen,
+    "카카오 길찾기",
+    "Route map source labels must include Kakao provider copy"
+  ],
+  [
+    scheduleScreen,
+    "routeProviderLabel",
+    "Schedule timeline must map raw provider codes to user-facing labels"
+  ],
+  [
+    scheduleScreen,
+    "카카오 경로",
+    "Schedule timeline must show Kakao provider as user-facing copy"
+  ],
+  [
+    scheduleScreen,
+    "예상 이동",
+    "Schedule timeline must label fallback provider as expected movement"
+  ]
+];
+
+for (const [content, expectedText, label] of mobileRouteProviderContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing mobile route provider contract: ${label}`);
+  }
+}
+
 const workerCorsContracts = [
   [
     indexRoutes,

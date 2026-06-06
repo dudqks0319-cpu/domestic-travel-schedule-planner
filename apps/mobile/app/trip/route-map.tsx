@@ -529,10 +529,22 @@ function modeLabel(mode: RouteTransportMode): string {
 }
 
 function sourceLabel(source: OptimizedRoute["source"]): string {
+  if (source === "naver") return "네이버 길찾기";
   if (source === "kakao") return "카카오 길찾기";
   if (source === "odsay") return "공공교통 데이터";
   if (source === "mixed") return "혼합 추정";
   return "예상 경로(미리보기)";
+}
+
+function cacheStatusLabel(cacheStatus: OptimizedRoute["cacheStatus"]): string {
+  if (cacheStatus === "hit") {
+    return "캐시된 결과";
+  }
+  if (cacheStatus === "miss") {
+    return "새로 계산";
+  }
+
+  return "로컬 미리보기";
 }
 
 function toUserFriendlyRouteMessage(rawMessage: string): string {
@@ -760,14 +772,16 @@ export default function RouteMapScreen() {
         : "실제 장소 좌표가 준비되면 경로가 자동으로 채워져요."
       : isFallbackRoute
         ? "실시간 경로 연결이 지연돼 예상 경로를 먼저 보여드리고 있어요."
-        : `이동수단: ${modeLabel(mode)}`;
+        : `${sourceLabel(displayedRoute?.source ?? "fallback")} · ${cacheStatusLabel(displayedRoute?.cacheStatus)} · ${modeLabel(mode)}`;
   const routeStatusLabel = !hydrated
     ? "불러오는 중"
     : !requestConfig.hasInputPoints
       ? "경로 없음"
       : isFallbackRoute
         ? "예상 경로"
-        : "실시간 경로";
+        : displayedRoute?.cacheStatus === "hit"
+          ? "저장된 경로"
+          : "실시간 경로";
   const listEmptyText = !hydrated
     ? "경로 정보를 불러오는 중이에요."
     : !requestConfig.hasInputPoints
@@ -995,6 +1009,10 @@ export default function RouteMapScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>데이터 소스</Text>
               <Text style={styles.summaryValue}>{sourceLabel(displayedRoute.source)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>계산 상태</Text>
+              <Text style={styles.summaryValue}>{cacheStatusLabel(displayedRoute.cacheStatus)}</Text>
             </View>
           </View>
         ) : null}

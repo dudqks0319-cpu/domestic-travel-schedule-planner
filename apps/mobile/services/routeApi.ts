@@ -4,6 +4,7 @@ import { getApiV1BaseUrl, readApiBaseUrlFromEnv } from "./apiBase";
 
 export type RouteTransportMode = "driving" | "transit" | "walking";
 export type RouteEstimateProvider = "naver" | "kakao" | "odsay" | "fallback" | "mixed";
+export type RouteCacheStatus = "hit" | "miss";
 
 export interface RoutePoint {
   id?: string;
@@ -27,6 +28,7 @@ export interface OptimizedRoute {
   totalDurationMin: number;
   source: RouteEstimateProvider;
   warnings: string[];
+  cacheStatus?: RouteCacheStatus;
 }
 
 export interface OptimizeRouteRequest {
@@ -45,6 +47,7 @@ interface OptimizeRouteApiResponse {
   error?: string;
   message?: string;
   details?: string[];
+  cacheStatus?: unknown;
 }
 
 class RouteApiError extends Error {
@@ -105,7 +108,8 @@ function isOptimizedRoute(value: unknown): value is OptimizedRoute {
     typeof value.totalDistanceKm === "number" &&
     typeof value.totalDurationMin === "number" &&
     typeof value.source === "string" &&
-    Array.isArray(value.warnings)
+    Array.isArray(value.warnings) &&
+    (value.cacheStatus === undefined || value.cacheStatus === "hit" || value.cacheStatus === "miss")
   );
 }
 
@@ -153,7 +157,15 @@ function segmentProvider(value: unknown): RouteSegmentEstimate["provider"] {
   return "fallback";
 }
 
-function normalizeWorkerRoute(value: unknown): OptimizedRoute | null {
+function routeCacheStatus(value: unknown): RouteCacheStatus | undefined {
+  if (value === "hit" || value === "miss") {
+    return value;
+  }
+
+  return undefined;
+}
+
+function normalizeWorkerRoute(value: unknown, cacheStatus?: unknown): OptimizedRoute | null {
   if (!isRecord(value)) {
     return null;
   }
@@ -198,7 +210,8 @@ function normalizeWorkerRoute(value: unknown): OptimizedRoute | null {
     source: routeProvider(value.provider),
     warnings: Array.isArray(value.warnings)
       ? value.warnings.filter((warning): warning is string => typeof warning === "string")
-      : []
+      : [],
+    ...(routeCacheStatus(cacheStatus) ? { cacheStatus: routeCacheStatus(cacheStatus) } : {})
   };
 }
 
@@ -244,7 +257,7 @@ async function requestOptimizeRoute(
     });
   }
 
-  const route = normalizeWorkerRoute(payload?.route) ?? payload?.data;
+  const route = normalizeWorkerRoute(payload?.route, payload?.cacheStatus) ?? payload?.data;
 
   if (!isOptimizedRoute(route)) {
     throw new RouteApiError("Route optimization response is invalid.", {
