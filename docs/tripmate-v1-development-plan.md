@@ -1568,3 +1568,32 @@ Verification completed:
 Remaining risks:
 - A real profile image field is still not part of `UserSignupProfile`; Kakao profile image persistence can be added later if product wants user photos.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Kakao Profile Image Persistence Result Record
+
+Plan:
+- Preserve Kakao profile image data through the Worker auth boundary and mobile auth profile.
+- Store only HTTPS profile image URLs and keep provider secrets server-side.
+- Show the real profile image when available, with the existing local initial avatar as fallback.
+
+Completed:
+- Added `profile_image` to the Worker D1 users schema and migration set.
+- Parsed Kakao `profile_image_url`/`thumbnail_image_url` values from `/v2/user/me`.
+- Updated Worker user upsert and public user response to include `profileImage`.
+- Added optional `profileImage` to mobile `UserSignupProfile` and persisted it through `AuthProvider`.
+- Updated the profile screen to render the profile image when present and fall back to the local initial avatar otherwise.
+- Added the new migration to the release contract check.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Existing preview/production D1 databases need migration `0004_user_profile_image.sql` applied before deploying this Worker version.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

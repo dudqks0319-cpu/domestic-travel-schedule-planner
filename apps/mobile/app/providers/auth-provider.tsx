@@ -65,6 +65,10 @@ function mergeUserProfile(
       backendUser.nickname?.trim() ||
       existingProfile?.nickname ||
       "여행자",
+    profileImage:
+      backendUser.profileImage?.trim() ||
+      existingProfile?.profileImage ||
+      null,
     companion: existingProfile?.companion ?? "solo",
     purpose: existingProfile?.purpose ?? "sightseeing",
     travelStyle: existingProfile?.travelStyle ?? "P",

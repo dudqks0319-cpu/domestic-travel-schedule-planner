@@ -80,7 +80,8 @@ for (const file of [
   "services/api-worker/src/db/schema.sql",
   "services/api-worker/migrations/0001_initial.sql",
   "services/api-worker/migrations/0002_trip_exports.sql",
-  "services/api-worker/migrations/0003_operational_events.sql"
+  "services/api-worker/migrations/0003_operational_events.sql",
+  "services/api-worker/migrations/0004_user_profile_image.sql"
 ]) {
   requireFile(file);
 }

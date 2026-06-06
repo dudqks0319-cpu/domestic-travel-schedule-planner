@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -53,6 +53,7 @@ export default function ProfileScreen() {
   const progress = Math.min(1, point / nextTierPoint);
   const profileName = user?.nickname?.trim() || "여행자";
   const profileEmail = user?.email?.trim() || null;
+  const profileImage = user?.profileImage?.trim() || null;
   const profileInitial = profileName.slice(0, 1).toUpperCase() || "T";
 
   useEffect(() => {
@@ -220,9 +221,13 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.profileTop}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitial}>{profileInitial}</Text>
-          </View>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitial}>{profileInitial}</Text>
+            </View>
+          )}
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{profileName}</Text>
             <View style={styles.badge}>
@@ -409,6 +414,14 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primaryLight,
     borderWidth: 1,
     borderColor: Theme.colors.borderLight
+  },
+  avatarImage: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: Theme.colors.primaryLight
   },
   avatarInitial: {
     fontSize: 34,

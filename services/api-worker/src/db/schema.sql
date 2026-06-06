@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
   kakao_user_id TEXT UNIQUE,
   nickname TEXT,
   email TEXT,
+  profile_image TEXT,
   status TEXT NOT NULL DEFAULT 'active',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

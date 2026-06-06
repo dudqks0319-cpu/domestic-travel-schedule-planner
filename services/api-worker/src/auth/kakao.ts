@@ -4,6 +4,7 @@ export interface VerifiedKakaoProfile {
   kakaoUserId: string;
   nickname: string;
   email?: string;
+  profileImage?: string;
 }
 
 interface KakaoUserMeResponse {
@@ -12,11 +13,28 @@ interface KakaoUserMeResponse {
     email?: string;
     profile?: {
       nickname?: string;
+      thumbnail_image_url?: string;
+      profile_image_url?: string;
     };
   };
   properties?: {
     nickname?: string;
+    thumbnail_image?: string;
+    profile_image?: string;
   };
+}
+
+function imageUrlValue(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("https://")) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 export async function verifyKakaoAccessToken(
@@ -58,10 +76,16 @@ export async function verifyKakaoAccessToken(
     body.properties?.nickname?.trim() ||
     "카카오 여행자";
   const email = body.kakao_account?.email?.trim();
+  const profileImage =
+    imageUrlValue(body.kakao_account?.profile?.profile_image_url) ??
+    imageUrlValue(body.kakao_account?.profile?.thumbnail_image_url) ??
+    imageUrlValue(body.properties?.profile_image) ??
+    imageUrlValue(body.properties?.thumbnail_image);
 
   return {
     kakaoUserId: String(body.id),
     nickname,
-    ...(email ? { email } : {})
+    ...(email ? { email } : {}),
+    ...(profileImage ? { profileImage } : {})
   };
 }

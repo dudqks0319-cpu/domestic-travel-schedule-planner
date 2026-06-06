@@ -3,6 +3,7 @@ export interface UserRecord {
   kakao_user_id: string | null;
   nickname: string | null;
   email: string | null;
+  profile_image: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -22,6 +23,7 @@ export interface KakaoUserInput {
   kakaoUserId: string;
   nickname: string;
   email?: string;
+  profileImage?: string;
 }
 
 export function toPublicUser(record: UserRecord) {
@@ -29,6 +31,7 @@ export function toPublicUser(record: UserRecord) {
     id: record.id,
     nickname: record.nickname ?? "여행자",
     email: record.email,
+    profileImage: record.profile_image,
     provider: record.kakao_user_id ? "kakao" : "guest",
     status: record.status,
     createdAt: record.created_at,
@@ -50,10 +53,15 @@ export async function upsertKakaoUser(db: D1Database, input: KakaoUserInput): Pr
     await db
       .prepare(
         `UPDATE users
-         SET nickname = ?, email = ?, status = 'active', updated_at = datetime('now')
+         SET nickname = ?, email = ?, profile_image = ?, status = 'active', updated_at = datetime('now')
          WHERE id = ?`
       )
-      .bind(input.nickname, input.email ?? existing.email, existing.id)
+      .bind(
+        input.nickname,
+        input.email ?? existing.email,
+        input.profileImage ?? existing.profile_image,
+        existing.id
+      )
       .run();
 
     const updated = await getUserById(db, existing.id);
@@ -66,10 +74,10 @@ export async function upsertKakaoUser(db: D1Database, input: KakaoUserInput): Pr
   const id = crypto.randomUUID();
   await db
     .prepare(
-      `INSERT INTO users (id, kakao_user_id, nickname, email)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO users (id, kakao_user_id, nickname, email, profile_image)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .bind(id, input.kakaoUserId, input.nickname, input.email ?? null)
+    .bind(id, input.kakaoUserId, input.nickname, input.email ?? null, input.profileImage ?? null)
     .run();
 
   const created = await getUserById(db, id);

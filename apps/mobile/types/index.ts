@@ -44,6 +44,7 @@ export type ChildAgeGroup = "0_2" | "3_5" | "6_7" | "8_10" | "11_13";
 export interface UserSignupProfile {
   email: string;
   nickname: string;
+  profileImage?: string | null;
   companion: CompanionType;
   purpose: TripPurpose;
   travelStyle: TravelStyle;
