@@ -7,6 +7,8 @@ export type { Coordinate } from "./geo";
 export { improveRouteTwoOpt, nearestNeighborTsp, optimizeOrder } from "./nearest-neighbor";
 export type { TspLocation, TspResult } from "./nearest-neighbor";
 
+export { generateTripPlan, getTripDayCount } from "./trip-planner";
+
 export type {
   NormalizedPlace,
   NormalizedRoute,
