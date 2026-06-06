@@ -1921,6 +1921,21 @@ const premiumStorageContracts = [
     "Worker smoke must verify stale remote place pruning"
   ],
   [
+    workerSmokeScript,
+    "place patch should persist memo",
+    "Worker smoke must verify schedule place memo persistence"
+  ],
+  [
+    workerSmokeScript,
+    "place patch should clear memo with null",
+    "Worker smoke must verify schedule place memo clearing"
+  ],
+  [
+    workerSmokeScript,
+    "place field clear should persist startTime null",
+    "Worker smoke must verify schedule place time clearing persistence"
+  ],
+  [
     scheduleScreen,
     "장소 다시 동기화",
     "Schedule screen must label saved-trip place sync retry"

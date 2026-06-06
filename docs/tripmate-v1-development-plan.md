@@ -692,6 +692,28 @@ Verification completed:
 Remaining risks:
 - The executable smoke still requires a running local/preview Worker with D1/KV/R2 bindings to validate against runtime storage.
 
+## Release Contract Schedule Field Clearing Result Record
+
+Plan:
+- Pin the schedule field clearing smoke assertions in the release contract checker.
+- Fail `check:release-contract` if future edits remove memo/time persistence or clearing smoke coverage.
+
+Completed:
+- Added release contract checks for schedule place memo persistence.
+- Added release contract checks for memo clearing through `null`.
+- Added release contract checks for visit time clearing persistence.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Static release contract checks prove the assertion text remains in the smoke script; live Worker execution still requires local or preview D1/KV/R2 bindings.
+
 ## Route Fallback Safety Result Record
 
 Plan:
