@@ -1819,3 +1819,31 @@ Remaining risks:
 - Live Worker smoke with D1 is still required to execute the pruning path against a real database.
 - Pruning intentionally depends on local currentTrip being canonical; future multi-device collaboration should use conflict-aware sync instead.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Public Share Page Privacy Headers Result Record
+
+Plan:
+- Harden the public `/share/:shareId` HTML page so tokenized itinerary links are not cached, indexed, framed, or leaked through referrers.
+- Remove rendered share token fragments from the public footer while keeping the page read-only and coordinate-safe.
+- Add static release contracts so public share page privacy headers and token redaction remain enforced.
+- Update the privacy/security checklist with the public share page requirement.
+
+Completed:
+- Added `cache-control: private, no-store`, `x-robots-tag: noindex, nofollow`, `referrer-policy: no-referrer`, `x-content-type-options: nosniff`, and a restrictive CSP to public share pages.
+- Removed the visible share token prefix from the public share page footer.
+- Added release contract checks for public share privacy headers, noindex behavior, frame blocking, coordinate copy, and token-fragment redaction.
+- Added the public share page privacy item to `docs/privacy-security-checklist.md`.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Worker/browser smoke is still needed to inspect response headers from a deployed preview Worker.
+- Public share URLs remain bearer links by design; users should treat them as sensitive until an optional password or recipient-scoped sharing model is added.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

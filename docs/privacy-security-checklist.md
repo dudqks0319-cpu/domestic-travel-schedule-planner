@@ -16,6 +16,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Trip reads and writes check `user_id` ownership.
 - [ ] Shared trip reads are read-only.
 - [ ] Share tokens are unguessable.
+- [ ] Public share pages use no-store/noindex/no-referrer headers and do not render share token fragments.
 - [ ] Logout clears SecureStore tokens.
 - [ ] Account deletion and data deletion flows are exposed or documented.
 - [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.

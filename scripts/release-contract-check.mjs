@@ -87,6 +87,7 @@ for (const file of [
 }
 
 const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
+const sharePageRoutes = readText("services/api-worker/src/routes/share-page.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
 const auditDb = readText("services/api-worker/src/db/audit.ts");
 const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
@@ -246,6 +247,69 @@ for (const [content, expectedText, label] of exportDownloadContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing export download contract: ${label}`);
   }
+}
+
+const sharePagePrivacyContracts = [
+  [
+    sharePageRoutes,
+    "setSharePageSecurityHeaders",
+    "Public share page must set privacy/security headers"
+  ],
+  [
+    sharePageRoutes,
+    '"cache-control"',
+    "Public share page must set cache-control"
+  ],
+  [
+    sharePageRoutes,
+    "private, no-store",
+    "Public share page must prevent shared itinerary caching"
+  ],
+  [
+    sharePageRoutes,
+    '"x-robots-tag"',
+    "Public share page must set x-robots-tag"
+  ],
+  [
+    sharePageRoutes,
+    "noindex, nofollow",
+    "Public share page must prevent indexing"
+  ],
+  [
+    sharePageRoutes,
+    '"referrer-policy"',
+    "Public share page must set referrer-policy"
+  ],
+  [
+    sharePageRoutes,
+    "no-referrer",
+    "Public share page must avoid leaking share URLs through referrers"
+  ],
+  [
+    sharePageRoutes,
+    "frame-ancestors 'none'",
+    "Public share page must block framing"
+  ],
+  [
+    sharePageRoutes,
+    "장소 좌표 원문은 표시하지 않습니다",
+    "Public share page must disclose that raw coordinates are not shown"
+  ],
+  [
+    sharePageRoutes,
+    "TripMate 읽기 전용 공유 일정",
+    "Public share page footer must not render share token fragments"
+  ]
+];
+
+for (const [content, expectedText, label] of sharePagePrivacyContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing share page privacy contract: ${label}`);
+  }
+}
+
+if (sharePageRoutes.includes("공유 토큰:") || sharePageRoutes.includes("shareToken.slice")) {
+  errors.push("Public share page must not render share token fragments.");
 }
 
 const premiumStorageContracts = [

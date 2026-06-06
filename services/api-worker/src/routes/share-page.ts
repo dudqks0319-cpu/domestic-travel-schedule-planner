@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import type { AppBindings } from "../bindings";
 import {
@@ -11,6 +11,17 @@ import {
 } from "../db/trips";
 
 export const sharePageRoutes = new Hono<AppBindings>();
+
+function setSharePageSecurityHeaders(c: Context<AppBindings>): void {
+  c.header("cache-control", "private, no-store");
+  c.header("x-robots-tag", "noindex, nofollow");
+  c.header("referrer-policy", "no-referrer");
+  c.header("x-content-type-options", "nosniff");
+  c.header(
+    "content-security-policy",
+    "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  );
+}
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
@@ -57,7 +68,6 @@ function renderNotFoundPage(): string {
 }
 
 function renderSharePage(input: {
-  shareToken: string;
   shareExpiresAt: string | null;
   trip: ReturnType<typeof toPublicTrip>;
   days: Array<ReturnType<typeof toPublicTripDay> & { places: Array<ReturnType<typeof toPublicTripPlace>> }>;
@@ -169,13 +179,15 @@ function renderSharePage(input: {
     </header>
     ${daySections || `<section class="day"><div class="empty-place">표시할 일정이 없습니다.</div></section>`}
     ${unassignedSection}
-    <footer>공유 토큰: ${escapeHtml(input.shareToken.slice(0, 8))}...${input.shareExpiresAt ? ` · 만료: ${escapeHtml(input.shareExpiresAt)}` : ""}</footer>
+    <footer>TripMate 읽기 전용 공유 일정${input.shareExpiresAt ? ` · 만료: ${escapeHtml(input.shareExpiresAt)}` : ""}</footer>
   </main>
 </body>
 </html>`;
 }
 
 sharePageRoutes.get("/:shareId", async (c) => {
+  setSharePageSecurityHeaders(c);
+
   const sharedTrip = await getSharedTrip(c.env.DB, c.req.param("shareId"));
   if (!sharedTrip) {
     return c.html(renderNotFoundPage(), 404);
@@ -197,7 +209,6 @@ sharePageRoutes.get("/:shareId", async (c) => {
   const unassignedPlaces = publicPlaces.filter((place) => !place.dayId || !assignedDayIds.has(place.dayId));
 
   return c.html(renderSharePage({
-    shareToken: sharedTrip.share_token,
     shareExpiresAt: sharedTrip.share_expires_at,
     trip: toPublicTrip(sharedTrip),
     days: publicDays,
