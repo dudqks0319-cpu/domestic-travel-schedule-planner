@@ -59,7 +59,7 @@ wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 wrangler secret put OPS_ADMIN_TOKEN
 ```
 
-`OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
+`OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token without leading/trailing whitespace. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
 Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[vars]` or `[env.*.vars]`. Those blocks are for non-secret configuration such as `ENVIRONMENT`, `API_VERSION`, and `ALLOWED_ORIGINS`. Use `wrangler secret put` for every provider key, JWT secret, admin token, and purchase verification secret.
 

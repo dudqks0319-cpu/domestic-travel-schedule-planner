@@ -81,7 +81,7 @@ curl -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
   "https://<worker-host>/api/v1/ops/summary?hours=24"
 ```
 
-The summary endpoint returns grouped operational events, ad events, affiliate clicks, and entitlement counts. It requires `OPS_ADMIN_TOKEN`, must not be called from mobile clients, and records an `ops.summary.read` audit event without storing the token. Rotate `OPS_ADMIN_TOKEN` per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
+The summary endpoint returns grouped operational events, ad events, affiliate clicks, and entitlement counts. It requires `OPS_ADMIN_TOKEN`, must not be called from mobile clients, and records an `ops.summary.read` audit event without storing the token. The Worker trims the configured token and compares the submitted token with a hardened constant-time helper. Rotate `OPS_ADMIN_TOKEN` per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
 Retention dry run:
 

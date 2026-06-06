@@ -970,6 +970,16 @@ for (const text of [
 }
 
 for (const text of [
+  "constantTimeTokenEquals",
+  "actual.length ^ expected.length",
+  "!constantTimeTokenEquals(adminToken(c), expectedToken)"
+]) {
+  if (!opsRoutes.includes(text)) {
+    errors.push(`Ops routes must compare admin tokens with the hardened helper: ${text}`);
+  }
+}
+
+for (const text of [
   "assertDeployAllowedOrigins",
   "ALLOWED_ORIGINS must explicitly list browser origins",
   "ALLOWED_ORIGINS must not contain localhost or 127.0.0.1 for deploy readiness",

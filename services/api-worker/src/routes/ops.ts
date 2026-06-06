@@ -47,6 +47,21 @@ function adminToken(c: { req: { header: (name: string) => string | undefined } }
   return c.req.header("x-ops-token")?.trim() ?? null;
 }
 
+function constantTimeTokenEquals(actual: string | null, expected: string): boolean {
+  if (!actual) {
+    return false;
+  }
+
+  const maxLength = Math.max(actual.length, expected.length);
+  let diff = actual.length ^ expected.length;
+
+  for (let index = 0; index < maxLength; index += 1) {
+    diff |= (actual.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
+  }
+
+  return diff === 0;
+}
+
 function hoursParam(value: string | undefined): number {
   if (!value) {
     return 24;
@@ -83,12 +98,12 @@ function booleanParam(value: string | undefined): boolean {
 }
 
 opsRoutes.use("*", async (c, next) => {
-  const expectedToken = c.env.OPS_ADMIN_TOKEN;
+  const expectedToken = c.env.OPS_ADMIN_TOKEN?.trim();
   if (!expectedToken) {
     return errorResponse(c, 501, "OPS_NOT_CONFIGURED", "운영 API 토큰이 설정되지 않았습니다.");
   }
 
-  if (adminToken(c) !== expectedToken) {
+  if (!constantTimeTokenEquals(adminToken(c), expectedToken)) {
     return errorResponse(c, 403, "OPS_FORBIDDEN", "운영 API 권한이 없습니다.");
   }
 

@@ -2621,3 +2621,29 @@ Verification completed:
 Remaining risks:
 - Preview and production `ALLOWED_ORIGINS` values in `services/api-worker/wrangler.toml` are still intentionally not deploy-ready until real Cloudflare Pages/admin origins are assigned.
 - `check:env:preview` and `check:env:production` should continue to fail until real binding IDs, EAS URLs, Kakao web keys, and HTTPS origins are configured.
+
+## Ops Admin Token Comparison Result Record
+
+Plan:
+- Harden `/api/v1/ops/*` admin token comparison without adding a dependency.
+- Keep missing `OPS_ADMIN_TOKEN` behavior explicit and fail-closed.
+- Add release contract coverage so operational token comparison does not regress to direct string equality.
+- Update ops documentation with the token formatting and comparison boundary.
+
+Completed:
+- Added `constantTimeTokenEquals()` to the Worker ops route and used it for `Authorization: Bearer` / `x-ops-token` checks.
+- Trimmed configured `OPS_ADMIN_TOKEN` before validation so accidental environment whitespace does not create confusing operator failures.
+- Added release contract checks for the hardened helper.
+- Updated environment and Cloudflare deployment docs.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- `OPS_ADMIN_TOKEN` existence in Cloudflare preview/production still requires live secret inspection or preview smoke; local static checks can only ensure it is not stored in repo vars.
+- Operations endpoints should be exercised against a real preview Worker with `OPS_ADMIN_TOKEN` before production handoff.
