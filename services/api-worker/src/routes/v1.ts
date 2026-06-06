@@ -4,18 +4,19 @@ import type { AppBindings } from "../bindings";
 import { requireAuth } from "../middleware/auth";
 import { healthRoutes } from "./health";
 import { notImplemented } from "../http/errors";
+import { placeRoutes } from "./places";
+import { plannerRoutes } from "./planner";
+import { routeRoutes } from "./routes";
 import { shareRoutes, tripRoutes } from "./trips";
 
 export const v1Routes = new Hono<AppBindings>();
 
 v1Routes.route("/health", healthRoutes);
 
-v1Routes.get("/places/search", (c) => notImplemented(c, "장소 검색"));
-v1Routes.get("/places/:placeId", (c) => notImplemented(c, "장소 상세"));
+v1Routes.route("/places", placeRoutes);
 
-v1Routes.post("/planner/generate", (c) => notImplemented(c, "일정 생성"));
-v1Routes.post("/planner/replan", requireAuth, (c) => notImplemented(c, "일정 재생성"));
-v1Routes.post("/routes/optimize", (c) => notImplemented(c, "경로 최적화"));
+v1Routes.route("/planner", plannerRoutes);
+v1Routes.route("/routes", routeRoutes);
 
 v1Routes.route("/trips", tripRoutes);
 v1Routes.post("/trips/:tripId/days", requireAuth, (c) => notImplemented(c, "여행 일차 추가"));

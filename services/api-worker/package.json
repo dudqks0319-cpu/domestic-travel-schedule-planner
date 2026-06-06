@@ -10,6 +10,7 @@
     "deploy:preview": "wrangler deploy --env preview"
   },
   "dependencies": {
+    "@tripmate/planner": "0.1.0",
     "hono": "^4.0.0"
   },
   "devDependencies": {
