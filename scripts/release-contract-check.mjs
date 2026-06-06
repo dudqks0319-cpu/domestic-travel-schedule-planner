@@ -101,6 +101,7 @@ const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const userDb = readText("services/api-worker/src/db/users.ts");
+const rateLimitMiddleware = readText("services/api-worker/src/middleware/rate-limit.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
 const loginScreen = readText("apps/mobile/app/auth/login.tsx");
@@ -251,6 +252,105 @@ const accountDeletionContracts = [
 for (const [content, expectedText, label] of accountDeletionContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing account deletion contract: ${label}`);
+  }
+}
+
+const rateLimitContracts = [
+  [
+    placeRoutes,
+    'placeRoutes.use("/search", rateLimit({',
+    "Place search route must install rate limiting before provider calls"
+  ],
+  [
+    placeRoutes,
+    'keyPrefix: "places_search"',
+    "Place search rate limit must use a stable KV key prefix"
+  ],
+  [
+    placeRoutes,
+    "limit: 60",
+    "Place search rate limit must match provider policy"
+  ],
+  [
+    placeRoutes,
+    "windowSeconds: 60",
+    "Place search rate limit window must match provider policy"
+  ],
+  [
+    plannerRoutes,
+    'plannerRoutes.use("/generate", rateLimit({',
+    "Planner generate route must install rate limiting before provider calls"
+  ],
+  [
+    plannerRoutes,
+    'keyPrefix: "planner_generate"',
+    "Planner generate rate limit must use a stable KV key prefix"
+  ],
+  [
+    plannerRoutes,
+    "limit: 20",
+    "Planner generate rate limit must match provider policy"
+  ],
+  [
+    routeRoutes,
+    'routeRoutes.use("/optimize", rateLimit({',
+    "Route optimize endpoint must install rate limiting before route computation"
+  ],
+  [
+    routeRoutes,
+    'keyPrefix: "routes_optimize"',
+    "Route optimize rate limit must use a stable KV key prefix"
+  ],
+  [
+    routeRoutes,
+    "limit: 30",
+    "Route optimize rate limit must match provider policy"
+  ],
+  [
+    tripRoutes,
+    'tripRoutes.use("/:tripId/exports", rateLimit({',
+    "Trip export creation must install rate limiting before export asset creation"
+  ],
+  [
+    tripRoutes,
+    'keyPrefix: "trip_exports"',
+    "Trip export rate limit must use a stable KV key prefix"
+  ],
+  [
+    tripRoutes,
+    "limit: 20",
+    "Trip export rate limit must match provider policy"
+  ],
+  [
+    tripRoutes,
+    "windowSeconds: 3600",
+    "Trip export rate limit window must match provider policy"
+  ],
+  [
+    rateLimitMiddleware,
+    'c.header("x-ratelimit-limit"',
+    "Rate limit responses must include limit headers"
+  ],
+  [
+    rateLimitMiddleware,
+    'c.header("x-ratelimit-remaining"',
+    "Rate limit responses must include remaining headers"
+  ],
+  [
+    rateLimitMiddleware,
+    'c.header("x-ratelimit-reset"',
+    "Rate limit responses must include reset headers"
+  ],
+  [
+    rateLimitMiddleware,
+    '"RATE_LIMITED"',
+    "Rate limit middleware must return a stable error code"
+  ]
+];
+
+for (const [content, expectedText, label] of rateLimitContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing rate limit contract: ${label}`);
   }
 }
 

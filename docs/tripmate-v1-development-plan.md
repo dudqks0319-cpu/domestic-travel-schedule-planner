@@ -2699,3 +2699,26 @@ Verification completed:
 Remaining risks:
 - Contract checks verify source-level coverage; a live preview smoke with seeded exports and share links is still needed before production handoff.
 - R2 bucket lifecycle rules remain a defense-in-depth operational setup item outside this repository.
+
+## Cost-Sensitive Rate Limit Contract Result Record
+
+Plan:
+- Lock rate limit coverage for provider and cost-sensitive Worker endpoints in release contract checks.
+- Ensure the checked limits match `docs/provider-policy.md`.
+- Verify response headers and stable `RATE_LIMITED` error code remain present.
+
+Completed:
+- Added release contract checks for `GET /api/v1/places/search`, `POST /api/v1/planner/generate`, `POST /api/v1/routes/optimize`, and `POST /api/v1/trips/:tripId/exports`.
+- Added contract checks for the stable KV prefixes, policy limits/windows, rate limit headers, and stable error code.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- KV-backed rate limiting should still be observed against a live preview Worker because local static checks do not validate Cloudflare KV consistency under concurrency.
+- Additional WAF-level quotas may still be needed for production abuse response.
