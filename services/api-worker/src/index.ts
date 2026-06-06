@@ -62,6 +62,7 @@ async function runScheduledRetention(
   try {
     const result = await runOpsRetention({
       db: env.DB,
+      assets: env.TRIPMATE_ASSETS,
       requestId,
       action: "ops.retention.scheduled"
     });

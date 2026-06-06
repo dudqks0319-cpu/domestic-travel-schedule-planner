@@ -22,8 +22,12 @@ const ALLOWED_METADATA_KEYS = new Set([
   "operationalRetentionDays",
   "matchedAuditLogs",
   "matchedOperationalEvents",
+  "matchedTripExports",
+  "matchedExportObjects",
   "deletedAuditLogs",
   "deletedOperationalEvents",
+  "deletedExportObjects",
+  "expiredTripExports",
   "dryRun"
 ]);
 

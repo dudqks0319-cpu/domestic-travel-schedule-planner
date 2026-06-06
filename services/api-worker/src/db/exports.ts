@@ -27,6 +27,8 @@ export interface TripExportInput {
   expiresAt?: string;
 }
 
+export type TripExportObjectKeys = Pick<TripExportRecord, "id" | "manifest_key" | "asset_key">;
+
 export function toPublicTripExport(record: TripExportRecord, downloadUrl?: string | null) {
   return {
     id: record.id,
@@ -111,4 +113,36 @@ export async function listUserTripExportObjectKeys(
   ]);
 
   return Array.from(new Set(keys));
+}
+
+export async function listExpiredTripExportsForCleanup(db: D1Database): Promise<TripExportObjectKeys[]> {
+  const result = await db
+    .prepare(
+      `SELECT id, manifest_key, asset_key
+       FROM trip_exports
+       WHERE expires_at IS NOT NULL
+         AND expires_at < datetime('now')
+         AND deleted_at IS NULL
+         AND status != 'expired'`
+    )
+    .all<TripExportObjectKeys>();
+
+  return result.results ?? [];
+}
+
+export async function expireTripExportsForCleanup(db: D1Database): Promise<number> {
+  const result = await db
+    .prepare(
+      `UPDATE trip_exports
+       SET status = 'expired',
+           updated_at = datetime('now'),
+           deleted_at = datetime('now')
+       WHERE expires_at IS NOT NULL
+         AND expires_at < datetime('now')
+         AND deleted_at IS NULL
+         AND status != 'expired'`
+    )
+    .run();
+
+  return result.meta.changes ?? 0;
 }

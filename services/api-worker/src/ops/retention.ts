@@ -7,6 +7,10 @@ import {
   countOperationalEventsOlderThan,
   deleteOperationalEventsOlderThan
 } from "../db/operations";
+import {
+  expireTripExportsForCleanup,
+  listExpiredTripExportsForCleanup
+} from "../db/exports";
 
 export const DEFAULT_AUDIT_RETENTION_DAYS = 365;
 export const DEFAULT_OPERATIONAL_RETENTION_DAYS = 90;
@@ -20,15 +24,22 @@ export interface OpsRetentionResult {
   matched: {
     auditLogs: number;
     operationalEvents: number;
+    tripExports: number;
+    exportObjects: number;
   };
   deleted: {
     auditLogs: number;
     operationalEvents: number;
+    exportObjects: number;
+  };
+  expired: {
+    tripExports: number;
   };
 }
 
 export async function runOpsRetention(input: {
   db: D1Database;
+  assets?: R2Bucket;
   auditRetentionDays?: number;
   operationalRetentionDays?: number;
   dryRun?: boolean;
@@ -39,10 +50,20 @@ export async function runOpsRetention(input: {
   const operationalRetentionDays = input.operationalRetentionDays ?? DEFAULT_OPERATIONAL_RETENTION_DAYS;
   const dryRun = input.dryRun === true;
 
-  const [matchedAuditLogs, matchedOperationalEvents] = await Promise.all([
+  const [matchedAuditLogs, matchedOperationalEvents, expiredExportRecords] = await Promise.all([
     countAuditLogsOlderThan(input.db, auditRetentionDays),
-    countOperationalEventsOlderThan(input.db, operationalRetentionDays)
+    countOperationalEventsOlderThan(input.db, operationalRetentionDays),
+    listExpiredTripExportsForCleanup(input.db)
   ]);
+  const expiredExportObjectKeys = Array.from(new Set(expiredExportRecords.flatMap((record) => [
+    record.manifest_key,
+    ...(record.asset_key ? [record.asset_key] : [])
+  ])));
+
+  const assets = input.assets;
+  if (!dryRun && assets && expiredExportObjectKeys.length > 0) {
+    await Promise.all(expiredExportObjectKeys.map((key) => assets.delete(key)));
+  }
 
   const [deletedAuditLogs, deletedOperationalEvents] = dryRun
     ? [0, 0]
@@ -50,6 +71,8 @@ export async function runOpsRetention(input: {
         deleteAuditLogsOlderThan(input.db, auditRetentionDays),
         deleteOperationalEventsOlderThan(input.db, operationalRetentionDays)
       ]);
+  const expiredTripExports = dryRun ? 0 : await expireTripExportsForCleanup(input.db);
+  const deletedExportObjects = dryRun || !assets ? 0 : expiredExportObjectKeys.length;
 
   await createAuditLog(input.db, {
     action: input.action,
@@ -60,8 +83,12 @@ export async function runOpsRetention(input: {
       operationalRetentionDays,
       matchedAuditLogs,
       matchedOperationalEvents,
+      matchedTripExports: expiredExportRecords.length,
+      matchedExportObjects: expiredExportObjectKeys.length,
       deletedAuditLogs,
       deletedOperationalEvents,
+      deletedExportObjects,
+      expiredTripExports,
       dryRun
     }
   });
@@ -74,11 +101,17 @@ export async function runOpsRetention(input: {
     },
     matched: {
       auditLogs: matchedAuditLogs,
-      operationalEvents: matchedOperationalEvents
+      operationalEvents: matchedOperationalEvents,
+      tripExports: expiredExportRecords.length,
+      exportObjects: expiredExportObjectKeys.length
     },
     deleted: {
       auditLogs: deletedAuditLogs,
-      operationalEvents: deletedOperationalEvents
+      operationalEvents: deletedOperationalEvents,
+      exportObjects: deletedExportObjects
+    },
+    expired: {
+      tripExports: expiredTripExports
     }
   };
 }

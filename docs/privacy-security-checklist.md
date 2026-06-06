@@ -51,4 +51,5 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Ops summary reads require `OPS_ADMIN_TOKEN`, create audit records, and never store the token.
 - [ ] Ops retention runs require `OPS_ADMIN_TOKEN`, support dry run, create audit records, and never store the token.
 - [ ] Scheduled retention cron is deployed for preview/production and records privacy-safe operational events.
+- [ ] Expired export manifests/assets are deleted from R2 and expired in D1 retention runs.
 - [ ] Account deletion anonymizes prior audit log `user_id` values while retaining non-personal operational history.

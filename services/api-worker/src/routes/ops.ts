@@ -172,6 +172,7 @@ opsRoutes.get("/summary", async (c) => {
 opsRoutes.post("/retention", async (c) => {
   const result = await runOpsRetention({
     db: c.env.DB,
+    assets: c.env.TRIPMATE_ASSETS,
     auditRetentionDays: daysParam(c.req.query("auditDays"), DEFAULT_AUDIT_RETENTION_DAYS, 30, 2555),
     operationalRetentionDays: daysParam(
       c.req.query("operationalDays"),

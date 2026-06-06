@@ -1493,3 +1493,31 @@ Verification completed:
 Remaining risks:
 - Scheduled retention still needs a live Cloudflare preview deployment test after D1/KV/R2 binding ids are configured.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Expired Export Cleanup Result Record
+
+Plan:
+- Re-check the export download path and close the remaining expiry-policy gap.
+- Keep authenticated export downloads instead of exposing public R2 object keys.
+- Extend ops retention so expired export manifests/assets are deleted from R2 and export records are expired in D1.
+
+Completed:
+- Added DB helpers to list expired export manifest/asset keys and mark expired exports.
+- Extended `runOpsRetention()` to delete expired R2 export objects before expiring DB records.
+- Included matched/deleted/expired export counts in retention responses and audit metadata.
+- Passed R2 bindings from both `/api/v1/ops/retention` and the scheduled retention handler.
+- Updated Cloudflare deployment docs and the privacy/security checklist with expired export cleanup coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Export download remains authenticated rather than publicly signed; public/shared export links still require a separate token model if they become a product requirement.
+- Binary PDF/image rendering is still separate from the current print-ready HTML export asset.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
