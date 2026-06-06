@@ -2647,3 +2647,31 @@ Verification completed:
 Remaining risks:
 - `OPS_ADMIN_TOKEN` existence in Cloudflare preview/production still requires live secret inspection or preview smoke; local static checks can only ensure it is not stored in repo vars.
 - Operations endpoints should be exercised against a real preview Worker with `OPS_ADMIN_TOKEN` before production handoff.
+
+## Cloudflare Secret Readiness Script Result Record
+
+Plan:
+- Add a deploy-time script that verifies required Cloudflare secret names exist remotely for preview and production.
+- Keep the script separate from local `check:dev` because it needs Cloudflare authentication and network access.
+- Avoid printing or storing secret values; compare only secret names returned by Wrangler.
+- Document the new preview/production gate commands.
+
+Completed:
+- Added `scripts/check-cloudflare-secrets.mjs`.
+- Added root scripts `check:secrets:preview` and `check:secrets:production`.
+- Added release contract checks for the script, required secret names, and `wrangler secret list --json` usage.
+- Updated environment and Cloudflare deployment docs with the remote secret validation step.
+
+Verification completed:
+- `node --check scripts/check-cloudflare-secrets.mjs`
+- `node scripts/check-cloudflare-secrets.mjs --print-required`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- The actual remote checks require a Cloudflare-authenticated shell and network access, so they are not part of local `check:dev`.
+- Secret presence does not prove secret correctness; preview smoke and provider/auth flows still need to run against real configured values.

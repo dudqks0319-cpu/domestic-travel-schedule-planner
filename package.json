@@ -11,6 +11,8 @@
     "check:env": "node scripts/dev-readiness-check.mjs",
     "check:env:preview": "node scripts/dev-readiness-check.mjs --target preview",
     "check:env:production": "node scripts/dev-readiness-check.mjs --target production",
+    "check:secrets:preview": "node scripts/check-cloudflare-secrets.mjs --target preview",
+    "check:secrets:production": "node scripts/check-cloudflare-secrets.mjs --target production",
     "check:release-contract": "node scripts/release-contract-check.mjs",
     "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build && npm run worker:typecheck",
     "check:dev": "npm run check:env && npm run check:release-contract && npm run check:health",

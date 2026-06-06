@@ -91,3 +91,5 @@ Configured in `services/api-worker/wrangler.toml`:
 `npm run check:env` fails when any non-`EXPO_PUBLIC_` key or known server-only key appears in any `apps/mobile/.env*` runtime file, excluding `.env.example`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe deploy origins.
 The same check fails if server-only Worker secrets are added to `wrangler.toml` vars instead of Cloudflare secrets.
 For preview/production targets, the check also fails when the corresponding EAS `EXPO_PUBLIC_API_BASE_URL` still points to localhost, an example domain, or a placeholder Worker URL.
+
+Use `npm run check:secrets:preview` and `npm run check:secrets:production` from a Cloudflare-authenticated shell before deploy. These commands call `wrangler secret list --json` and verify that every required secret name exists remotely without printing secret values.

@@ -40,6 +40,7 @@ Before preview deploy:
 - Replace placeholder IDs in `services/api-worker/wrangler.toml`.
 - Replace preview `ALLOWED_ORIGINS` with real HTTPS browser origins for the preview web/admin surfaces. Do not use localhost, loopback, placeholder, or example origins for deploy readiness.
 - Set all Cloudflare secrets with `wrangler secret put`.
+- Run `npm run check:secrets:preview` with a Cloudflare-authenticated shell to verify required secret names exist remotely.
 - Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
 - Run `npm run check:env:preview`.
 - Run `npm run check:release-contract`.
@@ -55,6 +56,7 @@ Production gates:
 - `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
 - `npm run check:health`
 - `npm run check:env:production`
+- `npm run check:secrets:production` from a Cloudflare-authenticated shell
 - `npm run check:release-contract`
 - `npm test`
 - local or preview Worker smoke for `/health`

@@ -54,6 +54,8 @@ const requiredRootScripts = [
   "check:env",
   "check:health",
   "check:dev",
+  "check:secrets:preview",
+  "check:secrets:production",
   "mobile:typecheck",
   "api:build",
   "planner:build",
@@ -82,7 +84,8 @@ for (const file of [
   "services/api-worker/migrations/0001_initial.sql",
   "services/api-worker/migrations/0002_trip_exports.sql",
   "services/api-worker/migrations/0003_operational_events.sql",
-  "services/api-worker/migrations/0004_user_profile_image.sql"
+  "services/api-worker/migrations/0004_user_profile_image.sql",
+  "scripts/check-cloudflare-secrets.mjs"
 ]) {
   requireFile(file);
 }
@@ -119,6 +122,7 @@ const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
+const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 
 const routeContracts = [
@@ -987,6 +991,29 @@ for (const text of [
 ]) {
   if (!devReadinessCheck.includes(text)) {
     errors.push(`dev-readiness-check must validate deploy CORS origins: ${text}`);
+  }
+}
+
+for (const text of [
+  "wrangler",
+  "secret",
+  "list",
+  "--json",
+  "--print-required",
+  "Missing Cloudflare ${target} secret",
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "NAVER_CLIENT_ID",
+  "NAVER_CLIENT_SECRET",
+  "KAKAO_REST_API_KEY",
+  "DATA_GO_KR_API_KEY",
+  "ODSAY_API_KEY",
+  "APPLE_SHARED_SECRET",
+  "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
+  "OPS_ADMIN_TOKEN"
+]) {
+  if (!cloudflareSecretsCheck.includes(text)) {
+    errors.push(`Cloudflare secret check must verify required secret names without values: ${text}`);
   }
 }
 
