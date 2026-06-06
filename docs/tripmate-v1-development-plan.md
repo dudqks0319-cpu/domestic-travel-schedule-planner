@@ -1186,3 +1186,27 @@ Verification completed:
 Remaining risks:
 - Device-level smoke with a premium entitlement is still needed to verify the full tap-to-replan user flow.
 - Replanned local order is not yet written back to remote `trip_places` ordering; the persisted remote trip remains the source for saved trips.
+
+## Schedule Replan Remote Sync Result Record
+
+Plan:
+- Preserve `tripPlaceId` when converting Worker replan results back into mobile route points.
+- Patch existing remote `trip_places` after replan so saved trips and share data can reflect the new day/order.
+- Avoid creating duplicate remote places for provider results that were newly suggested during replan.
+
+Completed:
+- Added an existing-point lookup by route id and provider place id.
+- Preserved `tripPlaceId` for replanned places that match already saved trip places.
+- Added remote sync after successful replan using `PATCH /api/v1/trips/:tripId/places/:placeId`.
+- Synced `dayNumber` and `sortOrder` for saved places while skipping unsaved provider suggestions.
+- Updated user-facing replan notice with the number of remote places synced.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- New provider suggestions created during replan are still local-only until the user explicitly saves/adds them.
+- Remote sync is sequential; large itineraries may need batching or a bulk endpoint later.

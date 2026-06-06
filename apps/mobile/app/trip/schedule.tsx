@@ -213,9 +213,27 @@ function editablePointToNormalizedPlace(point: EditableTripPoint, index: number)
   };
 }
 
-function replanResponseToEditablePoints(response: PlannerReplanResponse): EditableTripPoint[] {
+function buildExistingPointLookup(points: EditableTripPoint[]): Map<string, EditableTripPoint> {
+  const lookup = new Map<string, EditableTripPoint>();
+  for (const point of points) {
+    if (point.id) {
+      lookup.set(point.id, point);
+    }
+    if (point.providerPlaceId) {
+      lookup.set(point.providerPlaceId, point);
+    }
+  }
+
+  return lookup;
+}
+
+function replanResponseToEditablePoints(
+  response: PlannerReplanResponse,
+  existingPoints: EditableTripPoint[]
+): EditableTripPoint[] {
   const sourcePlaces = response.places ?? [];
   const placesById = new Map<string, NormalizedPlaceDto>();
+  const existingById = buildExistingPointLookup(existingPoints);
   for (const place of sourcePlaces) {
     placesById.set(place.id, place);
     if (place.providerPlaceId) {
@@ -229,9 +247,13 @@ function replanResponseToEditablePoints(response: PlannerReplanResponse): Editab
       if (!source) {
         return [];
       }
+      const existing = existingById.get(source.id) ?? (
+        source.providerPlaceId ? existingById.get(source.providerPlaceId) : undefined
+      );
 
       return [{
         id: source.id,
+        ...(existing?.tripPlaceId ? { tripPlaceId: existing.tripPlaceId } : {}),
         providerPlaceId: source.providerPlaceId ?? source.id,
         name: place.title ?? source.name,
         lat: source.lat,
@@ -732,6 +754,31 @@ export default function ScheduleScreen() {
     await tripsApi.deletePlaceById(tripId, point.tripPlaceId);
   };
 
+  const syncRemoteReplannedPlaces = async (nextPoints: EditableTripPoint[]) => {
+    const tripId = currentServerTripId();
+    if (!tripId) {
+      return { updated: 0, skipped: nextPoints.length };
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    for (let index = 0; index < nextPoints.length; index += 1) {
+      const point = nextPoints[index];
+      if (!point.tripPlaceId) {
+        skipped += 1;
+        continue;
+      }
+
+      await tripsApi.updatePlaceById(tripId, point.tripPlaceId, {
+        dayNumber: point.dayNumber,
+        sortOrder: index + 1
+      });
+      updated += 1;
+    }
+
+    return { updated, skipped };
+  };
+
   const shareCurrentTrip = async () => {
     const tripId = currentServerTripId();
     if (!tripId) {
@@ -911,17 +958,22 @@ export default function ScheduleScreen() {
         places: editableTripPoints.map(editablePointToNormalizedPlace),
         replacementQuery: tripMeta.destination
       });
-      const nextPoints = replanResponseToEditablePoints(response.data as PlannerReplanResponse);
+      const nextPoints = replanResponseToEditablePoints(response.data as PlannerReplanResponse, editableTripPoints);
       if (nextPoints.length < 2) {
         setReplanNotice("재생성 결과에 경로를 만들 만큼의 좌표가 없어요. 장소를 더 담은 뒤 다시 시도해 주세요.");
         return;
       }
 
       await persistEditableTripPoints(nextPoints);
+      const syncResult = await syncRemoteReplannedPlaces(nextPoints);
       setActiveDayIndex(0);
-      setReplanNotice("일정을 다시 정리했어요. 경로 최적화를 실행하면 새 순서로 이동시간을 계산합니다.");
+      setReplanNotice(
+        syncResult.updated > 0
+          ? `일정을 다시 정리하고 저장된 장소 ${syncResult.updated}개를 서버에 반영했어요. 경로 최적화를 실행하면 새 순서로 이동시간을 계산합니다.`
+          : "일정을 다시 정리했어요. 로그인 후 저장된 여행에서는 새 순서를 서버에도 반영할 수 있습니다."
+      );
     } catch {
-      setReplanNotice("일정을 다시 정리하지 못했어요. 네트워크나 provider 상태를 확인해 주세요.");
+      setReplanNotice("일정을 다시 정리했지만 서버 동기화 또는 provider 호출을 완료하지 못했어요. 네트워크 상태를 확인해 주세요.");
     } finally {
       setReplanLoading(false);
     }
