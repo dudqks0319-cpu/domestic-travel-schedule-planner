@@ -3359,3 +3359,31 @@ Verification completed:
 
 Remaining risks:
 - Image export is SVG-based preparation, not native platform share-sheet image capture; device-level sharing/export UX still needs visual/runtime validation.
+
+## Mobile Worker Image Export Result Record
+
+Plan:
+- Connect premium image export on saved trips to the Worker `image` export endpoint now that it returns a ready SVG asset.
+- Preserve local `react-native-view-shot` capture as a fallback for unsaved/local draft trips.
+- Share authenticated download URL handling between PDF and image exports.
+- Add release contract coverage for the mobile Worker image export path.
+
+Completed:
+- Added `openPreparedExport()` in the schedule screen to open or report Worker-prepared export download URLs.
+- Updated premium image export so saved trips call `tripsApi.createExport(tripId, "image")`.
+- Kept the existing local image capture path for trips that have not been saved to the Worker.
+- Reused the same authenticated download URL handling for PDF and image export actions.
+- Added release contract coverage for Worker image export invocation, success copy, and shared download handling.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level validation is still needed to confirm the SVG download URL opens correctly in native and web runtime environments.

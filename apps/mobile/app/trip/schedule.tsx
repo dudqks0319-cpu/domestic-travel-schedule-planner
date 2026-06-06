@@ -1026,9 +1026,46 @@ export default function ScheduleScreen() {
     );
   };
 
+  const openPreparedExport = async (
+    downloadUrl: string | null | undefined,
+    labels: { ready: string; prepared: string; statusPrefix: string }
+  ) => {
+    if (downloadUrl) {
+      const canOpen = await Linking.canOpenURL(downloadUrl);
+      if (canOpen) {
+        await Linking.openURL(downloadUrl);
+        setExportNotice(labels.ready);
+      } else {
+        setExportNotice(`${labels.prepared}: ${downloadUrl}`);
+      }
+      return;
+    }
+
+    setExportNotice(labels.statusPrefix);
+  };
+
   const exportScheduleImage = async () => {
     if (!entitlement.benefits.exportEnabled) {
       await requestFreeExportGate("image");
+      return;
+    }
+
+    const tripId = currentServerTripId();
+    if (tripId) {
+      setExportLoading(true);
+      setExportNotice(null);
+      try {
+        const response = await tripsApi.createExport(tripId, "image");
+        await openPreparedExport(response.data.export.downloadUrl, {
+          ready: "이미지 내보내기 파일을 열었어요.",
+          prepared: "이미지 내보내기 파일이 준비됐어요",
+          statusPrefix: `이미지 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`
+        });
+      } catch {
+        setExportNotice("이미지 내보내기 작업을 만들지 못했어요. 프리미엄 상태나 네트워크를 확인해 주세요.");
+      } finally {
+        setExportLoading(false);
+      }
       return;
     }
 
@@ -1074,18 +1111,11 @@ export default function ScheduleScreen() {
     setExportNotice(null);
     try {
       const response = await tripsApi.createExport(tripId, "pdf");
-      const downloadUrl = response.data.export.downloadUrl;
-      if (downloadUrl) {
-        const canOpen = await Linking.canOpenURL(downloadUrl);
-        if (canOpen) {
-          await Linking.openURL(downloadUrl);
-          setExportNotice("PDF 저장용 인쇄 페이지를 열었어요.");
-        } else {
-          setExportNotice(`PDF 저장용 페이지가 준비됐어요: ${downloadUrl}`);
-        }
-      } else {
-        setExportNotice(`PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`);
-      }
+      await openPreparedExport(response.data.export.downloadUrl, {
+        ready: "PDF 저장용 인쇄 페이지를 열었어요.",
+        prepared: "PDF 저장용 페이지가 준비됐어요",
+        statusPrefix: `PDF 내보내기 작업을 준비했어요. 상태: ${response.data.export.status}`
+      });
     } catch {
       setExportNotice("PDF 내보내기 작업을 만들지 못했어요. 프리미엄 상태나 네트워크를 확인해 주세요.");
     } finally {

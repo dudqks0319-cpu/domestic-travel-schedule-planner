@@ -1506,6 +1506,21 @@ const rewardedExportContracts = [
   ],
   [
     scheduleScreen,
+    'tripsApi.createExport(tripId, "image")',
+    "Schedule premium image export must use the Worker export endpoint for saved trips"
+  ],
+  [
+    scheduleScreen,
+    "이미지 내보내기 파일을 열었어요.",
+    "Schedule premium image export must surface successful Worker image export copy"
+  ],
+  [
+    scheduleScreen,
+    "openPreparedExport",
+    "Schedule PDF and image exports must share authenticated download URL handling"
+  ],
+  [
+    scheduleScreen,
     'requestFreeExportGate("pdf")',
     "Schedule PDF export must use rewarded free-export gate for free users"
   ],
