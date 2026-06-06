@@ -1009,3 +1009,30 @@ Verification completed:
 Remaining risks:
 - This still depends on a manually managed operations token rather than per-operator admin accounts.
 - Ops summary audit records are API-level evidence only; there is still no admin UI.
+
+## Planner Replan and Worker Smoke Result Record
+
+Plan:
+- Replace the `planner/replan` placeholder with a real replan response.
+- Prefer client-provided current places for replan and search providers only when more places are needed.
+- Add a local/preview Worker smoke script for the v1 release API contract.
+- Keep smoke writes out of production and document cleanup behavior.
+
+Completed:
+- Implemented `POST /api/v1/planner/replan` with retained, locked, removed, and replacement-query place handling.
+- Recorded `planner_replan` operational events with privacy-safe metadata.
+- Added `npm run worker:smoke` using `scripts/worker-v1-smoke.mjs`.
+- Covered health, planner generate/replan, route optimize, places search/detail when available, Kakao dev login, trip/day/place/share CRUD, monetization events, entitlement state, optional ops summary, cleanup, and logout in the smoke script.
+- Documented local/preview smoke usage and the production write-smoke prohibition.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `node scripts/worker-v1-smoke.mjs --help`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `git diff --check`
+
+Remaining risks:
+- The smoke script has not been run against a live Worker in this Phase because no Worker process and D1 preview binding are guaranteed to be active.
+- Live preview smoke still needs configured D1/KV/R2 resources and provider secrets.
