@@ -2889,3 +2889,31 @@ Verification completed:
 Remaining risks:
 - This is a client contract/UI state pass; live provider-positive rendering still needs preview smoke with real Kakao directions enabled.
 - Route map visual verification should be run in Expo after the next UI-focused batch.
+
+## Planner Provider Route Enrichment Result Record
+
+Plan:
+- Keep `packages/planner` as the deterministic fallback schedule engine.
+- Enrich Worker planner generate/replan responses with provider route data when Kakao driving directions are available.
+- Update day-level `TripPlace.routeToNext` and aggregate `routeSummary` from provider segments.
+- Preserve graceful degradation by keeping fallback movement times and returning recoverable warnings when provider enrichment fails.
+
+Completed:
+- Added Worker-side `enrichPlanWithProviderRoutes()` for planner generate/replan responses.
+- Rebuilt day-level `routeToNext` segments and visit times from Kakao provider route durations.
+- Rebuilt `routeSummary` provider/distance/duration from enriched day segments.
+- Added recoverable `ROUTE_PROVIDER_WARNING` entries for provider route enrichment failures.
+- Added release contract and provider policy coverage for planner provider route enrichment.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live planner route enrichment still needs preview smoke with `KAKAO_REST_API_KEY` and Kakao Mobility directions access.
+- Planner route enrichment currently supports driving routes only; transit/walking remain fallback estimates.
+- Naver Directions parity remains future provider work.

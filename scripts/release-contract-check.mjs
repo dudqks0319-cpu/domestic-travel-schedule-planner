@@ -465,6 +465,45 @@ for (const [content, expectedText, label] of directionsProviderContracts) {
   }
 }
 
+const plannerProviderRouteContracts = [
+  [
+    plannerRoutes,
+    "enrichPlanWithProviderRoutes",
+    "Planner routes must enrich generated plans with provider route data when available"
+  ],
+  [
+    plannerRoutes,
+    "getProviderDirections(env",
+    "Planner route enrichment must use the provider directions orchestrator"
+  ],
+  [
+    plannerRoutes,
+    "rebuildDayPlacesWithSegments",
+    "Planner route enrichment must update TripPlace routeToNext segments"
+  ],
+  [
+    plannerRoutes,
+    "rebuildRouteSummary(days",
+    "Planner route enrichment must rebuild RouteSummary from enriched segments"
+  ],
+  [
+    plannerRoutes,
+    'provider: plan.routeSummary.provider',
+    "Planner operational events must record the route provider without unsafe metadata keys"
+  ],
+  [
+    plannerRoutes,
+    'code: "ROUTE_PROVIDER_WARNING"',
+    "Planner route provider failures must surface as recoverable provider warnings"
+  ]
+];
+
+for (const [content, expectedText, label] of plannerProviderRouteContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing planner provider route contract: ${label}`);
+  }
+}
+
 const rateLimitContracts = [
   [
     placeRoutes,

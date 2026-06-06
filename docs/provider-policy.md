@@ -33,6 +33,8 @@ All external provider HTTP calls must use the shared Worker provider fetch helpe
 
 Driving route optimization is server-side. When `KAKAO_REST_API_KEY` is configured and the request mode is `driving`, the Worker calls Kakao Mobility directions first and normalizes the result as a `kakao` route. If Kakao directions fail, the response falls back to a clearly labeled expected movement-time route. Kakao route cache keys and fallback route cache keys are separated so an old fallback cache entry cannot hide a recovered provider route.
 
+Planner generate/replan responses also use provider directions when available. The pure planner package remains a fallback schedule engine, while the Worker enriches day-level `routeToNext` segments and `routeSummary` with Kakao driving route data before returning the response. If provider enrichment fails, the Worker keeps fallback movement times and returns recoverable provider warnings.
+
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability

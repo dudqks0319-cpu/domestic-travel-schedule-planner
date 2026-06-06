@@ -2,15 +2,21 @@ import { Hono } from "hono";
 import {
   generateTripPlan,
   type NormalizedPlace,
+  type NormalizedRouteSegment,
+  type ProviderWarning,
+  type RouteProviderKind,
+  type RouteSummary,
   type TravelMode,
-  type TravelStyleKey
+  type TravelStyleKey,
+  type TripDayPlan,
+  type TripPlanResult
 } from "@tripmate/planner";
 
-import type { AppBindings } from "../bindings";
+import type { AppBindings, Env } from "../bindings";
 import { recordOperationalEvent } from "../db/operations";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
-import { searchPlaces } from "../providers";
+import { getProviderDirections, searchPlaces } from "../providers";
 
 export const plannerRoutes = new Hono<AppBindings>();
 
@@ -137,6 +143,186 @@ function tripField(raw: Record<string, unknown>, key: string): unknown {
   return raw[key] ?? trip[key];
 }
 
+function parseClock(value: string | undefined): number {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) {
+    return 9 * 60;
+  }
+
+  const [hourText, minuteText] = value.split(":");
+  const hours = Number(hourText);
+  const minutes = Number(minuteText);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return 9 * 60;
+  }
+
+  return hours * 60 + minutes;
+}
+
+function formatClock(totalMinutes: number): string {
+  const normalized = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function searchWarnings(warnings: string[]): ProviderWarning[] {
+  return warnings.map((warning) => ({
+    provider: "planner" as const,
+    code: "PROVIDER_WARNING",
+    message: warning,
+    recoverable: true
+  }));
+}
+
+function routeWarning(message: string): ProviderWarning {
+  return {
+    provider: "kakao",
+    code: "ROUTE_PROVIDER_WARNING",
+    message,
+    recoverable: true
+  };
+}
+
+function placeLookup(places: NormalizedPlace[]): Map<string, NormalizedPlace> {
+  const lookup = new Map<string, NormalizedPlace>();
+  for (const place of places) {
+    lookup.set(place.id, place);
+    if (place.providerPlaceId) {
+      lookup.set(place.providerPlaceId, place);
+    }
+  }
+
+  return lookup;
+}
+
+function routeSummaryProvider(segments: NormalizedRouteSegment[]): RouteProviderKind {
+  const providers = new Set(segments.map((segment) => segment.provider));
+  if (providers.size === 1) {
+    return segments[0]?.provider ?? "fallback";
+  }
+  return "mixed";
+}
+
+function rebuildRouteSummary(
+  days: TripDayPlan[],
+  mode: TravelMode,
+  warnings: string[]
+): RouteSummary {
+  const segments = days.flatMap((day) =>
+    day.places
+      .map((place) => place.routeToNext)
+      .filter((segment): segment is NormalizedRouteSegment => Boolean(segment))
+  );
+
+  return {
+    provider: routeSummaryProvider(segments),
+    mode,
+    totalDistanceKm: Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10,
+    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
+    warnings
+  };
+}
+
+function rebuildDayPlacesWithSegments(
+  day: TripDayPlan,
+  segments: NormalizedRouteSegment[]
+): TripDayPlan {
+  let cursor = parseClock(day.places[0]?.startTime);
+
+  return {
+    ...day,
+    places: day.places.map((place, index) => {
+      const { routeToNext: _previousRouteToNext, ...rest } = place;
+      const routeToNext = segments[index];
+      const startTime = formatClock(cursor);
+      const endTime = formatClock(cursor + place.stayDurationMin);
+      cursor += place.stayDurationMin + (routeToNext?.durationMin ?? 0);
+
+      return {
+        ...rest,
+        startTime,
+        endTime,
+        ...(routeToNext ? { routeToNext } : {})
+      };
+    })
+  };
+}
+
+async function enrichPlanWithProviderRoutes(
+  env: Env,
+  plan: TripPlanResult,
+  places: NormalizedPlace[],
+  selectedMode: TravelMode
+): Promise<TripPlanResult> {
+  if (selectedMode !== "driving" || !env.KAKAO_REST_API_KEY) {
+    return plan;
+  }
+
+  const placesById = placeLookup(places);
+  const providerWarnings: ProviderWarning[] = [];
+  const routeSummaryWarnings = [...plan.routeSummary.warnings];
+  let usedProviderRoute = false;
+
+  const days = await Promise.all(plan.days.map(async (day) => {
+    const sourcePlaces = day.places.flatMap((place) => {
+      const source = place.placeId ? placesById.get(place.placeId) : undefined;
+      return source ? [source] : [];
+    });
+
+    if (sourcePlaces.length !== day.places.length || sourcePlaces.length < 2 || sourcePlaces.length > 7) {
+      return day;
+    }
+
+    const result = await getProviderDirections(env, {
+      mode: selectedMode,
+      points: sourcePlaces.map((place) => ({
+        id: place.id,
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng
+      }))
+    });
+
+    if (!result.route) {
+      if (result.warnings.length) {
+        const message = "Kakao route provider could not enrich planner day routes; fallback movement times remain.";
+        providerWarnings.push(routeWarning(message));
+        routeSummaryWarnings.push(message);
+      }
+      return day;
+    }
+
+    usedProviderRoute = true;
+    const segments = result.route.segments.map((segment, index): NormalizedRouteSegment => {
+      const from = sourcePlaces[index] as NormalizedPlace;
+      const to = sourcePlaces[index + 1] as NormalizedPlace;
+      return {
+        from: from.id,
+        to: to.id,
+        distanceKm: segment.distanceKm,
+        durationMin: segment.durationMin,
+        provider: segment.provider
+      };
+    });
+
+    return rebuildDayPlacesWithSegments(day, segments);
+  }));
+
+  if (!usedProviderRoute && providerWarnings.length === 0) {
+    return plan;
+  }
+
+  return {
+    ...plan,
+    days,
+    routeSummary: rebuildRouteSummary(days, selectedMode, routeSummaryWarnings),
+    providerWarnings: [
+      ...plan.providerWarnings,
+      ...providerWarnings
+    ]
+  };
+}
+
 plannerRoutes.post("/generate", async (c) => {
   const startedAt = Date.now();
   const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
@@ -161,7 +347,7 @@ plannerRoutes.post("/generate", async (c) => {
   const selectedStyleKey = styleKey(raw.styleKey);
   const selectedMode = mode(raw.mode ?? raw.transport);
   const companions = typeof raw.companions === "string" ? raw.companions : undefined;
-  const plan = generateTripPlan({
+  const basePlan = generateTripPlan({
     destination,
     startDate,
     endDate,
@@ -170,7 +356,12 @@ plannerRoutes.post("/generate", async (c) => {
     ...(companions ? { companions } : {}),
     places: providerResult.places
   });
-  const warningCount = plan.providerWarnings.length + providerResult.warnings.length;
+  const plan = await enrichPlanWithProviderRoutes(c.env, basePlan, providerResult.places, selectedMode);
+  const providerWarnings = [
+    ...plan.providerWarnings,
+    ...searchWarnings(providerResult.warnings)
+  ];
+  const warningCount = providerWarnings.length;
   await recordOperationalEvent(c.env.DB, {
     eventType: "planner_generate",
     target: "planner.generate",
@@ -181,6 +372,7 @@ plannerRoutes.post("/generate", async (c) => {
       cacheStatus: providerResult.cacheStatus,
       mode: selectedMode,
       placeCount: providerResult.places.length,
+      provider: plan.routeSummary.provider,
       styleKey: selectedStyleKey,
       warningCount
     }
@@ -191,15 +383,7 @@ plannerRoutes.post("/generate", async (c) => {
     trip: plan.trip,
     days: plan.days,
     routeSummary: plan.routeSummary,
-    providerWarnings: [
-      ...plan.providerWarnings,
-      ...providerResult.warnings.map((warning) => ({
-        provider: "planner",
-        code: "PROVIDER_WARNING",
-        message: warning,
-        recoverable: true
-      }))
-    ],
+    providerWarnings,
     regenerationHints: plan.regenerationHints,
     cacheStatus: providerResult.cacheStatus,
     requestId: c.get("requestId")
@@ -238,7 +422,7 @@ plannerRoutes.post("/replan", async (c) => {
     ...providerResult.places.filter((place) => !removedPlaceIds.has(place.id))
   ];
   const companions = stringValue(raw.companions);
-  const plan = generateTripPlan({
+  const basePlan = generateTripPlan({
     destination,
     startDate,
     endDate,
@@ -247,7 +431,12 @@ plannerRoutes.post("/replan", async (c) => {
     ...(companions ? { companions } : {}),
     places
   });
-  const warningCount = plan.providerWarnings.length + providerResult.warnings.length;
+  const plan = await enrichPlanWithProviderRoutes(c.env, basePlan, places, selectedMode);
+  const providerWarnings = [
+    ...plan.providerWarnings,
+    ...searchWarnings(providerResult.warnings)
+  ];
+  const warningCount = providerWarnings.length;
   await recordOperationalEvent(c.env.DB, {
     eventType: "planner_replan",
     target: "planner.replan",
@@ -258,6 +447,7 @@ plannerRoutes.post("/replan", async (c) => {
       cacheStatus: providerResult.cacheStatus,
       mode: selectedMode,
       placeCount: places.length,
+      provider: plan.routeSummary.provider,
       styleKey: selectedStyleKey,
       warningCount
     }
@@ -268,15 +458,7 @@ plannerRoutes.post("/replan", async (c) => {
     trip: plan.trip,
     days: plan.days,
     routeSummary: plan.routeSummary,
-    providerWarnings: [
-      ...plan.providerWarnings,
-      ...providerResult.warnings.map((warning) => ({
-        provider: "planner" as const,
-        code: "PROVIDER_WARNING",
-        message: warning,
-        recoverable: true
-      }))
-    ],
+    providerWarnings,
     regenerationHints: [
       ...plan.regenerationHints,
       {
