@@ -20,6 +20,7 @@ npm run api:build
 npm run planner:build
 npm run worker:typecheck
 npm run worker:smoke:local
+npm run release:preview:gate -- --base-url https://<preview-worker>
 npm run check:release-contract
 npm run check:health
 npm run check:env
@@ -28,6 +29,8 @@ npm run check:env
 `npm test` runs planner tests. `npm run check:release-contract` verifies root scripts, required release docs, Worker route contracts, D1 schema tables, mobile secret boundaries, and the GitHub Actions release gate. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` runs the env check, release contract check, and health check; local missing env files are warnings, while `check:env:preview` and `check:env:production` enforce Cloudflare deploy readiness.
 
 `npm run worker:smoke:local` applies local D1 migrations, starts the local Worker, runs the full write smoke against `http://127.0.0.1:8787`, and stops the Worker process. It is the preferred local runtime gate before preview smoke.
+
+`npm run release:preview:gate -- --base-url https://<preview-worker>` runs the preview deployment gate: preview env readiness, Cloudflare secret-name check, release contract, planner tests, health gate, and strict provider smoke. It defaults to `--require-provider naver`.
 
 GitHub Actions runs `.github/workflows/tripmate-v1-gate.yml` on pull requests and protected release branches. The workflow installs dependencies with `npm ci`, then runs the release contract check, planner tests, health gate, and Worker smoke script syntax check.
 

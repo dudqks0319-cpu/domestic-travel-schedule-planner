@@ -3618,3 +3618,33 @@ Verification completed:
 
 Remaining risks:
 - The local smoke gate validates local bindings; preview smoke still needs real Cloudflare D1/KV/R2 resources and provider secrets.
+
+## Preview Release Gate Result Record
+
+Plan:
+- Add a single preview handoff gate that runs the checks currently required across README and deployment docs.
+- Require a real preview Worker URL before any write smoke can run.
+- Keep strict provider smoke enabled by default with Naver as the preview requirement.
+- Pass `OPS_ADMIN_TOKEN` to the smoke script through the environment instead of exposing it as a downstream command-line argument.
+
+Completed:
+- Added `scripts/preview-release-gate.mjs`.
+- Added root script `release:preview:gate`.
+- The gate runs `check:env:preview`, `check:secrets:preview`, `check:release-contract`, `npm test`, `check:health`, and preview Worker smoke in order.
+- The gate rejects localhost, example, and placeholder preview URLs.
+- Updated release contract checks so the preview gate and its required steps cannot be dropped silently.
+- Updated README, API Worker README, and Cloudflare deployment docs to route preview handoff through `release:preview:gate`.
+
+Verification completed:
+- `node --check scripts/preview-release-gate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run release:preview:gate -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The full preview gate cannot pass until real preview Worker URL, EAS preview API URL, Cloudflare D1/KV/R2 IDs, Cloudflare secrets, HTTPS origins, Kakao web key, and live provider products are configured.

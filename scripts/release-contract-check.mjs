@@ -56,6 +56,7 @@ const requiredRootScripts = [
   "check:dev",
   "check:secrets:preview",
   "check:secrets:production",
+  "release:preview:gate",
   "mobile:typecheck",
   "mobile:web:qa",
   "api:build",
@@ -90,6 +91,7 @@ for (const file of [
   "services/api-worker/migrations/0003_operational_events.sql",
   "services/api-worker/migrations/0004_user_profile_image.sql",
   "scripts/check-cloudflare-secrets.mjs",
+  "scripts/preview-release-gate.mjs",
   "scripts/worker-local-smoke.mjs"
 ]) {
   requireFile(file);
@@ -139,10 +141,65 @@ const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
+const previewReleaseGateScript = readText("scripts/preview-release-gate.mjs");
 const workerLocalSmokeScript = readText("scripts/worker-local-smoke.mjs");
 const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 const apiWorkerReadme = readText("services/api-worker/README.md");
+
+const previewReleaseGateContracts = [
+  [
+    packageJson.scripts?.["release:preview:gate"] ?? "",
+    "scripts/preview-release-gate.mjs",
+    "Root package must expose the preview release gate"
+  ],
+  [
+    previewReleaseGateScript,
+    '["run", "check:env:preview"]',
+    "Preview release gate must run preview env readiness"
+  ],
+  [
+    previewReleaseGateScript,
+    '["run", "check:secrets:preview"]',
+    "Preview release gate must verify Cloudflare preview secret names"
+  ],
+  [
+    previewReleaseGateScript,
+    '["run", "check:release-contract"]',
+    "Preview release gate must run release contract checks"
+  ],
+  [
+    previewReleaseGateScript,
+    '["test"]',
+    "Preview release gate must run planner tests"
+  ],
+  [
+    previewReleaseGateScript,
+    '["run", "check:health"]',
+    "Preview release gate must run build/typecheck health checks"
+  ],
+  [
+    previewReleaseGateScript,
+    '"--require-provider", requiredProvider',
+    "Preview release gate must run strict provider smoke by default"
+  ],
+  [
+    previewReleaseGateScript,
+    "OPS_ADMIN_TOKEN: opsToken",
+    "Preview release gate must pass the ops token through environment only"
+  ],
+  [
+    previewReleaseGateScript,
+    "real deployed preview Worker URL",
+    "Preview release gate must reject placeholder preview URLs"
+  ]
+];
+
+for (const [content, expectedText, label] of previewReleaseGateContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing preview release gate contract: ${label}`);
+  }
+}
 
 const workerLocalSmokeContracts = [
   [

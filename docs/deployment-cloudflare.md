@@ -41,12 +41,8 @@ Before preview deploy:
 - Replace placeholder IDs in `services/api-worker/wrangler.toml`.
 - Replace preview `ALLOWED_ORIGINS` with real HTTPS browser origins for the preview web/admin surfaces. Do not use localhost, loopback, placeholder, or example origins for deploy readiness.
 - Set all Cloudflare secrets with `wrangler secret put`.
-- Run `npm run check:secrets:preview` with a Cloudflare-authenticated shell to verify required secret names exist remotely.
 - Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
-- Run `npm run check:env:preview`.
-- Run `npm run check:release-contract`.
-- Run `npm run check:health`.
-- Run `npm test`.
+- Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, release contract checks, tests, health checks, and strict Naver provider smoke by default.
 
 ## Production Deploy
 
@@ -137,6 +133,7 @@ Worker v1 smoke:
 
 ```sh
 npm run worker:smoke:local
+npm run release:preview:gate -- --base-url https://<preview-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"

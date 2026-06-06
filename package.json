@@ -16,6 +16,7 @@
     "check:release-contract": "node scripts/release-contract-check.mjs",
     "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build && npm run worker:typecheck",
     "check:dev": "npm run check:env && npm run check:release-contract && npm run check:health",
+    "release:preview:gate": "node scripts/preview-release-gate.mjs",
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:web": "npm --prefix apps/mobile run web",
     "mobile:web:qa": "npm --prefix apps/mobile run web:qa",
