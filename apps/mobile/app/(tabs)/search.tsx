@@ -1,70 +1,114 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useState } from "react";
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity,
-  FlatList, Image, ActivityIndicator, Keyboard, Platform
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
+import SponsoredBadge from "../../components/monetization/SponsoredBadge";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
-import { tourismApi, restaurantApi } from "../../services/api";
+import { placesApi, type NormalizedPlaceDto } from "../../services/api";
 
-type TabKey = "attractions" | "restaurants" | "festivals";
+type CategoryKey =
+  | "all"
+  | "attraction"
+  | "restaurant"
+  | "cafe"
+  | "lodging"
+  | "shopping"
+  | "nature"
+  | "museum"
+  | "kids"
+  | "indoor"
+  | "pet";
 
 interface SearchResultItem {
   id: string;
-  title: string;
-  address: string;
-  image?: string;
-  category?: string;
-  tab: TabKey;
+  place: NormalizedPlaceDto;
 }
 
-const TABS: { key: TabKey; label: string; emoji: string }[] = [
-  { key: "attractions", label: "관광지", emoji: "🏞️" },
-  { key: "restaurants", label: "맛집", emoji: "🍽️" },
-  { key: "festivals", label: "축제", emoji: "🎪" },
+const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
+
+const CATEGORIES: { key: CategoryKey; label: string; query?: string }[] = [
+  { key: "all", label: "전체" },
+  { key: "attraction", label: "관광지", query: "관광지" },
+  { key: "restaurant", label: "맛집", query: "맛집" },
+  { key: "cafe", label: "카페", query: "카페" },
+  { key: "lodging", label: "숙소", query: "숙소" },
+  { key: "shopping", label: "쇼핑", query: "쇼핑" },
+  { key: "nature", label: "자연", query: "자연" },
+  { key: "museum", label: "박물관/전시", query: "박물관 전시" },
+  { key: "kids", label: "아이와 함께", query: "아이와 함께" },
+  { key: "indoor", label: "실내", query: "실내" },
+  { key: "pet", label: "반려동물", query: "반려동물" }
 ];
 
-const NON_FOOD_CATEGORY_KEYWORDS = [
-  "마트",
-  "슈퍼",
-  "가구",
-  "가전",
-  "인테리어",
-  "쇼핑",
-  "편의점",
-  "백화점",
-  "의류",
-  "약국"
-];
+function placeAddress(place: NormalizedPlaceDto): string {
+  return place.roadAddress || place.address || "주소 정보 없음";
+}
 
-const FOOD_CATEGORY_KEYWORDS = ["음식점", "맛집", "카페", "디저트", "주점", "베이커리", "치킨"];
+function categoryQuery(key: CategoryKey): string | undefined {
+  return CATEGORIES.find((category) => category.key === key)?.query;
+}
 
-const hasNonFoodCategory = (category?: string) =>
-  (category ?? "")
-    .split(" ")
-    .join("")
-    .split(">")
-    .map((segment) => segment.trim())
-    .some((segment) =>
-      NON_FOOD_CATEGORY_KEYWORDS.some((keyword) => segment.includes(keyword))
-    );
+async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<number> {
+  const rawTrip = await AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY);
+  const currentTrip =
+    rawTrip && rawTrip.trim()
+      ? (JSON.parse(rawTrip) as Record<string, unknown>)
+      : {
+          destination: "",
+          startDate: "",
+          endDate: "",
+          providerStatus: "ready"
+        };
+  const routePoints = Array.isArray(currentTrip.routePoints)
+    ? [...currentTrip.routePoints]
+    : [];
+  const alreadyAdded = routePoints.some((item) => {
+    if (!item || typeof item !== "object") return false;
+    const value = item as Record<string, unknown>;
+    return value.id === place.id;
+  });
 
-const hasFoodCategory = (category?: string) =>
-  (category ?? "")
-    .split(" ")
-    .join("")
-    .split(">")
-    .map((segment) => segment.trim())
-    .some((segment) =>
-      FOOD_CATEGORY_KEYWORDS.some((keyword) => segment.includes(keyword))
-    );
+  if (!alreadyAdded) {
+    routePoints.push({
+      id: place.id,
+      name: place.name,
+      lat: place.lat,
+      lng: place.lng,
+      category: place.category
+    });
+  }
+
+  await AsyncStorage.setItem(
+    CURRENT_TRIP_STORAGE_KEY,
+    JSON.stringify({
+      ...currentTrip,
+      providerStatus: routePoints.length >= 2 ? "ready" : "empty",
+      routePoints
+    })
+  );
+
+  return routePoints.length;
+}
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabKey>("attractions");
+  const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
   const [results, setResults] = useState<SearchResultItem[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -74,107 +118,125 @@ export default function SearchScreen() {
     Keyboard.dismiss();
     setLoading(true);
     setSearched(true);
+    setWarnings([]);
 
     try {
-      let items: SearchResultItem[] = [];
-
-      if (activeTab === "attractions") {
-        const res = await tourismApi.search(trimmed);
-        const raw = (res.data.items ?? []) as Array<{
-          contentid: string; title: string; addr1: string; firstimage?: string;
-        }>;
-        items = raw.map((r) => ({
-          id: r.contentid, title: r.title, address: r.addr1,
-          image: r.firstimage, tab: "attractions",
-        }));
-      } else if (activeTab === "restaurants") {
-        const queryForFood = /(맛집|음식|식당|카페)/.test(trimmed) ? trimmed : `${trimmed} 맛집`;
-        const res = await restaurantApi.search(queryForFood, 20);
-        const raw = (res.data.items ?? []) as Array<{
-          title: string; roadAddress: string; address: string; category: string;
-        }>;
-        const filtered = raw.filter(
-          (r) => hasFoodCategory(r.category) && !hasNonFoodCategory(r.category)
-        );
-        items = filtered.map((r, i) => ({
-          id: `rest_${i}`, title: r.title, address: r.roadAddress || r.address,
-          category: r.category.split(">").pop()?.trim(), tab: "restaurants",
-        }));
-      } else {
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-        const res = await tourismApi.getFestivals(today, trimmed);
-        const raw = (res.data.items ?? []) as Array<{
-          contentid: string; title: string; addr1: string; firstimage?: string;
-        }>;
-        items = raw.map((r) => ({
-          id: r.contentid, title: r.title, address: r.addr1,
-          image: r.firstimage, tab: "festivals",
-        }));
-      }
-
-      setResults(items);
+      const category = categoryQuery(activeCategory);
+      const searchQuery = category ? `${trimmed} ${category}` : trimmed;
+      const response = await placesApi.search({
+        query: searchQuery,
+        ...(category ? { category } : {}),
+        limit: 20
+      });
+      const places = response.data.places ?? [];
+      setResults(places.map((place) => ({ id: place.id, place })));
+      setWarnings(response.data.warnings ?? []);
     } catch {
       setResults([]);
+      setWarnings(["추천 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요."]);
     } finally {
       setLoading(false);
     }
-  }, [query, activeTab]);
+  }, [activeCategory, query]);
 
-  const renderItem = ({ item }: { item: SearchResultItem }) => (
-    <TouchableOpacity style={styles.resultCard} activeOpacity={0.7}>
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.resultImage} />
-      ) : (
-        <View style={[styles.resultImage, styles.resultImagePlaceholder]}>
-          <Text style={{ fontSize: 24 }}>
-            {item.tab === "restaurants" ? "🍽️" : item.tab === "festivals" ? "🎪" : "📷"}
-          </Text>
+  const handleAddPlace = useCallback(async (place: NormalizedPlaceDto) => {
+    try {
+      const count = await addPlaceToCurrentTrip(place);
+      Alert.alert("일정에 담았어요", `${place.name}까지 ${count}개 장소가 담겼습니다.`);
+    } catch {
+      Alert.alert("담기 실패", "장소를 일정에 담지 못했어요. 다시 시도해주세요.");
+    }
+  }, []);
+
+  const renderItem = ({ item }: { item: SearchResultItem }) => {
+    const place = item.place;
+    return (
+      <View style={styles.resultCard}>
+        {place.imageUrl ? (
+          <Image source={{ uri: place.imageUrl }} style={styles.resultImage} />
+        ) : (
+          <View style={[styles.resultImage, styles.resultImagePlaceholder]}>
+            <Text style={styles.placeholderIcon}>📍</Text>
+          </View>
+        )}
+        <View style={styles.resultContent}>
+          <View style={styles.resultHeader}>
+            <Text style={styles.resultTitle} numberOfLines={1}>{place.name}</Text>
+            {place.isSponsored ? <SponsoredBadge label={place.sponsorLabel ?? "스폰서"} /> : null}
+          </View>
+          <Text style={styles.resultAddress} numberOfLines={1}>{placeAddress(place)}</Text>
+          <View style={styles.metaRow}>
+            <Text style={styles.resultCategory}>{place.category}</Text>
+            <Text style={styles.providerText}>{place.provider}</Text>
+          </View>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.addButton}
+              activeOpacity={0.8}
+              onPress={() => { void handleAddPlace(place); }}
+            >
+              <Text style={styles.addButtonText}>일정에 담기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
-      <View style={styles.resultContent}>
-        <Text style={styles.resultTitle} numberOfLines={1}>{item.title}</Text>
-        <Text style={styles.resultAddress} numberOfLines={1}>{item.address}</Text>
-        {item.category ? <Text style={styles.resultCategory}>{item.category}</Text> : null}
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.frame}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>검색</Text>
+          <Text style={styles.headerTitle}>통합 검색</Text>
+          <Text style={styles.headerSubtitle}>네이버·카카오·공공 관광 데이터를 합쳐 찾습니다</Text>
         </View>
 
         <View style={styles.searchBar}>
           <TextInput
             style={styles.searchInput}
-            placeholder="관광지, 맛집, 축제 검색..."
+            placeholder="지역, 장소, 취향을 검색하세요"
             placeholderTextColor={Colors.common.gray400}
             value={query}
             onChangeText={setQuery}
-            onSubmitEditing={() => void handleSearch()}
+            onSubmitEditing={() => { void handleSearch(); }}
             returnKeyType="search"
           />
-          <TouchableOpacity style={styles.searchButton} onPress={() => void handleSearch()}>
+          <TouchableOpacity style={styles.searchButton} onPress={() => { void handleSearch(); }}>
             <Text style={styles.searchButtonText}>검색</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.tabRow}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
-            >
-              <Text style={styles.tabEmoji}>{tab.emoji}</Text>
-              <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <FlatList
+          horizontal
+          data={CATEGORIES}
+          keyExtractor={(item) => item.key}
+          renderItem={({ item }) => {
+            const active = activeCategory === item.key;
+            return (
+              <TouchableOpacity
+                style={[styles.categoryChip, active ? styles.categoryChipActive : null]}
+                onPress={() => {
+                  setActiveCategory(item.key);
+                  setResults([]);
+                  setSearched(false);
+                  setWarnings([]);
+                }}
+              >
+                <Text style={[styles.categoryChipText, active ? styles.categoryChipTextActive : null]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryRow}
+        />
+
+        {warnings.length ? (
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>{warnings[0]}</Text>
+          </View>
+        ) : null}
 
         {loading ? (
           <ActivityIndicator color={Colors.young.primary} size="large" style={styles.loader} />
@@ -189,12 +251,15 @@ export default function SearchScreen() {
               searched ? (
                 <View style={styles.emptyWrap}>
                   <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
+                  <Text style={styles.emptyText}>추천 데이터를 불러오지 못했어요</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={() => { void handleSearch(); }}>
+                    <Text style={styles.retryButtonText}>추천 데이터를 다시 불러오기</Text>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 <View style={styles.emptyWrap}>
                   <Text style={styles.emptyEmoji}>✨</Text>
-                  <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
+                  <Text style={styles.emptyText}>장소를 검색하고 일정에 바로 담아보세요</Text>
                 </View>
               )
             }
@@ -215,49 +280,99 @@ const styles = StyleSheet.create({
   },
   header: { paddingTop: 60, paddingHorizontal: Spacing.screenPadding, paddingBottom: 12 },
   headerTitle: { fontSize: 28, fontWeight: "800", color: Colors.common.black },
+  headerSubtitle: { marginTop: 4, fontSize: 13, lineHeight: 18, color: Colors.common.gray500 },
   searchBar: {
-    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
-    backgroundColor: "#FFF", borderRadius: 16, borderWidth: 1, borderColor: Colors.common.gray200,
-    overflow: "hidden", marginBottom: 12,
+    flexDirection: "row",
+    marginHorizontal: Spacing.screenPadding,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    overflow: "hidden",
+    marginBottom: 10
   },
   searchInput: { flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 16, color: Colors.common.black },
   searchButton: {
-    backgroundColor: Colors.young.primary, paddingHorizontal: 20,
-    justifyContent: "center", alignItems: "center",
+    backgroundColor: Colors.young.primary,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    alignItems: "center"
   },
   searchButtonText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
-  tabRow: {
-    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
-    marginBottom: 16, gap: 8,
+  categoryRow: {
+    paddingHorizontal: Spacing.screenPadding,
+    paddingBottom: 12,
+    gap: 8
   },
-  tab: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: 10, borderRadius: 12, backgroundColor: "#FFF",
-    borderWidth: 1, borderColor: Colors.common.gray200, gap: 4,
+  categoryChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    backgroundColor: "#FFF",
+    paddingHorizontal: 13,
+    paddingVertical: 8
   },
-  tabActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
-  tabEmoji: { fontSize: 16 },
-  tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.common.gray600 },
-  tabLabelActive: { color: Colors.young.primary },
+  categoryChipActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
+  categoryChipText: { fontSize: 13, lineHeight: 17, fontWeight: "700", color: Colors.common.gray600 },
+  categoryChipTextActive: { color: Colors.young.primary },
+  warningBox: {
+    marginHorizontal: Spacing.screenPadding,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    backgroundColor: "#FFFBEB",
+    padding: 10
+  },
+  warningText: { fontSize: 12, lineHeight: 16, color: "#92400E", fontWeight: "700" },
   list: { flex: 1 },
   listContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 30, flexGrow: 1 },
   resultCard: {
-    flexDirection: "row", backgroundColor: "#FFF", borderRadius: 16,
-    marginBottom: 10, overflow: "hidden",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    flexDirection: "row",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    marginBottom: 10,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.common.gray200
   },
-  resultImage: { width: 90, height: 90 },
+  resultImage: { width: 92, minHeight: 126 },
   resultImagePlaceholder: { backgroundColor: Colors.common.gray100, alignItems: "center", justifyContent: "center" },
+  placeholderIcon: { fontSize: 24 },
   resultContent: { flex: 1, padding: 12, justifyContent: "center" },
-  resultTitle: { ...Typography.normal.body, fontWeight: "700", color: Colors.common.gray800 },
-  resultAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 4 },
+  resultHeader: { gap: 6 },
+  resultTitle: { ...Typography.normal.body, fontWeight: "800", color: Colors.common.gray800 },
+  resultAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 5 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 7 },
   resultCategory: {
-    ...Typography.normal.caption, color: Colors.young.primary, marginTop: 4,
-    backgroundColor: "#E8F4FD", paddingHorizontal: 8, paddingVertical: 2,
-    borderRadius: 6, alignSelf: "flex-start", overflow: "hidden",
+    ...Typography.normal.caption,
+    color: Colors.young.primary,
+    backgroundColor: "#E8F4FD",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: "hidden"
   },
-  emptyWrap: { alignItems: "center", marginTop: 80 },
+  providerText: { ...Typography.normal.caption, color: Colors.common.gray500, fontWeight: "700" },
+  actionRow: { marginTop: 10, alignItems: "flex-start" },
+  addButton: {
+    borderRadius: 9,
+    backgroundColor: Colors.young.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  addButtonText: { fontSize: 13, lineHeight: 17, color: "#FFF", fontWeight: "800" },
+  emptyWrap: { alignItems: "center", marginTop: 80, paddingHorizontal: 24 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: Colors.common.gray500 },
-  loader: { marginTop: 80 },
+  emptyText: { fontSize: 16, lineHeight: 22, color: Colors.common.gray500, textAlign: "center" },
+  retryButton: {
+    marginTop: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.young.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10
+  },
+  retryButtonText: { color: Colors.young.primary, fontSize: 14, lineHeight: 18, fontWeight: "800" },
+  loader: { marginTop: 80 }
 });

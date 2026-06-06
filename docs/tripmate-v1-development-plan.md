@@ -322,3 +322,23 @@ Verification completed:
 Remaining risks:
 - Full provider detail freshness depends on real Naver/Kakao/Tour credentials and quota behavior in Cloudflare preview.
 - Search result persistence currently happens only after search calls; direct provider detail refresh by provider id can be added later if needed.
+
+## Mobile Search Integration Result Record
+
+Completed:
+- Added mobile `placesApi` for Worker normalized place search and detail lookup.
+- Replaced legacy tourism/restaurant split search UI with unified provider search.
+- Added category filters for attraction, restaurant, cafe, lodging, shopping, nature, museum/exhibition, kids, indoor, and pet travel.
+- Added sponsored disclosure through the shared sponsored badge.
+- Added "일정에 담기" action that appends real provider coordinates to `currentTrip.routePoints`.
+- Preserved empty/error state with "추천 데이터를 다시 불러오기".
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Expo web smoke at `/search` with 390px viewport and zero console errors.
+
+Remaining risks:
+- The add-to-trip action currently stores places locally in `currentTrip`; remote trip day selection/persistence should be connected after the mobile saved-trip flow is finalized.
+- Real provider search quality still requires configured provider secrets and Cloudflare preview validation.

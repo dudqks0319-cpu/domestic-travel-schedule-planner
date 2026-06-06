@@ -108,6 +108,42 @@ export const addressApi = {
     apiClient.get("/address/search", { params: { keyword, page } }),
 };
 
+export interface NormalizedPlaceDto {
+  id: string;
+  provider: "naver" | "kakao" | "tour" | "manual";
+  providerPlaceId?: string;
+  name: string;
+  category: string;
+  address?: string;
+  roadAddress?: string;
+  lat: number;
+  lng: number;
+  phone?: string;
+  imageUrl?: string;
+  sourceUrl?: string;
+  description?: string;
+  tags: string[];
+  score: number;
+  isSponsored: boolean;
+  sponsorLabel?: string;
+}
+
+export const placesApi = {
+  search: (params: {
+    query: string;
+    category?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    limit?: number;
+  }) => apiClient.get<{ ok: true; places: NormalizedPlaceDto[]; warnings: string[]; cacheStatus: string }>(
+    "/places/search",
+    { params }
+  ),
+  get: (placeId: string) =>
+    apiClient.get<{ ok: true; place: NormalizedPlaceDto }>(`/places/${encodeURIComponent(placeId)}`),
+};
+
 export const authApi = {
   kakaoLogin: (kakaoAccessToken: string) =>
     apiClient.post("/auth/login/kakao", { kakaoAccessToken }),
