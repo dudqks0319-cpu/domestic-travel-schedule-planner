@@ -5,10 +5,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Button from "../../components/common/Button";
 import Header from "../../components/common/Header";
+import AdPlacement from "../../components/monetization/AdPlacement";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Theme from "../../constants/Theme";
 import Typography from "../../constants/Typography";
+import {
+  DEFAULT_FREE_ENTITLEMENT,
+  loadEntitlementState,
+  type PremiumEntitlementState
+} from "../../services/monetization";
 import { loadPersistedOptimizedRoute, type OptimizedRoute, type RoutePoint } from "../../services/routeApi";
 
 interface TripMeta {
@@ -373,6 +379,7 @@ export default function ScheduleScreen() {
   const [tripMeta, setTripMeta] = useState<TripMeta>({ destination: "여행", startDate: "", endDate: "" });
   const [loading, setLoading] = useState(true);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
 
   useEffect(() => {
     let mounted = true;
@@ -410,6 +417,29 @@ export default function ScheduleScreen() {
     };
 
     void load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadPremium = async () => {
+      try {
+        const nextEntitlement = await loadEntitlementState();
+        if (mounted) {
+          setEntitlement(nextEntitlement);
+        }
+      } catch {
+        if (mounted) {
+          setEntitlement(DEFAULT_FREE_ENTITLEMENT);
+        }
+      }
+    };
+
+    void loadPremium();
 
     return () => {
       mounted = false;
@@ -548,6 +578,12 @@ export default function ScheduleScreen() {
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
                 <Button title="홈으로" onPress={() => router.replace("/(tabs)")} />
               </View>
+
+              <AdPlacement
+                placement="schedule_bottom"
+                premium={entitlement.premium}
+                screen="trip_schedule"
+              />
             </>
           ) : null}
         </ScrollView>

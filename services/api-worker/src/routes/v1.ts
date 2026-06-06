@@ -4,6 +4,7 @@ import type { AppBindings } from "../bindings";
 import { requireAuth } from "../middleware/auth";
 import { healthRoutes } from "./health";
 import { notImplemented } from "../http/errors";
+import { monetizationRoutes } from "./monetization";
 import { placeRoutes } from "./places";
 import { plannerRoutes } from "./planner";
 import { routeRoutes } from "./routes";
@@ -27,7 +28,4 @@ v1Routes.delete("/trips/:tripId/places/:placeId", requireAuth, (c) => notImpleme
 
 v1Routes.route("/share", shareRoutes);
 
-v1Routes.post("/monetization/ad-events", (c) => notImplemented(c, "광고 이벤트"));
-v1Routes.post("/monetization/affiliate-clicks", (c) => notImplemented(c, "제휴 클릭"));
-v1Routes.post("/monetization/entitlements/verify", requireAuth, (c) => notImplemented(c, "프리미엄 권한 검증"));
-v1Routes.get("/monetization/entitlements/me", requireAuth, (c) => notImplemented(c, "내 프리미엄 권한"));
+v1Routes.route("/monetization", monetizationRoutes);

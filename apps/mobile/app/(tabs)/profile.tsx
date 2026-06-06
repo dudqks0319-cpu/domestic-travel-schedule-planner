@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
+import {
+  DEFAULT_FREE_ENTITLEMENT,
+  loadEntitlementState,
+  type PremiumEntitlementState
+} from "../../services/monetization";
 import { useAuth } from "../providers/auth-provider";
 
 const EARN_ITEMS = [
@@ -38,10 +43,37 @@ function ActionCard({ icon, label, point }: { icon: keyof typeof Ionicons.glyphM
 export default function ProfileScreen() {
   const router = useRouter();
   const { logout } = useAuth();
+  const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
+  const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
 
   const point = 1850;
   const nextTierPoint = 2000;
   const progress = Math.min(1, point / nextTierPoint);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        const nextEntitlement = await loadEntitlementState();
+        if (mounted) {
+          setEntitlement(nextEntitlement);
+          setEntitlementStatus("ready");
+        }
+      } catch {
+        if (mounted) {
+          setEntitlement(DEFAULT_FREE_ENTITLEMENT);
+          setEntitlementStatus("guest");
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = () => {
     Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
@@ -86,6 +118,43 @@ export default function ProfileScreen() {
           <View style={styles.tierRow}>
             <Ionicons name="medal-outline" size={16} color={Theme.colors.textPrimary} />
             <Text style={styles.tierText}>실버 등급</Text>
+          </View>
+        </View>
+
+        <View style={styles.premiumCard}>
+          <View style={styles.premiumHeader}>
+            <View>
+              <Text style={styles.premiumEyebrow}>TripMate Premium</Text>
+              <Text style={styles.premiumTitle}>
+                {entitlement.premium ? "프리미엄 활성화됨" : "무료 플랜 사용 중"}
+              </Text>
+            </View>
+            <View style={[styles.planBadge, entitlement.premium ? styles.planBadgePremium : null]}>
+              <Text style={[styles.planBadgeText, entitlement.premium ? styles.planBadgeTextPremium : null]}>
+                {entitlement.premium ? "PREMIUM" : "FREE"}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.premiumDescription}>
+            {entitlementStatus === "loading"
+              ? "권한 상태를 확인하고 있습니다."
+              : entitlement.premium
+                ? "광고 제거, 무제한 저장, 내보내기, 고급 재생성을 사용할 수 있습니다."
+                : "저장/공유는 유지하고, 내보내기와 고급 재생성은 로그인 및 프리미엄에서 열립니다."}
+          </Text>
+          <View style={styles.benefitGrid}>
+            <Text style={styles.benefitItem}>
+              광고 제거 {entitlement.benefits.adsRemoved ? "ON" : "OFF"}
+            </Text>
+            <Text style={styles.benefitItem}>
+              무제한 저장 {entitlement.benefits.unlimitedTrips ? "ON" : "OFF"}
+            </Text>
+            <Text style={styles.benefitItem}>
+              PDF/이미지 {entitlement.benefits.exportEnabled ? "ON" : "OFF"}
+            </Text>
+            <Text style={styles.benefitItem}>
+              날씨 대체코스 {entitlement.benefits.weatherAlternatives ? "ON" : "OFF"}
+            </Text>
           </View>
         </View>
 
@@ -218,6 +287,80 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Theme.colors.textPrimary,
     fontWeight: "700"
+  },
+  premiumCard: {
+    marginTop: 14,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 16,
+    ...Theme.shadow.sm
+  },
+  premiumHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12
+  },
+  premiumEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "800"
+  },
+  premiumTitle: {
+    marginTop: 3,
+    fontSize: 20,
+    lineHeight: 26,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  planBadge: {
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.borderLight,
+    paddingHorizontal: 8,
+    paddingVertical: 5
+  },
+  planBadgePremium: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
+  },
+  planBadgeText: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: Theme.colors.textSecondary,
+    fontWeight: "900",
+    letterSpacing: 0
+  },
+  planBadgeTextPremium: {
+    color: Theme.colors.primaryDark
+  },
+  premiumDescription: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  benefitGrid: {
+    marginTop: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  benefitItem: {
+    width: "48%",
+    borderRadius: 8,
+    backgroundColor: Theme.colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
   },
   sectionTitle: {
     marginTop: 20,
