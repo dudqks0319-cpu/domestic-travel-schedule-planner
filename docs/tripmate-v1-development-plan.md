@@ -543,3 +543,28 @@ Verification completed:
 Remaining risks:
 - The response is still JSON and not yet a user-facing HTML/share page.
 - Shared places include lat/lng for map rendering; public share pages must avoid presenting raw coordinates as primary user-facing content.
+
+## Public Share Page Result Record
+
+Plan:
+- Add a public read-only HTML share page on the Worker.
+- Route mobile-generated share URLs to the public page instead of the JSON API endpoint.
+- Show trip days and places while keeping raw latitude/longitude hidden from users.
+
+Completed:
+- Added `GET /share/:shareId` Worker route for public TripMate share pages.
+- Rendered trip title, destination, date range, day sections, place category, address, memo, time, and sponsor disclosure.
+- Added an expired/deleted share fallback page.
+- Changed mobile `buildTripShareUrl()` to generate `/share/:token` URLs.
+- Kept `GET /api/v1/share/:shareId` as the JSON read-only API for clients.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The public share page has not yet been browser-smoked against a local Worker with seeded D1 data.
+- The page is static HTML; richer map previews or export thumbnails can be layered later through R2.

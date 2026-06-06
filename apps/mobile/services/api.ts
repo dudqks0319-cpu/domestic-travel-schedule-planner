@@ -169,7 +169,7 @@ export interface TripShareDto {
 }
 
 export function buildTripShareUrl(token: string): string {
-  return `${API_BASE.replace(/\/$/, "")}${API_PREFIX}/share/${encodeURIComponent(token)}`;
+  return `${API_BASE.replace(/\/$/, "")}/share/${encodeURIComponent(token)}`;
 }
 
 export const placesApi = {

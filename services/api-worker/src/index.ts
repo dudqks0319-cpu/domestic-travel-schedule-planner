@@ -5,6 +5,7 @@ import type { AppBindings } from "./bindings";
 import { errorResponse } from "./http/errors";
 import { requestIdMiddleware } from "./middleware/request-id";
 import { healthRoutes } from "./routes/health";
+import { sharePageRoutes } from "./routes/share-page";
 import { v1Routes } from "./routes/v1";
 
 function allowedOrigins(rawOrigins: string | undefined): string[] {
@@ -35,6 +36,7 @@ app.use(
 );
 
 app.route("/health", healthRoutes);
+app.route("/share", sharePageRoutes);
 app.route("/api/v1", v1Routes);
 
 app.notFound((c) => errorResponse(c, 404, "NOT_FOUND", "요청한 API를 찾을 수 없습니다."));
