@@ -1,0 +1,285 @@
+# TripMate v1.0 Development Plan
+
+## Phase 0 Summary
+
+Branch: `feat/tripmate-v1-release-goal`
+
+TripMate v1.0 is a release-grade domestic travel planner, not a reduced MVP. The product target is:
+
+> 전국지도에서 여행지를 고르고, 네이버·카카오·공공 관광 데이터를 바탕으로 날짜별 일정표와 최적 동선을 자동 생성해주는 국내여행 플래너
+
+This plan keeps the existing monorepo boundaries and moves the product forward in small, verifiable phases. Each phase must include a short plan, implementation, deterministic verification, result notes, and one meaningful commit.
+
+## Current Repository Baseline
+
+```text
+apps/mobile
+  Expo Router React Native app. Contains auth screens, map-first home, trip creation, route map, schedule, search, and profile tabs.
+
+packages/planner
+  Shared TypeScript planning primitives. Current coverage includes geo helpers, clustering/order helpers, and basic tests.
+
+services/api
+  Existing Node.js Express + Prisma + SQLite reference API. Keep it working until the Worker API reaches parity.
+
+services/api-worker
+  Target Cloudflare Workers + D1 production API. Currently documentation-only and must be implemented additively.
+```
+
+## Role Split
+
+`services/api` remains the reference/local API during migration. It may receive compatibility fixes, but should not become the new production runtime.
+
+`services/api-worker` is the production API boundary for v1.0. New Cloudflare-specific code, Hono routes, D1 schema, KV/R2 bindings, provider adapters, monetization endpoints, and preview/prod deployment configuration belong here.
+
+`packages/planner` owns pure planning logic: normalized trip inputs, date distribution, route scoring, style rules, meal/rest insertion, and deterministic tests. It must not depend on mobile UI or Cloudflare runtime APIs.
+
+`apps/mobile` owns user experience, local state, provider abstraction for map display, auth gating, trip editing, premium/ad/sponsored UI states, and environment-safe API calls. Provider secrets must never be added here.
+
+## High-Risk Areas
+
+1. Provider secrets leaking into the mobile bundle.
+2. Production UI showing synthetic coordinates as real recommendations.
+3. Worker implementation accidentally depending on Node-only Express/Prisma patterns.
+4. D1 ownership checks being missed on trip/share mutation routes.
+5. Planner generating route-like timelines without real place provenance.
+6. Monetization UI hiding sponsored content labels or interrupting schedule generation.
+7. Large dependency or lockfile churn without phase-level verification.
+8. Expo web and native map behavior drifting because native provider SDKs may require EAS Dev Client.
+
+## Phase Plan
+
+### Phase 1. Common Types And Style Keys
+
+Goal: make style selection and trip planning inputs stable across mobile and planner.
+
+Implementation scope:
+- Add `apps/mobile/constants/travelStyles.ts`.
+- Add shared planner domain types for `NormalizedPlace`, `NormalizedRoute`, `TripPlanInput`, `TripPlanResult`, provider warnings, and regeneration hints.
+- Replace title-string style routing with `styleKey`.
+- Tighten current trip storage shape enough for schedule/map consumers to avoid fake route ambiguity.
+
+Verification:
+- `npm test`
+- `npm run mobile:typecheck`
+- `npm run planner:build`
+- `git diff --check`
+
+Commit target:
+- `feat: add v1 travel style and planner domain types`
+
+### Phase 2. Mobile v1.0 UX Foundation
+
+Goal: complete the core user-facing flow without pretending unavailable provider data is real.
+
+Implementation scope:
+- Expand nationwide region list and region metadata.
+- Add map display provider abstraction with mock/static provider separated from future Naver/Kakao provider.
+- Improve trip creation to 3 required steps plus optional advanced inputs.
+- Add retry/reload empty states for failed recommendation.
+- Improve schedule and route-map state labels for provider warnings and unavailable routes.
+- Remove direct user-facing latitude/longitude from schedule cards.
+
+Verification:
+- `npm test`
+- `npm run mobile:typecheck`
+- Expo web smoke check when feasible
+- `git diff --check`
+
+Commit target:
+- `feat: complete mobile v1 planning flow foundation`
+
+### Phase 3. Planner Engine
+
+Goal: generate actual date-by-date itineraries from normalized places.
+
+Implementation scope:
+- Implement day-count calculation and day capacity rules.
+- Insert lunch, dinner, cafe/rest slots.
+- Add style-specific density and category weighting.
+- Add distance-aware grouping and ordering.
+- Return `Trip`, `TripDay[]`, `TripPlace[]`, `RouteSummary`, `ProviderWarnings`, and `RegenerationHints`.
+
+Verification:
+- Tests for 1-day, 2-day, 3-day, and 5-day trips.
+- Tests proving style differences.
+- Tests preventing excessive same-day long-distance placement.
+- `npm test`
+- `npm run planner:build`
+
+Commit target:
+- `feat: implement v1 planner engine`
+
+### Phase 4. Cloudflare Worker API Bootstrap
+
+Goal: create the production API runtime without breaking the Express reference API.
+
+Implementation scope:
+- Add `services/api-worker/package.json`.
+- Add Hono, Wrangler, TypeScript, and Worker types.
+- Add `wrangler.toml`.
+- Implement `src/index.ts`, health routes, error schema, request id, CORS, and environment bindings.
+- Add auth middleware skeleton and rate-limit helper boundary.
+- Add root `worker:*` scripts and include Worker typecheck in `check:health`.
+
+Verification:
+- `npm run worker:typecheck`
+- `npm run worker:dev` with `/health` smoke when feasible
+- `npm run check:health`
+
+Commit target:
+- `feat: bootstrap cloudflare worker api`
+
+### Phase 5. D1 Schema And Trip APIs
+
+Goal: persist users, trips, days, places, shares, entitlements, ads, affiliates, sponsored places, and audit logs in D1.
+
+Implementation scope:
+- Add D1 schema/migrations for required tables.
+- Implement query/repository layer.
+- Implement trip CRUD, day/place mutations, share link create/read.
+- Enforce write auth and trip ownership.
+- Use read-only unpredictable share tokens.
+
+Verification:
+- Worker typecheck.
+- Repository/unit tests where local D1 runner is available.
+- Endpoint smoke tests with preview/local D1 when feasible.
+
+Commit target:
+- `feat: add d1 schema and trip persistence api`
+
+### Phase 6. Provider Integration
+
+Goal: return normalized places/routes through server-side provider adapters.
+
+Implementation scope:
+- Add Naver, Kakao, and Tour API adapters.
+- Normalize provider responses into shared types.
+- Add deduplication and scoring.
+- Implement cache-first place search and route cache keys.
+- Add provider timeout, fallback, and warnings.
+- Ensure mobile receives unavailable/empty states instead of fake production places.
+
+Verification:
+- Adapter normalization tests with fixture responses.
+- Worker typecheck.
+- Provider routes smoke with secrets present.
+- Failure path tests without secrets.
+
+Commit target:
+- `feat: add provider adapters and normalized place search`
+
+### Phase 7. Monetization Structure
+
+Goal: make v1 monetization visible in code without violating app store payment boundaries.
+
+Implementation scope:
+- Add ad event logging API and mobile logging client.
+- Add affiliate click logging API and link model.
+- Add entitlement verification skeleton and `me` endpoint.
+- Add mobile premium state and feature gates.
+- Add sponsored place label rendering.
+- Document IAP vs external booking separation.
+
+Verification:
+- Worker typecheck.
+- Mobile typecheck.
+- UI state smoke.
+
+Commit target:
+- `feat: add monetization and premium foundations`
+
+### Phase 8. Deployment, Security, And Release Docs
+
+Goal: make the release path operable.
+
+Implementation scope:
+- Update README for v1, not MVP wording.
+- Add Cloudflare deployment, env, provider policy, monetization policy, and privacy/security checklist docs.
+- Add sample env guidance without secrets.
+- Add final local gate scripts.
+- Run gitleaks-backed commit/push hooks.
+
+Verification:
+- `npm test`
+- `npm run mobile:typecheck`
+- `npm run api:build`
+- `npm run planner:build`
+- `npm run worker:typecheck`
+- `npm run check:dev` when env files are configured
+
+Commit target:
+- `docs: add v1 release operations guide`
+
+## Root Script Target
+
+The root scripts should converge to:
+
+```json
+{
+  "test": "npm --prefix packages/planner run test",
+  "check:env": "node scripts/dev-readiness-check.mjs",
+  "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build && npm run worker:typecheck",
+  "check:dev": "npm run check:env && npm run check:health",
+  "mobile:start": "npm --prefix apps/mobile run start",
+  "mobile:web": "npm --prefix apps/mobile run web",
+  "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
+  "api:dev": "npm --prefix services/api run dev",
+  "api:build": "npm --prefix services/api run build",
+  "api:start": "npm --prefix services/api run start",
+  "planner:build": "npm --prefix packages/planner run build",
+  "worker:dev": "npm --prefix services/api-worker run dev",
+  "worker:typecheck": "npm --prefix services/api-worker run typecheck",
+  "worker:deploy:preview": "npm --prefix services/api-worker run deploy:preview"
+}
+```
+
+Worker scripts must be added only after `services/api-worker` has a real package.
+
+## Environment Boundary
+
+Mobile public environment variables:
+- `EXPO_PUBLIC_API_BASE_URL`
+- `EXPO_PUBLIC_MAP_PROVIDER`
+
+Never place these values in the mobile app:
+- `NAVER_CLIENT_ID`
+- `NAVER_CLIENT_SECRET`
+- `KAKAO_REST_API_KEY`
+- `DATA_GO_KR_API_KEY`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `APPLE_SHARED_SECRET`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+
+Cloudflare secrets:
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `NAVER_CLIENT_ID`
+- `NAVER_CLIENT_SECRET`
+- `KAKAO_REST_API_KEY`
+- `DATA_GO_KR_API_KEY`
+- `ODSAY_API_KEY`
+- `APPLE_SHARED_SECRET`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+
+## Phase 0 Result Record
+
+Completed:
+- Confirmed current branch baseline was `feat/map-first-cloudflare-mvp`.
+- Created v1 branch `feat/tripmate-v1-release-goal`.
+- Confirmed the Express API and Worker API roles should remain separate.
+- Fixed the development roadmap around release-grade v1.0 scope.
+
+Deferred:
+- No runtime code changed in Phase 0.
+- No new dependencies added in Phase 0.
+- Worker package and root Worker scripts move to Phase 4.
+
+Verification required before Phase 0 commit:
+- `npm test`
+- `npm run mobile:typecheck`
+- `npm run api:build`
+- `npm run planner:build`
+- `git diff --check`
