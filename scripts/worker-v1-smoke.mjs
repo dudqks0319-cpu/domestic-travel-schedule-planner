@@ -579,11 +579,13 @@ await step("premium trip export", async () => {
 
   const downloadedExport = await request("GET", `/api/v1/trips/${tripId}/exports/${exportId}/download`);
   assertOk(downloadedExport, "GET /api/v1/trips/:tripId/exports/:exportId/download");
-  assertHeaderIncludes(downloadedExport, "content-type", "text/html", "premium export download should return HTML");
+  assertHeaderIncludes(downloadedExport, "content-type", "application/pdf", "premium export download should return PDF");
   assertHeaderIncludes(downloadedExport, "cache-control", "private", "premium export download should be private");
   assert(
-    typeof downloadedExport.body === "string" && downloadedExport.body.includes("TripMate"),
-    "premium export download should return printable TripMate content"
+    typeof downloadedExport.body === "string" &&
+      downloadedExport.body.startsWith("%PDF-") &&
+      downloadedExport.body.includes("TripMate"),
+    "premium export download should return binary TripMate PDF content"
   );
 
   const sharedDownloadedExport = await request(
@@ -592,13 +594,15 @@ await step("premium trip export", async () => {
     { auth: false }
   );
   assertOk(sharedDownloadedExport, "GET /api/v1/share/:shareId/exports/:exportId/download");
-  assertHeaderIncludes(sharedDownloadedExport, "content-type", "text/html", "shared export download should return HTML");
+  assertHeaderIncludes(sharedDownloadedExport, "content-type", "application/pdf", "shared export download should return PDF");
   assertHeaderIncludes(sharedDownloadedExport, "cache-control", "no-store", "shared export download should prevent caching");
   assertHeaderIncludes(sharedDownloadedExport, "x-robots-tag", "noindex", "shared export download should prevent indexing");
   assertHeaderIncludes(sharedDownloadedExport, "referrer-policy", "no-referrer", "shared export download should avoid referrer leaks");
   assert(
-    typeof sharedDownloadedExport.body === "string" && sharedDownloadedExport.body.includes("TripMate"),
-    "shared export download should return printable TripMate content"
+    typeof sharedDownloadedExport.body === "string" &&
+      sharedDownloadedExport.body.startsWith("%PDF-") &&
+      sharedDownloadedExport.body.includes("TripMate"),
+    "shared export download should return binary TripMate PDF content"
   );
 
   const publicShareWithExports = await request("GET", `/api/v1/share/${shareToken}`, { auth: false });

@@ -3474,3 +3474,33 @@ Verification completed:
 
 Remaining risks:
 - Shared export discovery still needs preview smoke with real D1/R2 bindings to verify live object availability and response headers.
+
+## Worker Binary PDF Export Result Record
+
+Plan:
+- Replace the PDF export asset from a print-ready HTML page with a real `application/pdf` binary object.
+- Keep the implementation dependency-free so it can run inside Cloudflare Workers without a renderer service.
+- Keep raw coordinates out of the PDF and include only itinerary summary, day headings, places, categories, times, and addresses.
+- Update smoke, release contract, and Worker docs to lock the binary PDF behavior.
+
+Completed:
+- Added `renderPdfTripExport()` to generate a single-page TripMate PDF byte stream in the Worker.
+- Switched PDF export assets from `.html` to `.pdf`.
+- Stored PDF exports in R2 with `contentType: application/pdf` and a PDF filename.
+- Kept the same authenticated and shared download endpoints, with existing private/no-store headers.
+- Updated Worker smoke and release contract checks for `%PDF-` binary content.
+- Removed the stale print-ready HTML renderer path from `services/api-worker/src/routes/trips.ts`.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The PDF renderer is intentionally simple and single-page; visual QA with real Korean itinerary data in a preview Worker/browser is still needed before production handoff.

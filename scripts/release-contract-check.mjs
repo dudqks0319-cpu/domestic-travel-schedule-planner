@@ -1132,8 +1132,18 @@ const exportDownloadContracts = [
   ],
   [
     tripRoutes,
-    "renderPrintableTripExport",
-    "PDF export must generate print-ready HTML asset until binary renderer exists"
+    "renderPdfTripExport",
+    "PDF export must generate a binary PDF asset"
+  ],
+  [
+    tripRoutes,
+    'contentType: "application/pdf"',
+    "PDF export asset must use application/pdf content type"
+  ],
+  [
+    tripRoutes,
+    'filename="tripmate-export-${exportId}.pdf"',
+    "PDF export asset must use a PDF filename"
   ],
   [
     tripRoutes,
@@ -1164,6 +1174,16 @@ const exportDownloadContracts = [
     workerSmokeScript,
     "premium export download should be private",
     "Worker smoke must verify private export download cache headers"
+  ],
+  [
+    workerSmokeScript,
+    "premium export download should return binary TripMate PDF content",
+    "Worker smoke must verify binary premium PDF content"
+  ],
+  [
+    workerSmokeScript,
+    "shared export download should return binary TripMate PDF content",
+    "Worker smoke must verify binary shared PDF content"
   ],
   [
     workerSmokeScript,

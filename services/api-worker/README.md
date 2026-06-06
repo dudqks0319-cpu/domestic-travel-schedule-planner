@@ -35,7 +35,7 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 - owned export download endpoint backed by R2 assets
 - read-only shared export download endpoint backed by active share tokens
 - shared export metadata in the public share API and export links in the read-only share page
-- authenticated print-ready HTML export assets with private cache headers
+- authenticated binary PDF export assets with private cache headers
 - authenticated SVG image export assets with private cache headers
 - scheduled and manual operations retention cleanup
 - D1, KV, and R2 binding types
@@ -43,7 +43,6 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 
 ## Not Yet Implemented
 
-- binary PDF rendering worker
 - live strict provider smoke evidence from a configured preview Worker
 - live mobile IAP SDK purchase/receipt capture and store validation
 

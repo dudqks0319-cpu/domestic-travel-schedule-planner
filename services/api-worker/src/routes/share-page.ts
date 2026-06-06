@@ -144,7 +144,7 @@ function renderSharePage(input: {
         <div class="export-links">
           ${input.exports
             .map((item) => `<a class="export-link" href="${escapeHtml(item.downloadUrl)}" rel="nofollow noopener">
-              ${item.format === "image" ? "이미지" : "PDF 저장용"} 파일 열기
+              ${item.format === "image" ? "이미지" : "PDF"} 파일 열기
             </a>`)
             .join("")}
         </div>
