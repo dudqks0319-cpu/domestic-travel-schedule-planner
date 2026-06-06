@@ -72,6 +72,72 @@ function sanitizeMetadata(value: unknown): Record<string, unknown> {
   );
 }
 
+function isProductionEnvironment(c: Context<AppBindings>): boolean {
+  return c.env.ENVIRONMENT === "production";
+}
+
+function hasStoreValidationSecret(c: Context<AppBindings>, platform: EntitlementPlatform): boolean {
+  if (platform === "apple") {
+    return Boolean(c.env.APPLE_SHARED_SECRET);
+  }
+
+  if (platform === "google") {
+    return Boolean(c.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON);
+  }
+
+  return false;
+}
+
+function resolveEntitlementVerification(input: {
+  c: Context<AppBindings>;
+  platform: EntitlementPlatform;
+  requestedStatus: EntitlementStatus;
+  receipt?: string;
+  transactionId?: string;
+}): {
+  status: EntitlementStatus;
+  verificationMode: "store-validation-ready" | "store-validation-pending" | "manual-non-production";
+  reason: string;
+} {
+  if (input.platform === "manual") {
+    if (isProductionEnvironment(input.c)) {
+      return {
+        status: "pending",
+        verificationMode: "store-validation-pending",
+        reason: "manual_entitlements_disabled_in_production"
+      };
+    }
+
+    return {
+      status: input.requestedStatus,
+      verificationMode: "manual-non-production",
+      reason: "manual_entitlement_allowed_outside_production"
+    };
+  }
+
+  if (!input.receipt && !input.transactionId) {
+    return {
+      status: "pending",
+      verificationMode: "store-validation-pending",
+      reason: "missing_store_receipt"
+    };
+  }
+
+  if (!hasStoreValidationSecret(input.c, input.platform)) {
+    return {
+      status: "pending",
+      verificationMode: "store-validation-pending",
+      reason: "store_validation_secret_missing"
+    };
+  }
+
+  return {
+    status: "pending",
+    verificationMode: "store-validation-ready",
+    reason: "live_store_validation_not_yet_implemented"
+  };
+}
+
 async function sha256Hex(value: string): Promise<string> {
   const encoded = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
@@ -154,8 +220,9 @@ monetizationRoutes.post("/entitlements/verify", requireAuth, async (c) => {
   const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
   const platform = stringValue(body?.platform) as EntitlementPlatform | undefined;
   const productId = stringValue(body?.productId);
-  const status = (stringValue(body?.status) ?? "pending") as EntitlementStatus;
-  const receipt = stringValue(body?.receipt) ?? stringValue(body?.transactionId);
+  const requestedStatus = (stringValue(body?.status) ?? "pending") as EntitlementStatus;
+  const receipt = stringValue(body?.receipt);
+  const transactionId = stringValue(body?.transactionId);
   const expiresAt = stringValue(body?.expiresAt);
 
   if (!platform || !ALLOWED_ENTITLEMENT_PLATFORMS.has(platform)) {
@@ -166,24 +233,33 @@ monetizationRoutes.post("/entitlements/verify", requireAuth, async (c) => {
     return errorResponse(c, 400, "INVALID_PRODUCT", "상품 ID가 필요합니다.");
   }
 
-  if (!ALLOWED_ENTITLEMENT_STATUSES.has(status)) {
+  if (!ALLOWED_ENTITLEMENT_STATUSES.has(requestedStatus)) {
     return errorResponse(c, 400, "INVALID_ENTITLEMENT_STATUS", "지원하지 않는 권한 상태입니다.");
   }
 
+  const verification = resolveEntitlementVerification({
+    c,
+    platform,
+    requestedStatus,
+    ...(receipt ? { receipt } : {}),
+    ...(transactionId ? { transactionId } : {})
+  });
+  const receiptSource = receipt ?? transactionId;
   const entitlement = await upsertEntitlement(c.env.DB, {
     userId,
     platform,
     productId,
-    status,
+    status: verification.status,
     ...(expiresAt ? { expiresAt } : {}),
-    ...(receipt ? { receiptHash: await sha256Hex(receipt) } : {})
+    ...(receiptSource ? { receiptHash: await sha256Hex(receiptSource) } : {})
   });
 
   return c.json({
     data: {
       entitlement: toPublicEntitlement(entitlement),
       premium: entitlement.status === "active",
-      verificationMode: "store-validation-ready"
+      verificationMode: verification.verificationMode,
+      reason: verification.reason
     }
   });
 });

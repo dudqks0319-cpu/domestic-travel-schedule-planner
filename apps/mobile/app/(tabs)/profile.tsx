@@ -41,6 +41,8 @@ export default function ProfileScreen() {
   const { deleteAccount, logout } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
+  const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "checking">("idle");
+  const [premiumNotice, setPremiumNotice] = useState<string | null>(null);
   const [savedTrips, setSavedTrips] = useState<TripWithPlacesDto[]>([]);
   const [tripsStatus, setTripsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tripActionId, setTripActionId] = useState<string | null>(null);
@@ -121,6 +123,31 @@ export default function ProfileScreen() {
         }
       }
     ]);
+  };
+
+  const handleRestorePremium = async () => {
+    setPremiumNotice(null);
+
+    if (Platform.OS === "web") {
+      setPremiumNotice("웹에서는 앱스토어/플레이 결제 복원을 실행할 수 없어요. 모바일 빌드에서 스토어 SDK 연결 후 사용할 수 있습니다.");
+      return;
+    }
+
+    setPremiumActionStatus("checking");
+    try {
+      const nextEntitlement = await loadEntitlementState();
+      setEntitlement(nextEntitlement);
+      setEntitlementStatus("ready");
+      setPremiumNotice(
+        nextEntitlement.premium
+          ? "프리미엄 권한이 활성화됐어요."
+          : "구매 복원은 스토어 SDK 연결 후 실제 영수증으로 검증됩니다. 현재 빌드는 권한 상태만 새로 확인했어요."
+      );
+    } catch {
+      setPremiumNotice("프리미엄 권한 상태를 확인하지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
+    } finally {
+      setPremiumActionStatus("idle");
+    }
   };
 
   const openTrip = async (trip: TripWithPlacesDto) => {
@@ -253,6 +280,17 @@ export default function ProfileScreen() {
               날씨 대체코스 {entitlement.benefits.weatherAlternatives ? "ON" : "OFF"}
             </Text>
           </View>
+          {premiumNotice ? <Text style={styles.premiumNotice}>{premiumNotice}</Text> : null}
+          <TouchableOpacity
+            style={styles.premiumActionButton}
+            onPress={() => { void handleRestorePremium(); }}
+            disabled={premiumActionStatus === "checking"}
+            activeOpacity={0.78}
+          >
+            <Text style={styles.premiumActionText}>
+              {premiumActionStatus === "checking" ? "권한 확인 중..." : "구매 복원/권한 확인"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionTitle}>포인트 적립</Text>
@@ -516,6 +554,33 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
+  },
+  premiumNotice: {
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.primaryLight,
+    color: Theme.colors.primaryDark,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700"
+  },
+  premiumActionButton: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12
+  },
+  premiumActionText: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textOnPrimary,
+    fontWeight: "900",
+    textAlign: "center"
   },
   sectionTitle: {
     marginTop: 20,

@@ -766,3 +766,30 @@ Verification completed:
 Remaining risks:
 - The current PDF path provides a print-ready HTML page for PDF saving; a true binary PDF renderer is still needed for one-tap PDF file delivery.
 - Download access is authenticated rather than publicly signed; shared export links need a separate token model if required later.
+
+## Entitlement Verification Hardening Result Record
+
+Plan:
+- Prevent the mobile client from granting itself premium by submitting an arbitrary `active` status.
+- Keep Apple/Google receipt submission server-side and privacy-safe while live store validation is not implemented.
+- Allow manual entitlement activation only outside production for testing/operations.
+- Add mobile API and profile UX boundaries for future purchase restore without adding a billing SDK dependency.
+
+Completed:
+- Hardened `POST /api/v1/monetization/entitlements/verify` so Apple/Google requests resolve to `pending` until live store validation exists.
+- Added environment-aware manual entitlement handling that refuses manual production activation.
+- Kept raw receipts/transaction ids out of D1 by hashing the submitted value before persistence.
+- Added typed mobile `verifyEntitlement()` API boundary for future IAP SDK integration.
+- Added a profile-screen "구매 복원/권한 확인" action that refreshes current entitlement state and explains that store SDK receipt submission is pending.
+- Updated the monetization policy with client-trust and receipt-storage rules.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Live Apple App Store Server API and Google Play Developer API validation are still not implemented.
+- The mobile app still needs a real IAP SDK integration before store purchase/restore can submit actual receipts.
