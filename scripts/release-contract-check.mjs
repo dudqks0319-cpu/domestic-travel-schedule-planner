@@ -778,7 +778,8 @@ for (const text of [
   "checkMobilePublicEnvMap",
   "apps/mobile/eas.json",
   "EAS env keys must start with EXPO_PUBLIC_",
-  "EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL"
+  "EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL",
+  "EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY"
 ]) {
   if (!devReadinessCheck.includes(text)) {
     errors.push(`dev-readiness-check must validate EAS mobile env boundaries: ${text}`);

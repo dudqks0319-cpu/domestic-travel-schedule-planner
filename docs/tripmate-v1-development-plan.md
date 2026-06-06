@@ -2360,3 +2360,30 @@ Verification completed:
 Remaining risks:
 - CI uses local target checks by default; preview/production placeholder failures still require explicit `check:env:preview` and `check:env:production` before deployment.
 - Live GitHub Actions execution remains to be observed after pushing this commit.
+
+## Preview Production Kakao Web Key Gate Result Record
+
+Plan:
+- Keep local development permissive with warnings for missing Kakao web map public key.
+- Fail preview/production env checks when Kakao map provider is selected without `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`.
+- Preserve the separation between public Kakao JavaScript key and server-only Kakao REST key.
+- Add release contract and env documentation coverage for the stricter deploy target gate.
+
+Completed:
+- Updated `scripts/dev-readiness-check.mjs` so `check:env:preview` and `check:env:production` fail when EAS Kakao provider lacks `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`.
+- Kept local `check:env` behavior as warnings so local development remains usable before real deploy keys are assigned.
+- Extended release contract checks for the preview/production Kakao web key error.
+- Updated `docs/env.md` with the deploy-target Kakao public key requirement.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env:preview` failed as expected with EAS preview Worker URL, Kakao public key, D1, and KV placeholder errors.
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Real domain-restricted Kakao JavaScript keys still need to be created and configured in EAS/hosting environments before preview or production release.
+- `check:env:preview` and `check:env:production` still intentionally fail while EAS Worker URLs and Cloudflare binding IDs are placeholders.

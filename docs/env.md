@@ -22,6 +22,7 @@ The same rule applies to `apps/mobile/eas.json` build profile `env` blocks. EAS 
 
 Allowed map provider values are currently `mock`, `naver`, and `kakao`. The app must not read provider API secrets from public env.
 `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` is only for Kakao's web map JavaScript SDK and must be domain-restricted in the Kakao console. It is not a replacement for `KAKAO_REST_API_KEY`, which remains server-only.
+Preview and production checks fail when `EXPO_PUBLIC_MAP_PROVIDER=kakao` is configured without `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`.
 Affiliate URLs must be HTTPS external booking URLs. They are public routing targets, not secrets. Leave them empty until a real affiliate contract/link is ready.
 
 ## Reference Express API Env

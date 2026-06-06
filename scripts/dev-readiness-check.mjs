@@ -244,6 +244,13 @@ if (!fs.existsSync(easConfigPath)) {
         if (!apiBaseUrl || /REPLACE_WITH|localhost|127\.0\.0\.1|example/.test(apiBaseUrl)) {
           errors.push(`EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL.`);
         }
+
+        if (
+          targetBuildEnv.EXPO_PUBLIC_MAP_PROVIDER === "kakao" &&
+          !hasNonEmptyValue(targetBuildEnv.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY)
+        ) {
+          errors.push(`EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
+        }
       }
     } else {
       const serialized = JSON.stringify(easConfig);
