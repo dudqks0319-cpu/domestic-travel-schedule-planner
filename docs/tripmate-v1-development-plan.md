@@ -3564,3 +3564,28 @@ Verification completed:
 
 Remaining risks:
 - This smoke checks PDF structure in text form; preview Worker visual QA is still needed to inspect Korean text rendering and page layout.
+
+## Worker Local Smoke Runtime Result Record
+
+Plan:
+- Apply local D1 migrations for the Worker schema.
+- Start `wrangler dev --local` with D1/KV/R2 local bindings.
+- Run the full Worker v1 smoke script against `http://127.0.0.1:8787`.
+- Confirm the newly added multi-page PDF export assertion passes at runtime.
+
+Completed:
+- Applied local D1 migrations `0001_initial.sql` through `0004_user_profile_image.sql`.
+- Started the local Worker with `npm run worker:dev`.
+- Ran `npm run worker:smoke -- --base-url http://127.0.0.1:8787`.
+- Verified health, planner, routes, places, auth/session, trip/day/place/share CRUD, free limit, monetization, premium PDF/image export, shared export download, multi-page PDF count, cleanup, and logout paths through the smoke script.
+
+Verification completed:
+- `npm exec -- wrangler d1 execute tripmate-local --local --file=./migrations/0001_initial.sql`
+- `npm exec -- wrangler d1 execute tripmate-local --local --file=./migrations/0002_trip_exports.sql`
+- `npm exec -- wrangler d1 execute tripmate-local --local --file=./migrations/0003_operational_events.sql`
+- `npm exec -- wrangler d1 execute tripmate-local --local --file=./migrations/0004_user_profile_image.sql`
+- `npm run worker:dev`
+- `npm run worker:smoke -- --base-url http://127.0.0.1:8787`
+
+Remaining risks:
+- This validates local Miniflare/D1/R2 behavior only; preview smoke still needs real Cloudflare bindings, real provider secrets, and strict `--require-provider naver`.
