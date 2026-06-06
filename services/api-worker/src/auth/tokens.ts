@@ -39,7 +39,7 @@ function secretFor(env: Env, kind: TokenKind): string {
     return configured.trim();
   }
 
-  if (env.ENVIRONMENT === "local" || env.ENVIRONMENT === "preview") {
+  if (env.ENVIRONMENT === "local") {
     return `tripmate-${env.ENVIRONMENT}-${kind}-secret`;
   }
 

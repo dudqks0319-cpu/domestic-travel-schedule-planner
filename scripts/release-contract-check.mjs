@@ -89,6 +89,7 @@ for (const file of [
 
 const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
 const sharePageRoutes = readText("services/api-worker/src/routes/share-page.ts");
+const workerTokens = readText("services/api-worker/src/auth/tokens.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
 const auditDb = readText("services/api-worker/src/db/audit.ts");
 const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
@@ -1018,6 +1019,29 @@ for (const text of [
   if (!workerSmokeScript.includes(text)) {
     errors.push(`Missing Worker smoke day auto-link assertion: ${text}`);
   }
+}
+
+const workerJwtSecretContracts = [
+  [
+    workerTokens,
+    'if (env.ENVIRONMENT === "local")',
+    "Worker JWT fallback secrets must be local-only"
+  ],
+  [
+    workerTokens,
+    "Missing JWT_${kind.toUpperCase()}_SECRET.",
+    "Worker JWT secret failure must be explicit when non-local secrets are missing"
+  ]
+];
+
+for (const [content, expectedText, label] of workerJwtSecretContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing Worker JWT secret contract: ${label}`);
+  }
+}
+
+if (workerTokens.includes('env.ENVIRONMENT === "preview"')) {
+  errors.push("Worker JWT fallback secrets must not be allowed in preview.");
 }
 
 for (const warning of warnings) {

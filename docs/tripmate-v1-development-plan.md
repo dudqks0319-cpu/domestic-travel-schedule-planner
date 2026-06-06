@@ -2543,3 +2543,29 @@ Verification completed:
 Remaining risks:
 - A real email/password account system would require Worker endpoints, password hashing policy, reset flows, abuse prevention, and store/privacy copy before reintroducing password fields.
 - Device-level smoke should confirm the guest start, guest profile setup, and Kakao login paths route as expected.
+
+## Worker JWT Secret Fallback Boundary Result Record
+
+Plan:
+- Restrict deterministic Worker JWT fallback secrets to local development only.
+- Require preview and production Workers to use Cloudflare `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`.
+- Add release contract checks so preview fallback signing cannot return silently.
+- Update environment, deployment, and privacy/security docs with the stricter auth secret boundary.
+
+Completed:
+- Changed `services/api-worker/src/auth/tokens.ts` so only `ENVIRONMENT=local` can use deterministic fallback JWT secrets.
+- Left preview and production missing-secret behavior as an explicit runtime failure before token signing or verification succeeds.
+- Added release contract checks for local-only fallback and forbidden preview fallback.
+- Updated environment, Cloudflare deployment, and privacy/security docs with the preview/production JWT secret requirement.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Preview auth smoke now requires real Cloudflare JWT secrets before Kakao dev login can pass.
+- Secret rotation still requires an operational runbook and coordinated token invalidation policy before production handoff.

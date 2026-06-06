@@ -59,6 +59,7 @@ Production gates:
 - local or preview Worker smoke for `/health`
 - D1 migration reviewed
 - provider keys set as Cloudflare secrets
+- `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` set as Cloudflare secrets in preview and production
 - `OPS_ADMIN_TOKEN` set as a Cloudflare secret for `/api/v1/ops/*`
 - no provider secrets in mobile env or bundle
 - gitleaks pre-push passes

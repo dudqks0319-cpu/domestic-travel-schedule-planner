@@ -63,6 +63,8 @@ wrangler secret put OPS_ADMIN_TOKEN
 
 Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[vars]` or `[env.*.vars]`. Those blocks are for non-secret configuration such as `ENVIRONMENT`, `API_VERSION`, and `ALLOWED_ORIGINS`. Use `wrangler secret put` for every provider key, JWT secret, admin token, and purchase verification secret.
 
+The Worker only permits deterministic JWT fallback secrets when `ENVIRONMENT=local`. Preview and production must have `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` configured as Cloudflare secrets before any auth smoke or release validation.
+
 ## Cloudflare Bindings
 
 Configured in `services/api-worker/wrangler.toml`:
