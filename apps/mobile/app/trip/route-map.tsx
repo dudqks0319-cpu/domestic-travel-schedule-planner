@@ -733,6 +733,8 @@ export default function RouteMapScreen() {
     return adjusted ?? baseRoute;
   }, [fallbackPreviewRoute, matchedOptimizedRoute, mode, requestConfig.hasInputPoints]);
   const isFallbackRoute = displayedRoute?.source === "fallback";
+  const shouldShowProductionFallbackWarning =
+    isFallbackRoute && !ALLOW_DEVELOPMENT_PREVIEW_POINTS && requestConfig.hasInputPoints;
   const routeTitleText = !hydrated
     ? "저장된 여행 경로를 불러오는 중이에요."
     : requestConfig.request
@@ -897,6 +899,33 @@ export default function RouteMapScreen() {
 
           <Text style={styles.routeInfoHint}>{routeInfoHintText}</Text>
         </View>
+
+        {shouldShowProductionFallbackWarning ? (
+          <View style={styles.productionFallbackCard}>
+            <Text style={styles.productionFallbackTitle}>실제 길찾기 결과가 아닙니다</Text>
+            <Text style={styles.productionFallbackText}>
+              현재 화면의 경로선은 저장된 장소 좌표를 연결한 예상 미리보기입니다. 실제 도로, 대중교통 노선,
+              도보 경로가 아니므로 출발 전 경로 최적화를 다시 실행해 주세요.
+            </Text>
+            <View style={styles.productionFallbackActions}>
+              <TouchableOpacity
+                style={styles.productionFallbackPrimary}
+                onPress={() => { void optimizeRouteNow(); }}
+                disabled={loading || !routeRequest}
+              >
+                <Text style={styles.productionFallbackPrimaryText}>
+                  {loading ? "재시도 중..." : "실시간 경로 다시 불러오기"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.productionFallbackSecondary}
+                onPress={() => router.push("/search")}
+              >
+                <Text style={styles.productionFallbackSecondaryText}>장소 다시 담기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.toggleWrap}>
           <TouchableOpacity
@@ -1081,6 +1110,55 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     marginTop: Spacing.sm,
     lineHeight: 18
+  },
+  productionFallbackCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.common.warning,
+    backgroundColor: "#FFF9DB",
+    padding: Spacing.lg,
+    gap: 10
+  },
+  productionFallbackTitle: {
+    ...Typography.normal.bodySmall,
+    color: "#8A5D00",
+    fontWeight: "800"
+  },
+  productionFallbackText: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    lineHeight: 18
+  },
+  productionFallbackActions: {
+    flexDirection: "row",
+    gap: Spacing.sm
+  },
+  productionFallbackPrimary: {
+    flex: 1,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 10,
+    alignItems: "center"
+  },
+  productionFallbackPrimaryText: {
+    ...Typography.normal.caption,
+    color: Colors.common.white,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  productionFallbackSecondary: {
+    flex: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#D48806",
+    backgroundColor: Colors.common.white,
+    paddingVertical: 10,
+    alignItems: "center"
+  },
+  productionFallbackSecondaryText: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    fontWeight: "800"
   },
   modeRow: {
     flexDirection: "row",

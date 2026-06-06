@@ -42,6 +42,7 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
   const modeColor = getModeColor(mode);
   const mapRef = useRef<MapView>(null);
   const points = route?.orderedPoints ?? [];
+  const isEstimatedRoute = route?.source === "fallback";
 
   useEffect(() => {
     if (!mapRef.current || points.length < 2) return;
@@ -90,6 +91,11 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
           <Text style={styles.summaryLabel}>예상 시간</Text>
           <Text style={styles.summaryValue}>{formatDuration(route.totalDurationMin)}</Text>
         </View>
+        {isEstimatedRoute ? (
+          <Text style={styles.estimatedRouteNotice}>
+            실제 길찾기 provider 결과가 아닌 예상 이동시간과 예상 연결선입니다.
+          </Text>
+        ) : null}
       </View>
 
       <MapView
@@ -115,7 +121,7 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
             ]}
             strokeColor={modeColor}
             strokeWidth={4}
-            lineDashPattern={mode === "walking" ? [8, 6] : undefined}
+            lineDashPattern={isEstimatedRoute || mode === "walking" ? [8, 6] : undefined}
           />
         ))}
 
@@ -135,7 +141,11 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
         ))}
       </MapView>
 
-      <Text style={styles.routeHint}>시작/경유/도착 지점은 숫자 순서대로 이동합니다.</Text>
+      <Text style={styles.routeHint}>
+        {isEstimatedRoute
+          ? "점선은 실제 도로/대중교통 경로가 아니라 장소 사이를 잇는 예상 연결선입니다."
+          : "시작/경유/도착 지점은 숫자 순서대로 이동합니다."}
+      </Text>
     </View>
   );
 }
@@ -185,6 +195,12 @@ const styles = StyleSheet.create({
     ...Typography.normal.body,
     fontWeight: "700",
     color: Colors.common.gray800
+  },
+  estimatedRouteNotice: {
+    ...Typography.normal.caption,
+    color: "#8C6D1F",
+    marginTop: Spacing.sm,
+    lineHeight: 17
   },
   nativeMap: {
     height: 320,

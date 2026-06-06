@@ -617,3 +617,27 @@ Verification completed:
 Remaining risks:
 - Profile trip management is still compact; a dedicated full-screen trip manager would handle bulk operations and filters better.
 - Delete/share flows require an authenticated saved trip, which is expected but should be covered by device-level smoke tests before release.
+
+## Route Fallback Safety Result Record
+
+Plan:
+- Re-check remaining fallback/synthetic route surfaces.
+- Keep development preview behavior available only in development/test.
+- Make production fallback route displays impossible to mistake for real provider directions.
+
+Completed:
+- Confirmed synthetic trip selection points are gated by `NODE_ENV === "development" || "test"`.
+- Added production-only fallback safety notice on the route map screen.
+- Added retry and "장소 다시 담기" actions when only estimated fallback routing is available.
+- Rendered fallback map polylines as dashed/low-confidence routes in web and native map views.
+- Added explicit copy that fallback routes are estimated connection lines, not real road/transit/walking directions.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Real provider failure modes still need Cloudflare preview smoke with configured provider secrets.
+- The existing Worker route optimizer still returns fallback estimates when live routing is unavailable; this is acceptable only while UI clearly labels the result as estimated.

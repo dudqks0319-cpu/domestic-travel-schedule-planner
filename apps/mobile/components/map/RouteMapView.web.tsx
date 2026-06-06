@@ -146,6 +146,7 @@ function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
 export default function RouteMapView({ route, mode, loading = false }: RouteMapViewProps) {
   const points = route?.orderedPoints ?? [];
   const modeColor = getModeColor(mode);
+  const isEstimatedRoute = route?.source === "fallback";
   const kakaoMapKey = useMemo(() => readKakaoMapWebKey(), []);
   const [kakaoStatus, setKakaoStatus] = useState<KakaoMapStatus>(kakaoMapKey ? "idle" : "no-key");
   const [kakaoError, setKakaoError] = useState<string | null>(null);
@@ -195,7 +196,8 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
           path,
           strokeWeight: 5,
           strokeColor: modeColor,
-          strokeOpacity: 0.9
+          strokeOpacity: isEstimatedRoute ? 0.58 : 0.9,
+          strokeStyle: isEstimatedRoute ? "dash" : "solid"
         });
         polyline.setMap(map);
 
@@ -248,7 +250,7 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
     return () => {
       cancelled = true;
     };
-  }, [kakaoMapKey, mapContainerId, modeColor, points, route]);
+  }, [isEstimatedRoute, kakaoMapKey, mapContainerId, modeColor, points, route]);
 
   if (loading) {
     return (
@@ -285,6 +287,11 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
           <Text style={styles.summaryLabel}>예상 시간</Text>
           <Text style={styles.summaryValue}>{formatDuration(route.totalDurationMin)}</Text>
         </View>
+        {isEstimatedRoute ? (
+          <Text style={styles.estimatedRouteNotice}>
+            실제 길찾기 provider 결과가 아닌 예상 이동시간과 예상 연결선입니다.
+          </Text>
+        ) : null}
       </View>
 
       <View nativeID={mapContainerId} style={styles.kakaoMap} />
@@ -312,6 +319,12 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
           )}
         </View>
       ) : null}
+
+      <Text style={styles.routeHint}>
+        {isEstimatedRoute
+          ? "점선은 실제 도로/대중교통 경로가 아니라 장소 사이를 잇는 예상 연결선입니다."
+          : "시작/경유/도착 지점은 숫자 순서대로 이동합니다."}
+      </Text>
     </View>
   );
 }
@@ -360,6 +373,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.common.gray800
   },
+  estimatedRouteNotice: {
+    ...Typography.normal.caption,
+    color: "#8C6D1F",
+    marginTop: Spacing.sm,
+    lineHeight: 17
+  },
   kakaoMap: {
     height: 360,
     borderRadius: 20,
@@ -392,5 +411,10 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: "#8C6D1F",
     flex: 1
+  },
+  routeHint: {
+    ...Typography.normal.caption,
+    color: Colors.common.gray500,
+    lineHeight: 18
   }
 });
