@@ -1,4 +1,5 @@
 import type { Env } from "../bindings";
+import { fetchProvider } from "./http";
 import { safeTags, stripHtml, toNumber } from "./normalization";
 import type { NormalizedPlace, PlaceProviderAdapter, PlaceProviderSearchInput, TravelMode } from "./types";
 
@@ -32,7 +33,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     url.searchParams.set("display", String(Math.min(input.limit ?? 10, 20)));
     url.searchParams.set("sort", "comment");
 
-    const response = await fetch(url, {
+    const response = await fetchProvider(url, {
       headers: {
         "X-Naver-Client-Id": this.env.NAVER_CLIENT_ID,
         "X-Naver-Client-Secret": this.env.NAVER_CLIENT_SECRET

@@ -102,6 +102,9 @@ const monetizationRoutes = readText("services/api-worker/src/routes/monetization
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const providerIndex = readText("services/api-worker/src/providers/index.ts");
 const kakaoProvider = readText("services/api-worker/src/providers/kakao.ts");
+const naverProvider = readText("services/api-worker/src/providers/naver.ts");
+const tourProvider = readText("services/api-worker/src/providers/tour.ts");
+const providerHttp = readText("services/api-worker/src/providers/http.ts");
 const userDb = readText("services/api-worker/src/db/users.ts");
 const rateLimitMiddleware = readText("services/api-worker/src/middleware/rate-limit.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
@@ -345,6 +348,55 @@ const geocodeContracts = [
 for (const [content, expectedText, label] of geocodeContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing geocode contract: ${label}`);
+  }
+}
+
+const providerTimeoutContracts = [
+  [
+    providerHttp,
+    "DEFAULT_PROVIDER_TIMEOUT_MS = 4500",
+    "Provider HTTP helper must define a bounded default timeout"
+  ],
+  [
+    providerHttp,
+    "new AbortController()",
+    "Provider HTTP helper must abort slow provider calls"
+  ],
+  [
+    providerHttp,
+    "clearTimeout(timeoutId)",
+    "Provider HTTP helper must clear timeout handles"
+  ],
+  [
+    naverProvider,
+    "fetchProvider(url",
+    "Naver provider calls must use the timeout helper"
+  ],
+  [
+    kakaoProvider,
+    "fetchProvider(url",
+    "Kakao provider calls must use the timeout helper"
+  ],
+  [
+    tourProvider,
+    "fetchProvider(url",
+    "Tour provider calls must use the timeout helper"
+  ],
+  [
+    providerIndex,
+    "Promise.allSettled",
+    "Provider search must continue when one provider fails or times out"
+  ],
+  [
+    providerIndex,
+    "warnings.push(`${result.value.provider} returned no places`)",
+    "Provider search must surface empty provider results as warnings"
+  ]
+];
+
+for (const [content, expectedText, label] of providerTimeoutContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing provider timeout contract: ${label}`);
   }
 }
 

@@ -2776,3 +2776,29 @@ Verification completed:
 Remaining risks:
 - This validates endpoint shape and graceful degradation only; provider-positive geocode results still require a preview Worker with `KAKAO_REST_API_KEY`.
 - Naver geocoding and live directions remain separate provider parity work.
+
+## Provider Timeout Boundary Result Record
+
+Plan:
+- Add a shared Worker provider HTTP helper with a bounded timeout.
+- Route Naver, Kakao, and Tour API calls through the helper so slow providers do not block the full search/geocode flow indefinitely.
+- Preserve existing fallback behavior where provider failures become warnings, empty results, or safe `null` geocode responses.
+- Add release contract and provider policy coverage for the timeout boundary.
+
+Completed:
+- Added `services/api-worker/src/providers/http.ts` with `fetchProvider()` and a 4500ms default timeout.
+- Updated Naver Local search, Kakao keyword/geocode/reverse-geocode, and Tour API search calls to use `fetchProvider()`.
+- Added release contract checks that require provider adapters to use the timeout helper.
+- Updated provider policy docs with the shared timeout and warning/fallback rule.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live provider timeout behavior still needs preview smoke with real provider secrets and controlled slow/failure scenarios.
+- The timeout value may need tuning after observing real provider latency in production telemetry.

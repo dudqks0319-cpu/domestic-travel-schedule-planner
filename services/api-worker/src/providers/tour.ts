@@ -1,4 +1,5 @@
 import type { Env } from "../bindings";
+import { fetchProvider } from "./http";
 import { safeTags, toNumber } from "./normalization";
 import type { NormalizedPlace, PlaceProviderAdapter, PlaceProviderSearchInput, TravelMode } from "./types";
 
@@ -52,7 +53,7 @@ export class TourPlaceAdapter implements PlaceProviderAdapter {
     url.searchParams.set("pageNo", "1");
     url.searchParams.set("keyword", input.query);
 
-    const response = await fetch(url);
+    const response = await fetchProvider(url);
     if (!response.ok) return [];
 
     const data = await response.json<TourResponse>();

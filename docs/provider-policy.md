@@ -29,6 +29,8 @@ Provider raw responses should not be stored indefinitely. Cache only normalized 
 
 Address geocoding and reverse geocoding are server-side provider calls. The Worker currently uses Kakao Local API for `GET /api/v1/places/geocode` and `GET /api/v1/places/reverse-geocode`, caches normalized results in KV, and returns warnings instead of exposing provider failures as app crashes.
 
+All external provider HTTP calls must use the shared Worker provider fetch helper with a bounded timeout. Slow or failed providers should produce warnings and fallback/empty results rather than blocking the full search or itinerary flow.
+
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability

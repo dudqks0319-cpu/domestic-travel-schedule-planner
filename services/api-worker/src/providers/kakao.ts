@@ -1,4 +1,5 @@
 import type { Env } from "../bindings";
+import { fetchProvider } from "./http";
 import { safeTags, toNumber } from "./normalization";
 import type { NormalizedPlace, PlaceProviderAdapter, PlaceProviderSearchInput, TravelMode } from "./types";
 
@@ -60,7 +61,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
       url.searchParams.set("radius", String(Math.min(input.radius ?? 20_000, 20_000)));
     }
 
-    const response = await fetch(url, {
+    const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
     if (!response.ok) return [];
@@ -98,7 +99,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     const url = new URL("https://dapi.kakao.com/v2/local/search/address.json");
     url.searchParams.set("query", input.address.trim());
 
-    const response = await fetch(url, {
+    const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
     if (!response.ok) return null;
@@ -121,7 +122,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     url.searchParams.set("y", String(input.lat));
     url.searchParams.set("input_coord", "WGS84");
 
-    const response = await fetch(url, {
+    const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
     if (!response.ok) return null;
