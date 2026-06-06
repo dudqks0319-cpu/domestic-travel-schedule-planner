@@ -317,7 +317,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
         type: "stop",
         timeText: "09:00",
         title: firstPoint.name ?? "방문 지점",
-        detail: `위도 ${firstPoint.lat.toFixed(4)} · 경도 ${firstPoint.lng.toFixed(4)}`
+        detail: "저장된 장소"
       });
     }
     return rows;
@@ -331,7 +331,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
     type: "stop",
     timeText: formatClock(cursor),
     title: firstSegment.from.name ?? "출발 지점",
-    detail: `위도 ${firstSegment.from.lat.toFixed(4)} · 경도 ${firstSegment.from.lng.toFixed(4)}`
+    detail: "저장된 장소"
   });
 
   for (let index = dayTab.segmentStart; index < dayTab.segmentEndExclusive; index += 1) {
@@ -355,7 +355,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
       type: "stop",
       timeText: formatClock(cursor),
       title: segment.to.name ?? "도착 지점",
-      detail: `위도 ${segment.to.lat.toFixed(4)} · 경도 ${segment.to.lng.toFixed(4)}`
+      detail: "저장된 장소"
     });
 
     if (index < dayTab.segmentEndExclusive - 1) {

@@ -131,13 +131,11 @@ export default function TabMapViewNative() {
                 { backgroundColor: CATEGORY_META[selectedMarker.category]?.color ?? Theme.colors.primary }
               ]}
             />
-            <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
-          </View>
-          <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
-          <Text style={styles.selectedCoord}>
-            {selectedMarker.lat.toFixed(4)}, {selectedMarker.lng.toFixed(4)}
-          </Text>
+          <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
         </View>
+        <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
+        <Text style={styles.selectedCoord}>지도 marker 기준으로 표시된 장소입니다</Text>
+      </View>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.markerScroll}>

@@ -314,9 +314,7 @@ export default function TabMapViewWeb() {
             <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
           </View>
           <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
-          <Text style={styles.selectedCoord}>
-            {selectedMarker.lat.toFixed(4)}, {selectedMarker.lng.toFixed(4)}
-          </Text>
+          <Text style={styles.selectedCoord}>지도 marker 기준으로 표시된 장소입니다</Text>
         </View>
       ) : null}
 

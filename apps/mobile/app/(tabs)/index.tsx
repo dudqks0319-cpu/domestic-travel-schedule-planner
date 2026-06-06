@@ -12,110 +12,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
+import { DEFAULT_TRAVEL_REGION_ID, TRAVEL_REGIONS } from "../../constants/travelRegions";
 import {
   DEFAULT_TRAVEL_STYLE_KEY,
   TRAVEL_STYLE_OPTIONS,
   type TravelStyleKey
 } from "../../constants/travelStyles";
-
-interface TravelRegion {
-  id: string;
-  name: string;
-  province: string;
-  tagline: string;
-  styles: string[];
-  days: string;
-  left: `${number}%`;
-  top: `${number}%`;
-  color: string;
-}
-
-const REGIONS: TravelRegion[] = [
-  {
-    id: "seoul",
-    name: "서울",
-    province: "수도권",
-    tagline: "전시, 맛집, 야경을 하루 단위로 묶기 좋아요.",
-    styles: ["도심", "전시", "맛집"],
-    days: "당일-2일",
-    left: "48%",
-    top: "20%",
-    color: "#4A90E2"
-  },
-  {
-    id: "gangneung",
-    name: "강릉",
-    province: "강원",
-    tagline: "바다, 카페, 중앙시장 동선을 빠르게 잡을 수 있어요.",
-    styles: ["바다", "카페", "맛집"],
-    days: "1박2일",
-    left: "70%",
-    top: "25%",
-    color: "#0D9488"
-  },
-  {
-    id: "gyeongju",
-    name: "경주",
-    province: "경북",
-    tagline: "역사 명소와 황리단길을 날짜별로 나누기 좋아요.",
-    styles: ["역사", "산책", "카페"],
-    days: "1박2일",
-    left: "65%",
-    top: "58%",
-    color: "#B45309"
-  },
-  {
-    id: "busan",
-    name: "부산",
-    province: "부산",
-    tagline: "해변, 시장, 야경 코스를 권역별로 묶어 보세요.",
-    styles: ["바다", "시장", "야경"],
-    days: "2박3일",
-    left: "72%",
-    top: "68%",
-    color: "#2563EB"
-  },
-  {
-    id: "jeonju",
-    name: "전주",
-    province: "전북",
-    tagline: "한옥마을과 로컬 맛집을 여유 있게 배치해요.",
-    styles: ["한옥", "맛집", "산책"],
-    days: "1박2일",
-    left: "42%",
-    top: "58%",
-    color: "#7C3AED"
-  },
-  {
-    id: "yeosu",
-    name: "여수",
-    province: "전남",
-    tagline: "해상 케이블카, 밤바다, 시장 코스를 이어 보세요.",
-    styles: ["바다", "야경", "해산물"],
-    days: "1박2일",
-    left: "49%",
-    top: "72%",
-    color: "#DB2777"
-  },
-  {
-    id: "jeju",
-    name: "제주",
-    province: "제주",
-    tagline: "동서남북 권역을 나눠 이동시간 낭비를 줄여요.",
-    styles: ["자연", "카페", "드라이브"],
-    days: "2박3일",
-    left: "33%",
-    top: "88%",
-    color: "#16A34A"
-  }
-];
+import {
+  getConfiguredMapDisplayProvider,
+  getMapProviderNotice
+} from "../../services/mapDisplayProvider";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [selectedRegionId, setSelectedRegionId] = useState(REGIONS[1].id);
+  const mapProvider = useMemo(() => getConfiguredMapDisplayProvider(), []);
+  const [selectedRegionId, setSelectedRegionId] = useState(DEFAULT_TRAVEL_REGION_ID);
 
   const selectedRegion = useMemo(
-    () => REGIONS.find((region) => region.id === selectedRegionId) ?? REGIONS[0],
+    () => TRAVEL_REGIONS.find((region) => region.id === selectedRegionId) ?? TRAVEL_REGIONS[0],
     [selectedRegionId]
   );
 
@@ -157,16 +71,23 @@ export default function HomeScreen() {
               <Text style={styles.mapEyebrow}>전국지도</Text>
               <Text style={styles.mapTitle}>지역을 고르면 일정 초안을 만듭니다</Text>
             </View>
-            <View style={styles.daysBadge}>
-              <Ionicons name="calendar-outline" size={14} color={Theme.colors.primaryDark} />
-              <Text style={styles.daysBadgeText}>{selectedRegion.days}</Text>
+            <View style={styles.headerBadges}>
+              <View style={styles.providerBadge}>
+                <Ionicons name="map-outline" size={14} color={Theme.colors.primaryDark} />
+                <Text style={styles.daysBadgeText}>{mapProvider.label}</Text>
+              </View>
+              <View style={styles.daysBadge}>
+                <Ionicons name="calendar-outline" size={14} color={Theme.colors.primaryDark} />
+                <Text style={styles.daysBadgeText}>{selectedRegion.days}</Text>
+              </View>
             </View>
           </View>
+          <Text style={styles.providerNotice}>{getMapProviderNotice(mapProvider)}</Text>
 
           <View style={styles.koreaMap}>
             <View style={styles.peninsulaShape} />
             <View style={styles.jejuShape} />
-            {REGIONS.map((region) => {
+            {TRAVEL_REGIONS.map((region) => {
               const selected = selectedRegion.id === region.id;
               return (
                 <Pressable
@@ -319,11 +240,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 7
   },
+  providerBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: Theme.colors.primaryLight,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7
+  },
+  headerBadges: {
+    alignItems: "flex-end",
+    gap: 6
+  },
   daysBadgeText: {
     fontSize: 12,
     lineHeight: 16,
     color: Theme.colors.primaryDark,
     fontWeight: "800"
+  },
+  providerNotice: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Theme.colors.textTertiary,
+    fontWeight: "600"
   },
   koreaMap: {
     marginTop: 16,
