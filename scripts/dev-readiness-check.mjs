@@ -66,7 +66,12 @@ if (!fs.existsSync(apiEnvPath)) {
   );
 }
 
-const apiRequiredKeys = ["DATABASE_URL", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"];
+const apiRequiredKeys = [
+  "DATABASE_URL",
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "DATA_GO_KR_API_KEY"
+];
 if (fs.existsSync(apiEnvPath)) {
   const apiEnv = parseEnvFile(apiEnvPath);
 

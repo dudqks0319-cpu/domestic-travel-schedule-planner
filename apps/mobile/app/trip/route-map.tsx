@@ -88,6 +88,14 @@ const POINT_OFFSETS = [
   { lat: 0.006, lng: 0.022 }
 ];
 
+const CURRENT_NODE_ENV =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+    ?.NODE_ENV;
+const ALLOW_DEVELOPMENT_PREVIEW_POINTS =
+  CURRENT_NODE_ENV === "development" || CURRENT_NODE_ENV === "test";
+
+type TripProviderStatus = "ready" | "empty" | "unavailable";
+
 function normalizeParam(param: string | string[] | undefined): string | undefined {
   if (Array.isArray(param)) {
     return param[0];
@@ -194,8 +202,12 @@ function normalizeStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
 }
 
-function hasTripSelectionData(destination: string, _attractions: string[], _restaurants: string[]): boolean {
-  return destination.trim().length > 0;
+function hasTripSelectionData(destination: string, attractions: string[], restaurants: string[]): boolean {
+  return (
+    ALLOW_DEVELOPMENT_PREVIEW_POINTS &&
+    destination.trim().length > 0 &&
+    (attractions.length > 0 || restaurants.length > 0)
+  );
 }
 
 function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
@@ -288,6 +300,23 @@ function parseCurrentTripMode(rawTrip: unknown): RouteTransportMode | null {
   }
 
   return normalizeMode(value.transport);
+}
+
+function parseCurrentTripProviderStatus(rawTrip: unknown): TripProviderStatus | null {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return null;
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  if (
+    value.providerStatus === "ready" ||
+    value.providerStatus === "empty" ||
+    value.providerStatus === "unavailable"
+  ) {
+    return value.providerStatus;
+  }
+
+  return null;
 }
 
 function buildRequestPoints(request: OptimizeRouteRequest): RoutePoint[] {
@@ -588,6 +617,7 @@ export default function RouteMapScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("map");
   const [tripPoints, setTripPoints] = useState<RoutePoint[]>([]);
   const [tripMode, setTripMode] = useState<RouteTransportMode | null>(null);
+  const [providerStatus, setProviderStatus] = useState<TripProviderStatus | null>(null);
   const [mode, setMode] = useState<RouteTransportMode>("driving");
   const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(null);
   const [optimizedMode, setOptimizedMode] = useState<RouteTransportMode | null>(null);
@@ -632,6 +662,7 @@ export default function RouteMapScreen() {
           setTripPoints(parsedPoints);
           parsedMode = parseCurrentTripMode(parsedCurrentTrip);
           setTripMode(parsedMode);
+          setProviderStatus(parseCurrentTripProviderStatus(parsedCurrentTrip));
         }
 
         if (savedRoute && isRouteAlignedWithTrip(savedRoute, parsedPoints)) {
@@ -710,7 +741,9 @@ export default function RouteMapScreen() {
   const routeInfoHintText = !hydrated
     ? "잠시만요, 여행 정보를 확인하고 있어요."
     : !requestConfig.hasInputPoints
-      ? "여행 만들기에서 목적지와 장소를 선택하면 경로가 자동으로 채워져요."
+      ? providerStatus === "unavailable"
+        ? "추천 데이터를 불러오지 못했어요. 장소를 다시 담으면 경로가 표시됩니다."
+        : "실제 장소 좌표가 준비되면 경로가 자동으로 채워져요."
       : isFallbackRoute
         ? "실시간 경로 연결이 지연돼 예상 경로를 먼저 보여드리고 있어요."
         : `이동수단: ${modeLabel(mode)}`;
@@ -724,7 +757,9 @@ export default function RouteMapScreen() {
   const listEmptyText = !hydrated
     ? "경로 정보를 불러오는 중이에요."
     : !requestConfig.hasInputPoints
-      ? "여행을 만들면 이동 구간 리스트가 여기에 표시돼요."
+      ? providerStatus === "unavailable"
+        ? "추천 데이터를 불러오지 못해 표시할 이동 구간이 없어요."
+        : "실제 장소 좌표가 있는 일정은 이동 구간 리스트가 여기에 표시돼요."
       : "경로 포인트를 확인하면 구간 리스트가 표시됩니다.";
 
   const optimizeRouteNow = useCallback(async (options?: { silent?: boolean }) => {

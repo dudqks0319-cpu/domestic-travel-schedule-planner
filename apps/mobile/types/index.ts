@@ -76,3 +76,16 @@ export interface TripScheduleItem {
   endTime?: string;
   locationName?: string;
 }
+
+export interface FriendMatch {
+  id: string;
+  name: string;
+  age: number;
+  avatar: string;
+  destination: string;
+  dateRange: string;
+  match: number;
+  tags: string[];
+  bio: string;
+  checklist: string[];
+}

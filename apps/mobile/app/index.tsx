@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Colors from "../constants/Colors";
-import { useAuth, type AuthStatus } from "./providers/auth-provider";
+import { useAuth } from "./providers/auth-provider";
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -22,21 +21,18 @@ export default function SplashScreen() {
 
   useEffect(() => {
     if (status === "loading" || navigationHandledRef.current) return;
-    void checkFirstLaunch(status);
+    void openMapFirstHome();
   }, [status]);
 
-  const checkFirstLaunch = async (authStatus: Extract<AuthStatus, "authenticated" | "unauthenticated">) => {
+  const openMapFirstHome = async () => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 900));
       if (navigationHandledRef.current) return;
-      const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
       navigationHandledRef.current = true;
-      if (!hasSeenOnboarding) router.replace("/onboarding");
-      else if (authStatus === "unauthenticated") router.replace("/auth/login");
-      else router.replace("/(tabs)");
+      router.replace("/(tabs)");
     } catch {
       navigationHandledRef.current = true;
-      router.replace("/onboarding");
+      router.replace("/(tabs)");
     }
   };
 

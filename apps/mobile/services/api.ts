@@ -122,6 +122,7 @@ export const plannerApi = {
     endDate: string;
     transport?: string;
     companions?: string;
+    keyword?: string;
     attractionKeywords?: string[];
     restaurantKeywords?: string[];
   }) => apiClient.post("/planner/generate", params),

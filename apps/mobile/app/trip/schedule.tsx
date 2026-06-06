@@ -55,6 +55,12 @@ const FALLBACK_POINT_OFFSETS = [
   { lat: -0.011, lng: -0.009 }
 ];
 
+const CURRENT_NODE_ENV =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+    ?.NODE_ENV;
+const ALLOW_DEVELOPMENT_PREVIEW_POINTS =
+  CURRENT_NODE_ENV === "development" || CURRENT_NODE_ENV === "test";
+
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -100,6 +106,10 @@ function resolveDestinationCenter(destination: string): { lat: number; lng: numb
 }
 
 function buildFallbackTripPoints(destination: string): RoutePoint[] {
+  if (!ALLOW_DEVELOPMENT_PREVIEW_POINTS) {
+    return [];
+  }
+
   const safeDestination = destination.trim();
   if (!safeDestination) {
     return [];
@@ -450,7 +460,7 @@ export default function ScheduleScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>표시할 일정 데이터가 없어요</Text>
               <Text style={styles.emptyDescription}>
-                여행 생성 후 경로 최적화를 실행하면 일차별 일정표가 자동으로 생성됩니다.
+                추천 데이터를 불러오지 못했거나 실제 장소 좌표가 아직 없습니다.
               </Text>
               <View style={styles.emptyActions}>
                 <Button title="경로 최적화 하러가기" onPress={() => router.push("/trip/route-map")} />
@@ -463,7 +473,7 @@ export default function ScheduleScreen() {
               {isFallbackTimeline ? (
                 <View style={styles.fallbackNoticeCard}>
                   <Text style={styles.fallbackNoticeText}>
-                    최적화 결과가 없어 현재 여행의 저장된 경유지 순서로 임시 일정표를 보여드리고 있어요.
+                    개발 환경에서만 저장된 경유지 순서로 임시 일정표를 보여드리고 있어요.
                   </Text>
                 </View>
               ) : null}

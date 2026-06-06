@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
-  Image,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,131 +12,227 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
-import { fetchDestinations } from "../../services/destinations.service";
-import { fetchTopFriends } from "../../services/friends.service";
-import type { Destination } from "../../types";
 
-interface TopFriend {
+interface TravelRegion {
   id: string;
   name: string;
-  avatar: string;
+  province: string;
+  tagline: string;
+  styles: string[];
+  days: string;
+  left: `${number}%`;
+  top: `${number}%`;
+  color: string;
 }
 
-const CATEGORY_CHIPS = [
-  { key: "family", label: "가족여행", color: "#F8DADA", icon: "people-outline" as const },
-  { key: "solo", label: "혼자여행", color: "#DDE9FB", icon: "walk-outline" as const },
-  { key: "couple", label: "커플여행", color: "#F3E8FB", icon: "heart-outline" as const },
-  { key: "active", label: "액티비티", color: "#DCF4E1", icon: "triangle-outline" as const }
+const REGIONS: TravelRegion[] = [
+  {
+    id: "seoul",
+    name: "서울",
+    province: "수도권",
+    tagline: "전시, 맛집, 야경을 하루 단위로 묶기 좋아요.",
+    styles: ["도심", "전시", "맛집"],
+    days: "당일-2일",
+    left: "48%",
+    top: "20%",
+    color: "#4A90E2"
+  },
+  {
+    id: "gangneung",
+    name: "강릉",
+    province: "강원",
+    tagline: "바다, 카페, 중앙시장 동선을 빠르게 잡을 수 있어요.",
+    styles: ["바다", "카페", "맛집"],
+    days: "1박2일",
+    left: "70%",
+    top: "25%",
+    color: "#0D9488"
+  },
+  {
+    id: "gyeongju",
+    name: "경주",
+    province: "경북",
+    tagline: "역사 명소와 황리단길을 날짜별로 나누기 좋아요.",
+    styles: ["역사", "산책", "카페"],
+    days: "1박2일",
+    left: "65%",
+    top: "58%",
+    color: "#B45309"
+  },
+  {
+    id: "busan",
+    name: "부산",
+    province: "부산",
+    tagline: "해변, 시장, 야경 코스를 권역별로 묶어 보세요.",
+    styles: ["바다", "시장", "야경"],
+    days: "2박3일",
+    left: "72%",
+    top: "68%",
+    color: "#2563EB"
+  },
+  {
+    id: "jeonju",
+    name: "전주",
+    province: "전북",
+    tagline: "한옥마을과 로컬 맛집을 여유 있게 배치해요.",
+    styles: ["한옥", "맛집", "산책"],
+    days: "1박2일",
+    left: "42%",
+    top: "58%",
+    color: "#7C3AED"
+  },
+  {
+    id: "yeosu",
+    name: "여수",
+    province: "전남",
+    tagline: "해상 케이블카, 밤바다, 시장 코스를 이어 보세요.",
+    styles: ["바다", "야경", "해산물"],
+    days: "1박2일",
+    left: "49%",
+    top: "72%",
+    color: "#DB2777"
+  },
+  {
+    id: "jeju",
+    name: "제주",
+    province: "제주",
+    tagline: "동서남북 권역을 나눠 이동시간 낭비를 줄여요.",
+    styles: ["자연", "카페", "드라이브"],
+    days: "2박3일",
+    left: "33%",
+    top: "88%",
+    color: "#16A34A"
+  }
 ];
+
+const STYLE_CHIPS = ["바다+카페", "맛집", "역사 산책", "아이와 함께", "비 오는 날"];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [friends, setFriends] = useState<TopFriend[]>([]);
+  const [selectedRegionId, setSelectedRegionId] = useState(REGIONS[1].id);
 
-  useEffect(() => {
-    void Promise.all([fetchDestinations(), fetchTopFriends()]).then(([destinationsRes, friendsRes]) => {
-      setDestinations(destinationsRes.slice(0, 3));
-      setFriends((friendsRes as TopFriend[]).slice(0, 5));
+  const selectedRegion = useMemo(
+    () => REGIONS.find((region) => region.id === selectedRegionId) ?? REGIONS[0],
+    [selectedRegionId]
+  );
+
+  const startTrip = (regionName = selectedRegion.name) => {
+    router.push({
+      pathname: "/trip/create",
+      params: { destination: regionName }
     });
-  }, []);
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "좋은 아침이에요";
-    if (hour < 18) return "좋은 오후예요";
-    return "좋은 저녁이에요";
-  }, []);
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView
-        style={styles.container}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Text style={styles.logo}>트립메이트</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7} onPress={() => router.push("/(tabs)/search")}>
-              <Ionicons name="search-outline" size={21} color={Theme.colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} activeOpacity={0.7}>
-              <Ionicons name="notifications-outline" size={21} color={Theme.colors.textPrimary} />
-            </TouchableOpacity>
+          <View>
+            <Text style={styles.logo}>TripMate</Text>
+            <Text style={styles.headerSubtitle}>국내여행 일정 지도</Text>
           </View>
-        </View>
-
-        <Text style={styles.greeting}>{greeting}, 김지수님!</Text>
-        <Text style={styles.subGreeting}>오늘 어디로 여행 가시겠어요?</Text>
-
-        <View style={styles.destList}>
-          {destinations.map((destination) => (
-            <TouchableOpacity
-              key={destination.id}
-              activeOpacity={0.85}
-              style={styles.destCard}
-              onPress={() =>
-                router.push({
-                  pathname: "/trip/create",
-                  params: { destination: destination.name }
-                })
-              }
-            >
-              <Image source={{ uri: destination.image }} style={styles.destImage} />
-              <View style={styles.destOverlay} />
-              <View style={styles.destFooter}>
-                <Text style={styles.destName}>{destination.name}</Text>
-                <View style={styles.ratingWrap}>
-                  <Ionicons name="star" size={14} color="#FFFFFF" />
-                  <Text style={styles.rating}>{destination.rating.toFixed(1)}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.categoryRow}>
-          {CATEGORY_CHIPS.map((chip) => (
-            <TouchableOpacity key={chip.key} style={[styles.categoryChip, { backgroundColor: chip.color }]} activeOpacity={0.8}>
-              <Ionicons name={chip.icon} size={18} color={Theme.colors.textPrimary} />
-              <Text style={styles.categoryLabel}>{chip.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>여행 친구 찾기</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/friend")}> 
-            <Text style={styles.moreLink}>더보기</Text>
+          <TouchableOpacity
+            style={styles.iconButton}
+            activeOpacity={0.75}
+            onPress={() => router.push("/(tabs)/search")}
+            accessibilityRole="button"
+            accessibilityLabel="검색"
+          >
+            <Ionicons name="search-outline" size={21} color={Theme.colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.friendRow}>
-          {friends.map((friend, index) => (
-            <TouchableOpacity
-              key={friend.id}
-              style={styles.friendItem}
-              activeOpacity={0.75}
-              onPress={() => router.push("/(tabs)/friend")}
-            >
-              <View>
-                <Image source={{ uri: friend.avatar }} style={styles.friendAvatar} />
-                {index < 3 ? (
-                  <View style={styles.plusBadge}>
-                    <Ionicons name="add" size={11} color="#FFFFFF" />
-                  </View>
-                ) : null}
+        <View style={styles.mapPanel}>
+          <View style={styles.mapHeader}>
+            <View>
+              <Text style={styles.mapEyebrow}>전국지도</Text>
+              <Text style={styles.mapTitle}>지역을 고르면 일정 초안을 만듭니다</Text>
+            </View>
+            <View style={styles.daysBadge}>
+              <Ionicons name="calendar-outline" size={14} color={Theme.colors.primaryDark} />
+              <Text style={styles.daysBadgeText}>{selectedRegion.days}</Text>
+            </View>
+          </View>
+
+          <View style={styles.koreaMap}>
+            <View style={styles.peninsulaShape} />
+            <View style={styles.jejuShape} />
+            {REGIONS.map((region) => {
+              const selected = selectedRegion.id === region.id;
+              return (
+                <Pressable
+                  key={region.id}
+                  style={[
+                    styles.regionPin,
+                    { left: region.left, top: region.top, borderColor: region.color },
+                    selected && { backgroundColor: region.color }
+                  ]}
+                  onPress={() => setSelectedRegionId(region.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${region.name} 선택`}
+                >
+                  <Text style={[styles.regionPinText, selected && styles.regionPinTextSelected]}>
+                    {region.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={styles.regionSummary}>
+            <View style={[styles.regionColorBar, { backgroundColor: selectedRegion.color }]} />
+            <View style={styles.regionSummaryBody}>
+              <Text style={styles.regionProvince}>{selectedRegion.province}</Text>
+              <Text style={styles.regionName}>{selectedRegion.name}</Text>
+              <Text style={styles.regionTagline}>{selectedRegion.tagline}</Text>
+              <View style={styles.styleRow}>
+                {selectedRegion.styles.map((style) => (
+                  <Text key={style} style={styles.stylePill}>{style}</Text>
+                ))}
               </View>
-              <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.quickStartBand}>
+          <View style={styles.quickStartText}>
+            <Text style={styles.quickStartTitle}>3개만 입력하고 바로 시작</Text>
+            <Text style={styles.quickStartSubtitle}>지역, 날짜, 여행 스타일</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => startTrip()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>일정 만들기</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>스타일별 빠른 시작</Text>
+        </View>
+        <View style={styles.chipGrid}>
+          {STYLE_CHIPS.map((style) => (
+            <TouchableOpacity
+              key={style}
+              style={styles.largeChip}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: "/trip/create",
+                  params: { destination: selectedRegion.name, style }
+                })
+              }
+            >
+              <Text style={styles.largeChipText}>{style}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Theme.colors.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
-
-        <TouchableOpacity style={styles.cta} onPress={() => router.push("/trip/create")} activeOpacity={0.85}>
-          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.ctaText}>새 여행 만들기</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -152,184 +248,262 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 34,
     width: "100%",
-    maxWidth: Platform.OS === "web" ? 500 : "100%",
+    maxWidth: Platform.OS === "web" ? 520 : "100%",
     alignSelf: "center"
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
+    marginBottom: 16
   },
   logo: {
-    fontSize: 35,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 36,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
-  headerActions: {
-    flexDirection: "row",
-    gap: 8
+  headerSubtitle: {
+    marginTop: 2,
+    fontSize: 14,
+    lineHeight: 19,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: Theme.colors.surface,
     borderWidth: 1,
     borderColor: Theme.colors.border,
     alignItems: "center",
     justifyContent: "center"
   },
-  greeting: {
-    marginTop: 12,
-    fontSize: 34,
-    lineHeight: 40,
+  mapPanel: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 16,
+    ...Theme.shadow.sm
+  },
+  mapHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12
+  },
+  mapEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primary,
+    fontWeight: "800"
+  },
+  mapTitle: {
+    marginTop: 2,
+    fontSize: 20,
+    lineHeight: 26,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
-  subGreeting: {
-    marginTop: 2,
-    fontSize: 22,
-    lineHeight: 28,
-    color: Theme.colors.textPrimary,
-    fontWeight: "700",
-    marginBottom: 14
+  daysBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: Theme.colors.primaryLight,
+    borderRadius: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 7
   },
-  destList: {
-    gap: 10
+  daysBadgeText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primaryDark,
+    fontWeight: "800"
   },
-  destCard: {
-    height: 134,
-    borderRadius: 14,
-    overflow: "hidden",
+  koreaMap: {
+    marginTop: 16,
+    height: 330,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: "#EAF4FF",
+    overflow: "hidden"
+  },
+  peninsulaShape: {
+    position: "absolute",
+    left: "28%",
+    top: "8%",
+    width: "43%",
+    height: "72%",
+    borderTopLeftRadius: 80,
+    borderTopRightRadius: 52,
+    borderBottomLeftRadius: 58,
+    borderBottomRightRadius: 90,
+    backgroundColor: "#DDEFD9",
+    transform: [{ rotate: "9deg" }],
+    borderWidth: 1,
+    borderColor: "#B9DDB4"
+  },
+  jejuShape: {
+    position: "absolute",
+    left: "24%",
+    bottom: "7%",
+    width: "24%",
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#DDEFD9",
+    borderWidth: 1,
+    borderColor: "#B9DDB4"
+  },
+  regionPin: {
+    position: "absolute",
+    minWidth: 48,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 9,
     ...Theme.shadow.sm
   },
-  destImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: "100%",
-    height: "100%"
+  regionPinText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
   },
-  destOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.24)"
+  regionPinTextSelected: {
+    color: "#FFFFFF"
   },
-  destFooter: {
-    position: "absolute",
-    left: 14,
-    right: 14,
-    bottom: 11,
+  regionSummary: {
+    marginTop: 14,
+    flexDirection: "row",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    overflow: "hidden",
+    backgroundColor: "#FAFBFC"
+  },
+  regionColorBar: {
+    width: 5
+  },
+  regionSummaryBody: {
+    flex: 1,
+    padding: 13
+  },
+  regionProvince: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textTertiary,
+    fontWeight: "800"
+  },
+  regionName: {
+    marginTop: 1,
+    fontSize: 23,
+    lineHeight: 29,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  regionTagline: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  styleRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10
+  },
+  stylePill: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  quickStartBand: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Theme.colors.textPrimary,
+    borderRadius: 8,
+    padding: 14
+  },
+  quickStartText: {
+    flex: 1
+  },
+  quickStartTitle: {
+    fontSize: 16,
+    lineHeight: 21,
+    color: "#FFFFFF",
+    fontWeight: "800"
+  },
+  quickStartSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: "rgba(255,255,255,0.72)",
+    fontWeight: "700"
+  },
+  primaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 8,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 13,
+    paddingVertical: 11
+  },
+  primaryButtonText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#FFFFFF",
+    fontWeight: "800"
+  },
+  sectionHeader: {
+    marginTop: 22,
+    marginBottom: 10
+  },
+  sectionTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8
+  },
+  largeChip: {
+    width: "48%",
+    minHeight: 54,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
   },
-  destName: {
-    color: "#FFFFFF",
-    fontSize: 40,
-    lineHeight: 44,
-    fontWeight: "800"
-  },
-  ratingWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
-  },
-  rating: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    lineHeight: 28,
-    fontWeight: "700"
-  },
-  categoryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 14
-  },
-  categoryChip: {
-    width: "48%",
-    borderRadius: 12,
-    minHeight: 74,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)"
-  },
-  categoryLabel: {
-    marginTop: 5,
-    fontSize: 18,
-    lineHeight: 22,
-    color: Theme.colors.textPrimary,
-    fontWeight: "700"
-  },
-  sectionHeader: {
-    marginTop: 20,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  sectionTitle: {
-    fontSize: 33,
-    lineHeight: 38,
-    fontWeight: "800",
-    color: Theme.colors.textPrimary
-  },
-  moreLink: {
-    fontSize: 14,
-    color: Theme.colors.textSecondary,
-    fontWeight: "600"
-  },
-  friendRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 8
-  },
-  friendItem: {
+  largeChipText: {
     flex: 1,
-    alignItems: "center"
-  },
-  friendAvatar: {
-    width: 55,
-    height: 55,
-    borderRadius: 28
-  },
-  plusBadge: {
-    position: "absolute",
-    right: -2,
-    bottom: -2,
-    width: 17,
-    height: 17,
-    borderRadius: 9,
-    backgroundColor: Theme.colors.textPrimary,
-    borderWidth: 2,
-    borderColor: Theme.colors.surface,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  friendName: {
-    marginTop: 6,
-    fontSize: 24,
-    lineHeight: 28,
+    fontSize: 14,
+    lineHeight: 19,
     color: Theme.colors.textPrimary,
-    fontWeight: "600"
-  },
-  cta: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 52,
-    borderRadius: 13,
-    backgroundColor: Theme.colors.primary,
-    ...Theme.shadow.md
-  },
-  ctaText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: "700"
+    fontWeight: "800"
   }
 });

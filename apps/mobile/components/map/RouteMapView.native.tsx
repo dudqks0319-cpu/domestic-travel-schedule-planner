@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
 import Colors from "../../constants/Colors";
@@ -10,6 +10,7 @@ import type { OptimizedRoute, RouteTransportMode } from "../../services/routeApi
 interface RouteMapViewProps {
   route: OptimizedRoute | null;
   mode: RouteTransportMode;
+  loading?: boolean;
 }
 
 function getModeLabel(mode: RouteTransportMode): string {
@@ -37,7 +38,7 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
-export default function RouteMapView({ route, mode }: RouteMapViewProps) {
+export default function RouteMapView({ route, mode, loading = false }: RouteMapViewProps) {
   const modeColor = getModeColor(mode);
   const mapRef = useRef<MapView>(null);
   const points = route?.orderedPoints ?? [];
@@ -63,9 +64,12 @@ export default function RouteMapView({ route, mode }: RouteMapViewProps) {
   if (!route) {
     return (
       <View style={styles.emptyCard}>
-        <Text style={styles.emptyTitle}>최적 경로가 아직 없어요</Text>
+        {loading ? <ActivityIndicator color={Colors.route.selected} style={styles.emptyLoader} /> : null}
+        <Text style={styles.emptyTitle}>
+          {loading ? "경로를 확인하는 중이에요" : "표시할 실제 경로가 없어요"}
+        </Text>
         <Text style={styles.emptyDescription}>
-          아래 버튼으로 경로 최적화를 실행하면 지도와 상세 경로를 확인할 수 있어요.
+          실제 장소 좌표가 준비되면 지도와 상세 경로를 확인할 수 있어요.
         </Text>
       </View>
     );
@@ -146,6 +150,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.common.gray200,
     padding: Spacing.xxl
+  },
+  emptyLoader: {
+    alignSelf: "flex-start",
+    marginBottom: Spacing.md
   },
   emptyTitle: {
     ...Typography.normal.h3,

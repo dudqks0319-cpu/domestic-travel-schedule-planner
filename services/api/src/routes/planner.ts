@@ -44,6 +44,14 @@ interface PlannerCandidates {
   restaurants: NaverLocalItem[];
 }
 
+interface PlannerTripDayWithPlaces {
+  id: string;
+  dayNumber: number;
+  places: Array<{
+    category: string;
+  }>;
+}
+
 interface PlannerCandidateInput {
   destination: string;
   keyword?: string;
@@ -467,10 +475,11 @@ plannerRouter.post("/trips/:tripId/replan", async (req, res) => {
       return res.status(404).json({ message: "Trip not found" });
     }
 
+    const tripDays = trip.days as PlannerTripDayWithPlaces[];
     const targetDays =
       dayNumber === undefined
-        ? trip.days
-        : trip.days.filter((tripDay) => tripDay.dayNumber === dayNumber);
+        ? tripDays
+        : tripDays.filter((tripDay) => tripDay.dayNumber === dayNumber);
 
     if (targetDays.length === 0) {
       return res.status(404).json({ message: "Target day not found in trip" });
@@ -543,15 +552,19 @@ plannerRouter.get("/trips/:tripId/summary", async (req, res) => {
       return res.status(404).json({ message: "Trip not found" });
     }
 
-    const totalPlaces = trip.days.reduce((sum, day) => sum + day.places.length, 0);
-    const plannedDays = trip.days.filter((day) => day.places.length > 0).length;
-    const placesByCategory = trip.days.reduce<Record<string, number>>((acc, day) => {
+    const tripDays = trip.days as PlannerTripDayWithPlaces[];
+    const totalPlaces = tripDays.reduce(
+      (sum: number, day: PlannerTripDayWithPlaces) => sum + day.places.length,
+      0
+    );
+    const plannedDays = tripDays.filter((day) => day.places.length > 0).length;
+    const placesByCategory: Record<string, number> = {};
+    for (const day of tripDays) {
       for (const place of day.places) {
         const key = place.category.trim() || "uncategorized";
-        acc[key] = (acc[key] ?? 0) + 1;
+        placesByCategory[key] = (placesByCategory[key] ?? 0) + 1;
       }
-      return acc;
-    }, {});
+    }
 
     return res.json({
       summary: {
