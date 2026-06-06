@@ -9,6 +9,8 @@
   "scripts": {
     "test": "npm --prefix packages/planner run test",
     "check:env": "node scripts/dev-readiness-check.mjs",
+    "check:env:preview": "node scripts/dev-readiness-check.mjs --target preview",
+    "check:env:production": "node scripts/dev-readiness-check.mjs --target production",
     "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build && npm run worker:typecheck",
     "check:dev": "npm run check:env && npm run check:health",
     "mobile:start": "npm --prefix apps/mobile run start",

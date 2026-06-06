@@ -38,6 +38,7 @@ Before preview deploy:
 - Create preview D1, KV, and R2 resources.
 - Replace placeholder IDs in `services/api-worker/wrangler.toml`.
 - Set all Cloudflare secrets with `wrangler secret put`.
+- Run `npm run check:env:preview`.
 - Run `npm run check:health`.
 - Run `npm test`.
 
@@ -48,6 +49,7 @@ Production deploy must use Cloudflare Workers Paid for monetized service operati
 Production gates:
 
 - `npm run check:health`
+- `npm run check:env:production`
 - `npm test`
 - local or preview Worker smoke for `/health`
 - D1 migration reviewed

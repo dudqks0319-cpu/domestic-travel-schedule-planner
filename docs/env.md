@@ -74,3 +74,5 @@ Configured in `services/api-worker/wrangler.toml`:
 - `APPLE_SHARED_SECRET`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
 - `OPS_ADMIN_TOKEN`
+
+`npm run check:env` fails when these server-only keys appear in `apps/mobile/.env`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe production origins.

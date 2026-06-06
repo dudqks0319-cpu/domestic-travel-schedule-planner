@@ -1059,3 +1059,32 @@ Verification completed:
 Remaining risks:
 - The guard depends on the deployed Worker health response exposing the correct `ENVIRONMENT` value.
 - Live preview smoke still needs an actual Worker URL and configured D1/KV/R2 bindings.
+
+## Cloudflare Readiness Check Result Record
+
+Plan:
+- Keep local `check:env` usable while adding strict preview/production deploy checks.
+- Fail if mobile `.env` contains server-only secrets.
+- Fail preview/production deploy checks when D1/KV/R2 bindings still contain placeholder IDs.
+- Fail production deploy checks if production origins still use localhost, loopback, or example domains.
+
+Completed:
+- Added `--target local|preview|production` support to `scripts/dev-readiness-check.mjs`.
+- Added `check:env:preview` and `check:env:production` root scripts.
+- Added mobile `.env` forbidden key detection for provider, JWT, billing, and ops secrets.
+- Added strict Cloudflare preview/production `wrangler.toml` readiness checks.
+- Updated Cloudflare deployment and environment docs with the new readiness gates.
+
+Verification completed:
+- `node --check scripts/dev-readiness-check.mjs`
+- `npm run check:env` passed with local warnings for missing ignored env files and unresolved deploy placeholders.
+- `npm run check:env:preview` failed as expected while preview D1/KV placeholder IDs remain.
+- `npm run check:env:production` failed as expected while production D1/KV placeholder IDs and example origin remain.
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- The readiness checker is a lightweight TOML text check, not a full Wrangler deploy validation.
+- Preview/production checks will intentionally fail until real Cloudflare resource IDs and production origins are configured.
