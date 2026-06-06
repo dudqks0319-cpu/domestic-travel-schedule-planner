@@ -18,6 +18,29 @@ interface KakaoKeywordResponse {
   documents?: KakaoDocument[];
 }
 
+interface KakaoAddressDocument {
+  address_name?: string;
+  x?: string;
+  y?: string;
+}
+
+interface KakaoAddressResponse {
+  documents?: KakaoAddressDocument[];
+}
+
+interface KakaoReverseAddressDocument {
+  address?: {
+    address_name?: string;
+  };
+  road_address?: {
+    address_name?: string;
+  };
+}
+
+interface KakaoReverseAddressResponse {
+  documents?: KakaoReverseAddressDocument[];
+}
+
 export class KakaoPlaceAdapter implements PlaceProviderAdapter {
   readonly provider = "kakao" as const;
 
@@ -67,12 +90,47 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     });
   }
 
-  async geocode(): Promise<{ lat: number; lng: number } | null> {
-    return null;
+  async geocode(input: { address: string }): Promise<{ lat: number; lng: number } | null> {
+    if (!this.env.KAKAO_REST_API_KEY || !input.address.trim()) {
+      return null;
+    }
+
+    const url = new URL("https://dapi.kakao.com/v2/local/search/address.json");
+    url.searchParams.set("query", input.address.trim());
+
+    const response = await fetch(url, {
+      headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json<KakaoAddressResponse>();
+    const first = data.documents?.[0];
+    const lat = toNumber(first?.y);
+    const lng = toNumber(first?.x);
+
+    return lat === null || lng === null ? null : { lat, lng };
   }
 
-  async reverseGeocode(): Promise<{ address: string } | null> {
-    return null;
+  async reverseGeocode(input: { lat: number; lng: number }): Promise<{ address: string } | null> {
+    if (!this.env.KAKAO_REST_API_KEY) {
+      return null;
+    }
+
+    const url = new URL("https://dapi.kakao.com/v2/local/geo/coord2address.json");
+    url.searchParams.set("x", String(input.lng));
+    url.searchParams.set("y", String(input.lat));
+    url.searchParams.set("input_coord", "WGS84");
+
+    const response = await fetch(url, {
+      headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json<KakaoReverseAddressResponse>();
+    const first = data.documents?.[0];
+    const address = first?.road_address?.address_name ?? first?.address?.address_name;
+
+    return address ? { address } : null;
   }
 
   async getDirections(_input: { points: Array<{ lat: number; lng: number; name?: string }>; mode: TravelMode }) {

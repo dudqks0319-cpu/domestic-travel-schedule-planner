@@ -2722,3 +2722,31 @@ Verification completed:
 Remaining risks:
 - KV-backed rate limiting should still be observed against a live preview Worker because local static checks do not validate Cloudflare KV consistency under concurrency.
 - Additional WAF-level quotas may still be needed for production abuse response.
+
+## Kakao Geocode Provider Result Record
+
+Plan:
+- Replace the no-op geocode/reverse-geocode adapter behavior with a real server-side Kakao Local API implementation.
+- Add cache-first Worker endpoints for address geocoding and reverse geocoding so accommodation/location inputs can be normalized without mobile secrets.
+- Expose typed mobile API client methods for later UI integration.
+- Add release contract and provider policy coverage for the new provider surface.
+
+Completed:
+- Implemented Kakao Local address search in `KakaoPlaceAdapter.geocode()`.
+- Implemented Kakao Local coord2address lookup in `KakaoPlaceAdapter.reverseGeocode()`.
+- Added cached provider helpers `geocodeAddress()` and `reverseGeocodeCoordinate()`.
+- Added `GET /api/v1/places/geocode` and `GET /api/v1/places/reverse-geocode` with validation, warnings, cache status, and rate limits.
+- Added mobile `placesApi.geocode()` and `placesApi.reverseGeocode()` methods with typed responses.
+- Added release contract checks and provider policy docs for the geocode provider surface.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Naver geocoding/directions still need Naver Cloud Maps credentials and endpoint implementation before provider parity is complete.
+- Live Kakao geocode behavior still requires configured `KAKAO_REST_API_KEY` in a local/preview Worker smoke.

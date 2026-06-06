@@ -100,6 +100,8 @@ const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
+const providerIndex = readText("services/api-worker/src/providers/index.ts");
+const kakaoProvider = readText("services/api-worker/src/providers/kakao.ts");
 const userDb = readText("services/api-worker/src/db/users.ts");
 const rateLimitMiddleware = readText("services/api-worker/src/middleware/rate-limit.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
@@ -137,6 +139,8 @@ const routeContracts = [
   [authRoutes, 'authRoutes.post("/logout"', "POST /api/v1/auth/logout"],
   [authRoutes, 'authRoutes.delete("/me"', "DELETE /api/v1/auth/me"],
   [placeRoutes, 'placeRoutes.get("/search"', "GET /api/v1/places/search"],
+  [placeRoutes, 'placeRoutes.get("/geocode"', "GET /api/v1/places/geocode"],
+  [placeRoutes, 'placeRoutes.get("/reverse-geocode"', "GET /api/v1/places/reverse-geocode"],
   [placeRoutes, 'placeRoutes.get("/:placeId"', "GET /api/v1/places/:placeId"],
   [plannerRoutes, 'plannerRoutes.post("/generate"', "POST /api/v1/planner/generate"],
   [plannerRoutes, 'plannerRoutes.post("/replan"', "POST /api/v1/planner/replan"],
@@ -252,6 +256,95 @@ const accountDeletionContracts = [
 for (const [content, expectedText, label] of accountDeletionContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing account deletion contract: ${label}`);
+  }
+}
+
+const geocodeContracts = [
+  [
+    kakaoProvider,
+    "https://dapi.kakao.com/v2/local/search/address.json",
+    "Kakao provider must call the Local address search API for geocoding"
+  ],
+  [
+    kakaoProvider,
+    "https://dapi.kakao.com/v2/local/geo/coord2address.json",
+    "Kakao provider must call the Local coord2address API for reverse geocoding"
+  ],
+  [
+    kakaoProvider,
+    "KakaoAK ${this.env.KAKAO_REST_API_KEY}",
+    "Kakao geocode calls must use the server-only REST API key"
+  ],
+  [
+    providerIndex,
+    "GEOCODE_TTL_SECONDS",
+    "Provider geocode results must be cached"
+  ],
+  [
+    providerIndex,
+    "geocodeAddress",
+    "Provider index must expose cached geocode lookup"
+  ],
+  [
+    providerIndex,
+    "reverseGeocodeCoordinate",
+    "Provider index must expose cached reverse geocode lookup"
+  ],
+  [
+    providerIndex,
+    'eventType: "provider_geocode"',
+    "Geocode provider calls must record operational events"
+  ],
+  [
+    providerIndex,
+    'eventType: "provider_reverse_geocode"',
+    "Reverse geocode provider calls must record operational events"
+  ],
+  [
+    placeRoutes,
+    'placeRoutes.use("/geocode", rateLimit({',
+    "Geocode endpoint must be rate limited"
+  ],
+  [
+    placeRoutes,
+    'placeRoutes.use("/reverse-geocode", rateLimit({',
+    "Reverse geocode endpoint must be rate limited"
+  ],
+  [
+    placeRoutes,
+    "ADDRESS_REQUIRED",
+    "Geocode endpoint must validate address input"
+  ],
+  [
+    placeRoutes,
+    "COORDINATES_REQUIRED",
+    "Reverse geocode endpoint must validate coordinates"
+  ],
+  [
+    mobileApi,
+    "GeocodeDto",
+    "Mobile API client must expose geocode response types"
+  ],
+  [
+    mobileApi,
+    "placesApi = {",
+    "Mobile places API namespace must remain available"
+  ],
+  [
+    mobileApi,
+    "geocode: (address: string)",
+    "Mobile places API must expose geocode"
+  ],
+  [
+    mobileApi,
+    "reverseGeocode: (lat: number, lng: number)",
+    "Mobile places API must expose reverse geocode"
+  ]
+];
+
+for (const [content, expectedText, label] of geocodeContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing geocode contract: ${label}`);
   }
 }
 

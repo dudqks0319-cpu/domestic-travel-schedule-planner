@@ -158,6 +158,15 @@ export interface NormalizedPlaceDto {
   sponsorLabel?: string;
 }
 
+export interface GeocodeDto {
+  lat: number;
+  lng: number;
+}
+
+export interface ReverseGeocodeDto {
+  address: string;
+}
+
 export interface TripPlaceDto {
   id: string;
   tripId: string;
@@ -292,6 +301,20 @@ export const placesApi = {
   ),
   get: (placeId: string) =>
     apiClient.get<{ ok: true; place: NormalizedPlaceDto }>(`/places/${encodeURIComponent(placeId)}`),
+  geocode: (address: string) =>
+    apiClient.get<{
+      ok: true;
+      geocode: GeocodeDto | null;
+      warnings: string[];
+      cacheStatus: string;
+    }>("/places/geocode", { params: { address } }),
+  reverseGeocode: (lat: number, lng: number) =>
+    apiClient.get<{
+      ok: true;
+      reverseGeocode: ReverseGeocodeDto | null;
+      warnings: string[];
+      cacheStatus: string;
+    }>("/places/reverse-geocode", { params: { lat, lng } }),
 };
 
 export const authApi = {

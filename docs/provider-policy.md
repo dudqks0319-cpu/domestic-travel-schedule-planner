@@ -27,6 +27,8 @@ All provider adapters return `NormalizedPlace` with:
 
 Provider raw responses should not be stored indefinitely. Cache only normalized and privacy-safe fields.
 
+Address geocoding and reverse geocoding are server-side provider calls. The Worker currently uses Kakao Local API for `GET /api/v1/places/geocode` and `GET /api/v1/places/reverse-geocode`, caches normalized results in KV, and returns warnings instead of exposing provider failures as app crashes.
+
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability
@@ -38,6 +40,8 @@ Provider raw responses should not be stored indefinitely. Cache only normalized 
 Provider and cost-sensitive Worker endpoints must be rate limited before they call external APIs or create export assets. Current KV-backed limits are:
 
 - `GET /api/v1/places/search`: 60 requests per minute
+- `GET /api/v1/places/geocode`: 60 requests per minute
+- `GET /api/v1/places/reverse-geocode`: 60 requests per minute
 - `POST /api/v1/planner/generate`: 20 requests per minute
 - `POST /api/v1/routes/optimize`: 30 requests per minute
 - `POST /api/v1/trips/:tripId/exports`: 20 requests per hour
