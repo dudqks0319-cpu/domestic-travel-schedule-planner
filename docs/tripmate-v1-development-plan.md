@@ -714,7 +714,7 @@ Verification completed:
 
 Remaining risks:
 - The endpoint prepares a manifest and queued job record; a separate renderer is still needed for final PDF/image files.
-- Signed URLs and final asset expiry policy still need to be implemented before production export downloads.
+- This risk was later reduced by authenticated export download endpoints, print-ready HTML assets, and scheduled expired export cleanup.
 
 ## Mobile Export API Connection Result Record
 
@@ -737,7 +737,7 @@ Verification completed:
 - `git diff --check`
 
 Remaining risks:
-- PDF export still returns a queued preparation job until a renderer and signed download URL flow are implemented.
+- PDF export now returns an authenticated download URL when the Worker creates a print-ready HTML asset; image export remains queued for server-side rendering.
 - Device-level smoke is needed with an authenticated premium account to verify the full mobile request path.
 
 ## Export Asset Download Result Record
@@ -1596,4 +1596,31 @@ Verification completed:
 
 Remaining risks:
 - Existing preview/production D1 databases need migration `0004_user_profile_image.sql` applied before deploying this Worker version.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Export Contract Documentation Alignment Result Record
+
+Plan:
+- Align Worker export documentation with the current authenticated download implementation.
+- Remove stale "signed public URL" framing from current release docs while keeping public/shared export links as a future product option.
+- Add release contract checks for export download security properties.
+
+Completed:
+- Updated the API Worker README to describe authenticated print-ready HTML export assets and retention cleanup.
+- Updated Cloudflare deployment docs to describe R2 as current share/export asset storage.
+- Added migration `0004_user_profile_image.sql` to local D1 migration instructions.
+- Updated older export risk notes to point to the later authenticated download and retention implementation.
+- Added release contract checks for export download route, ownership lookup, private cache headers, ready download URL response, and print-ready HTML generation.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Binary PDF/image rendering remains separate from the current print-ready HTML export asset.
+- Public/shared export links still require a separate token model if they become a v1.0 product requirement.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

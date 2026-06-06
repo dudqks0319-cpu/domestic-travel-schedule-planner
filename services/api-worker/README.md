@@ -29,13 +29,15 @@ npm --prefix services/api-worker run deploy:preview
 - monetization entitlement, ad event, and affiliate click endpoints
 - premium-gated trip export preparation endpoint
 - owned export download endpoint backed by R2 assets
+- authenticated print-ready HTML export assets with private cache headers
+- scheduled and manual operations retention cleanup
 - D1, KV, and R2 binding types
 - D1 schema and migrations
 
 ## Not Yet Implemented
 
 - binary PDF/image rendering workers
-- signed public URLs for generated export assets
+- public/shared export links for generated export assets
 - live provider smoke test with production Cloudflare secrets
 - mobile IAP receipt submission UI
 

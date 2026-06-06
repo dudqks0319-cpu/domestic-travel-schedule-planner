@@ -8,7 +8,7 @@ TripMate v1.0 production API is `services/api-worker`. The reference `services/a
 - Hono for routing
 - D1 for relational data
 - KV for provider search cache
-- R2 for share thumbnails and future PDF/image exports
+- R2 for share/export assets
 - Cloudflare Pages or another static host for landing/admin surfaces
 
 ## Local Worker
@@ -25,6 +25,7 @@ cd services/api-worker
 npx wrangler d1 execute tripmate-local --local --file=./migrations/0001_initial.sql
 npx wrangler d1 execute tripmate-local --local --file=./migrations/0002_trip_exports.sql
 npx wrangler d1 execute tripmate-local --local --file=./migrations/0003_operational_events.sql
+npx wrangler d1 execute tripmate-local --local --file=./migrations/0004_user_profile_image.sql
 ```
 
 ## Preview Deploy

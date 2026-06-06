@@ -211,6 +211,40 @@ if (scheduleScreen.includes("개발 환경에서만 저장된 경유지")) {
   errors.push("Schedule fallback copy must not claim production-visible fallback timelines are development-only.");
 }
 
+const exportDownloadContracts = [
+  [
+    tripRoutes,
+    'tripRoutes.get("/:tripId/exports/:exportId/download"',
+    "Worker must expose owned export download endpoint"
+  ],
+  [
+    tripRoutes,
+    "getOwnedTripExport(",
+    "Export download must enforce trip export ownership"
+  ],
+  [
+    tripRoutes,
+    'headers.set("cache-control", "private, max-age=300")',
+    "Export downloads must use private cache headers"
+  ],
+  [
+    tripRoutes,
+    "buildExportDownloadUrl(c, tripId, exportRecord.id)",
+    "Export creation must return owned download URL for ready assets"
+  ],
+  [
+    tripRoutes,
+    "renderPrintableTripExport",
+    "PDF export must generate print-ready HTML asset until binary renderer exists"
+  ]
+];
+
+for (const [content, expectedText, label] of exportDownloadContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing export download contract: ${label}`);
+  }
+}
+
 const requiredTables = [
   "users",
   "user_sessions",
