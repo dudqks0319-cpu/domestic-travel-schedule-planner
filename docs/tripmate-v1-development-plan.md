@@ -1733,3 +1733,31 @@ Remaining risks:
 - Device-level smoke with a signed-in free account at the 3-trip limit is still needed to verify the full tap-to-upsell path.
 - The save action creates the server trip first and then syncs places; if place sync fails after trip creation, the user may need to retry place sync through existing edit actions.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Worker Free Limit Smoke Result Record
+
+Plan:
+- Make the Worker smoke script prove the free saved-trip limit behavior, not only static route contracts.
+- Run the limit check before manual premium entitlement activation so the free plan is still active.
+- Clean up all smoke-owned trips created for the limit check.
+- Document that preview smoke now covers free saved-trip limit denial.
+
+Completed:
+- Added a `free saved trip limit` smoke step to `scripts/worker-v1-smoke.mjs`.
+- The smoke creates the second and third active trips, then asserts the fourth create returns 403 with `FREE_TRIP_LIMIT_REACHED`.
+- Added cleanup for the extra limit setup trips before logout.
+- Updated release contract checks to require the smoke limit assertion.
+- Updated Cloudflare deployment docs to include free saved-trip limit denial in Worker smoke coverage.
+
+Verification completed:
+- `npm test`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:release-contract`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The smoke script syntax and static contract are verified locally; live execution still requires a running local/preview Worker with D1/KV/R2 bindings.
+- If a future smoke step activates premium before this limit check, the free-limit assertion would become invalid; the current ordering keeps it before entitlement activation.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

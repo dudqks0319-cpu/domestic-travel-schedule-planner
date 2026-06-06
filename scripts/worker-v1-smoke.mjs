@@ -57,6 +57,7 @@ let dayId = "";
 let placeId = "";
 let shareId = "";
 let workerEnvironment = "";
+const limitTripIds = [];
 
 function smokeName(prefix) {
   return `${prefix}-${Date.now()}`;
@@ -354,6 +355,41 @@ await step("trip, day, place, and share CRUD", async () => {
   assertOk(await request("GET", `/api/v1/share/${shareId}`, { auth: false }), "GET /api/v1/share/:shareId");
 });
 
+await step("free saved trip limit", async () => {
+  for (const index of [2, 3]) {
+    const extraTrip = await request("POST", "/api/v1/trips", {
+      json: {
+        title: `Smoke free limit ${index}`,
+        destination: "강릉",
+        startDate: "2026-07-01",
+        endDate: "2026-07-02",
+        styleKey: "sea_cafe_food",
+        transportMode: "driving"
+      }
+    });
+    assertStatus(extraTrip, 201, `POST /api/v1/trips free limit setup ${index}`);
+    const extraTripId = extraTrip.body?.trip?.id ?? "";
+    assert(extraTripId, "free limit setup trip should return id");
+    limitTripIds.push(extraTripId);
+  }
+
+  const deniedTrip = await request("POST", "/api/v1/trips", {
+    json: {
+      title: "Smoke free limit denied",
+      destination: "강릉",
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+      styleKey: "sea_cafe_food",
+      transportMode: "driving"
+    }
+  });
+  assertStatus(deniedTrip, 403, "POST /api/v1/trips free limit denial");
+  assert(
+    deniedTrip.body?.error?.code === "FREE_TRIP_LIMIT_REACHED",
+    "free saved trip limit should return FREE_TRIP_LIMIT_REACHED"
+  );
+});
+
 await step("monetization events and entitlement", async () => {
   assertStatus(
     await request("POST", "/api/v1/monetization/ad-events", {
@@ -409,6 +445,9 @@ if (opsToken) {
 await step("cleanup smoke trip and logout", async () => {
   if (placeId && tripId) {
     assertOk(await request("DELETE", `/api/v1/trips/${tripId}/places/${placeId}`), "DELETE trip place");
+  }
+  for (const extraTripId of limitTripIds) {
+    assertOk(await request("DELETE", `/api/v1/trips/${extraTripId}`), "DELETE free limit setup trip");
   }
   if (tripId) {
     assertOk(await request("DELETE", `/api/v1/trips/${tripId}`), "DELETE trip");

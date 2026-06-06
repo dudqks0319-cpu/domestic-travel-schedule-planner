@@ -415,6 +415,8 @@ for (const text of [
 for (const text of [
   "dayNumber auto-link",
   "dayNumber-only place create should auto-link a trip day",
+  "free saved trip limit",
+  "FREE_TRIP_LIMIT_REACHED",
   "ops retention dry run",
   "/api/v1/ops/retention?dryRun=true"
 ]) {
