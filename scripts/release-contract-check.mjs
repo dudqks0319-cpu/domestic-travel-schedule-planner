@@ -1193,6 +1193,26 @@ for (const [content, expectedText, label] of mobileDayLinkContracts) {
 const mobileSearchStateContracts = [
   [
     searchScreen,
+    "providerLabel",
+    "Search screen must map raw provider codes to user-facing labels"
+  ],
+  [
+    searchScreen,
+    "네이버 장소",
+    "Search screen must show Naver as user-facing provider copy"
+  ],
+  [
+    searchScreen,
+    "카카오 장소",
+    "Search screen must show Kakao as user-facing provider copy"
+  ],
+  [
+    searchScreen,
+    "공공 관광",
+    "Search screen must show Tour API as user-facing provider copy"
+  ],
+  [
+    searchScreen,
     "searchErrorMessage",
     "Search screen must track provider/API failure separately from empty results"
   ],
@@ -1222,6 +1242,10 @@ for (const [content, expectedText, label] of mobileSearchStateContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing mobile search state contract: ${label}`);
   }
+}
+
+if (searchScreen.includes("{place.provider}</Text>")) {
+  errors.push("Search screen must not render raw provider codes directly.");
 }
 
 const premiumStorageContracts = [

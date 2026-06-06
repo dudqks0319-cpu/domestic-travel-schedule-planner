@@ -3000,3 +3000,28 @@ Verification completed:
 
 Remaining risks:
 - This is a static/typechecked UI state pass; visual verification in Expo is still needed for exact spacing and text wrapping.
+
+## Search Provider Label Result Record
+
+Plan:
+- Remove raw provider code rendering from mobile search result cards.
+- Keep provider data intact internally while mapping it to user-facing labels.
+- Add release contract coverage so raw provider codes do not regress into visible UI.
+
+Completed:
+- Added `providerLabel()` to the search screen.
+- Mapped `naver`, `kakao`, `tour`, and `manual` to user-facing Korean provider labels.
+- Updated search cards to render provider labels instead of raw provider codes.
+- Added release contract checks for provider labels and raw-code rendering prevention.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Visual verification in Expo is still needed to confirm provider label wrapping inside compact result cards.

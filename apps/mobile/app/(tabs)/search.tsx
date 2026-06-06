@@ -63,6 +63,13 @@ function placeAddress(place: NormalizedPlaceDto): string {
   return place.roadAddress || place.address || "주소 정보 없음";
 }
 
+function providerLabel(provider: NormalizedPlaceDto["provider"]): string {
+  if (provider === "naver") return "네이버 장소";
+  if (provider === "kakao") return "카카오 장소";
+  if (provider === "tour") return "공공 관광";
+  return "직접 추가";
+}
+
 function categoryQuery(key: CategoryKey): string | undefined {
   return CATEGORIES.find((category) => category.key === key)?.query;
 }
@@ -318,7 +325,7 @@ export default function SearchScreen() {
           <Text style={styles.resultAddress} numberOfLines={1}>{placeAddress(place)}</Text>
           <View style={styles.metaRow}>
             <Text style={styles.resultCategory}>{place.category}</Text>
-            <Text style={styles.providerText}>{place.provider}</Text>
+            <Text style={styles.providerText}>{providerLabel(place.provider)}</Text>
           </View>
           <View style={styles.actionRow}>
             <TouchableOpacity
