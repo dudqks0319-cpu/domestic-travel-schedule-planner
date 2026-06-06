@@ -38,6 +38,7 @@ Before preview deploy:
 - Create preview D1, KV, and R2 resources.
 - Replace placeholder IDs in `services/api-worker/wrangler.toml`.
 - Set all Cloudflare secrets with `wrangler secret put`.
+- Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
 - Run `npm run check:env:preview`.
 - Run `npm run check:release-contract`.
 - Run `npm run check:health`.
@@ -49,6 +50,7 @@ Production deploy must use Cloudflare Workers Paid for monetized service operati
 
 Production gates:
 
+- `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
 - `npm run check:health`
 - `npm run check:env:production`
 - `npm run check:release-contract`

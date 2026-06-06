@@ -1,0 +1,44 @@
+name: TripMate v1 Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - feat/tripmate-v1-release-goal
+
+concurrency:
+  group: tripmate-v1-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    name: Release Contract, Typecheck, Build, Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Release contract
+        run: npm run check:release-contract
+
+      - name: Test
+        run: npm test
+
+      - name: Health gate
+        run: npm run check:health
+
+      - name: Worker smoke script syntax
+        run: node --check scripts/worker-v1-smoke.mjs

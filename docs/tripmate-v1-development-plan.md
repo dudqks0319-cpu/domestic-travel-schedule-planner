@@ -1334,3 +1334,28 @@ Verification completed:
 
 Remaining risks:
 - This is still a static check; final release needs device/browser smoke to verify the warning and dashed route affordances render correctly.
+
+## GitHub Actions Release Gate Result Record
+
+Plan:
+- Add CI coverage for the deterministic v1 release gates that already pass locally.
+- Keep CI free of production secrets and live provider calls.
+- Make the release contract check assert that the CI gate itself stays present.
+
+Completed:
+- Added `.github/workflows/tripmate-v1-gate.yml`.
+- The workflow runs on pull requests and pushes to `main`, `develop`, and `feat/tripmate-v1-release-goal`.
+- The workflow uses Node 20, `npm ci`, `npm run check:release-contract`, `npm test`, `npm run check:health`, and Worker smoke script syntax checks.
+- Updated release contract checks to require the workflow and its core commands.
+- Updated README and Cloudflare deployment docs with CI gate expectations.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `node --check scripts/worker-v1-smoke.mjs`
+
+Remaining risks:
+- This does not run live Worker smoke because CI has no D1/KV/R2 bindings or provider secrets by default.
