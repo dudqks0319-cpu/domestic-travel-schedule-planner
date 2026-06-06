@@ -160,6 +160,10 @@ export interface TripDto {
   updatedAt?: string;
 }
 
+export interface TripWithPlacesDto extends TripDto {
+  places: TripPlaceDto[];
+}
+
 export interface TripShareDto {
   id: string;
   token: string;
@@ -215,6 +219,10 @@ export const plannerApi = {
 
 export const tripsApi = {
   list: () => apiClient.get<{ ok: true; trips: TripDto[] }>("/trips"),
+  listWithPlaces: () =>
+    apiClient.get<{ ok: true; trips: TripWithPlacesDto[] }>("/trips", {
+      params: { include: "places" }
+    }),
   create: (data: Record<string, unknown>) => apiClient.post("/trips", data),
   get: (tripId: string) => apiClient.get<{ ok: true; trip: TripDto }>(`/trips/${tripId}`),
   update: (tripId: string, data: Record<string, unknown>) =>

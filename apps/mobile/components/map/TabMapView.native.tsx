@@ -44,14 +44,13 @@ export default function TabMapViewNative() {
   const loadMarkers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await tripsApi.list();
+      const res = await tripsApi.listWithPlaces();
       const trips = res.data.trips ?? [];
       const allMarkers: PlaceMarker[] = [];
       setSavedTrips(trips);
 
       for (const trip of trips) {
-        const placesResponse = await tripsApi.getPlacesByTrip(trip.id);
-        const places = placesResponse.data.places ?? [];
+        const places = trip.places ?? [];
         for (const place of places) {
           if (typeof place.lat === "number" && typeof place.lng === "number") {
             allMarkers.push({

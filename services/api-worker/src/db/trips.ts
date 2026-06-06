@@ -487,6 +487,22 @@ export async function listTripPlaces(
   return result.results ?? [];
 }
 
+export async function listTripPlacesForUser(
+  db: D1Database,
+  userId: string
+): Promise<TripPlaceRecord[]> {
+  const result = await db
+    .prepare(
+      `SELECT * FROM trip_places
+       WHERE user_id = ? AND deleted_at IS NULL
+       ORDER BY trip_id ASC, day_number ASC, sort_order ASC`
+    )
+    .bind(userId)
+    .all<TripPlaceRecord>();
+
+  return result.results ?? [];
+}
+
 export async function getOwnedTripPlace(
   db: D1Database,
   userId: string,

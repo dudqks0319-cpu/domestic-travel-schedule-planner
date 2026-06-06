@@ -568,3 +568,27 @@ Verification completed:
 Remaining risks:
 - The public share page has not yet been browser-smoked against a local Worker with seeded D1 data.
 - The page is static HTML; richer map previews or export thumbnails can be layered later through R2.
+
+## Saved Trip Aggregate List Result Record
+
+Plan:
+- Remove trip-by-trip place fetching from the mobile map tab.
+- Extend the Worker trip list endpoint with an opt-in aggregate response.
+- Preserve the existing `GET /trips` response for clients that only need trip metadata.
+
+Completed:
+- Added `listTripPlacesForUser()` in the Worker D1 query layer.
+- Added `GET /api/v1/trips?include=places` support that returns each trip with its `places` array.
+- Added typed mobile `TripWithPlacesDto` and `tripsApi.listWithPlaces()`.
+- Updated web and native map tabs to render markers and saved trip rail from one aggregate request.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The aggregate response includes all saved trip places for the authenticated user; pagination or date filtering may be needed after real usage volume is known.
+- A dedicated trip list/detail screen is still better suited for bulk manage/delete/share actions.

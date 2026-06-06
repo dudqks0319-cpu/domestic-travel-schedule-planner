@@ -12,6 +12,7 @@ import {
   getSharedTrip,
   listTripDays,
   listTripPlaces,
+  listTripPlacesForUser,
   listTrips,
   toPublicTripDay,
   toPublicTripPlace,
@@ -187,8 +188,31 @@ function parseTripPlacePatch(
 tripRoutes.use("*", requireAuth);
 
 tripRoutes.get("/", async (c) => {
-  const trips = await listTrips(c.env.DB, currentUserId(c));
-  return c.json({ ok: true, trips: trips.map(toPublicTrip), requestId: c.get("requestId") });
+  const userId = currentUserId(c);
+  const trips = await listTrips(c.env.DB, userId);
+  const includePlaces = c.req.query("include") === "places" || c.req.query("includePlaces") === "true";
+
+  if (!includePlaces) {
+    return c.json({ ok: true, trips: trips.map(toPublicTrip), requestId: c.get("requestId") });
+  }
+
+  const places = await listTripPlacesForUser(c.env.DB, userId);
+  const placesByTripId = new Map<string, ReturnType<typeof toPublicTripPlace>[]>();
+  for (const place of places) {
+    const publicPlace = toPublicTripPlace(place);
+    const current = placesByTripId.get(place.trip_id) ?? [];
+    current.push(publicPlace);
+    placesByTripId.set(place.trip_id, current);
+  }
+
+  return c.json({
+    ok: true,
+    trips: trips.map((trip) => ({
+      ...toPublicTrip(trip),
+      places: placesByTripId.get(trip.id) ?? []
+    })),
+    requestId: c.get("requestId")
+  });
 });
 
 tripRoutes.post("/", async (c) => {
