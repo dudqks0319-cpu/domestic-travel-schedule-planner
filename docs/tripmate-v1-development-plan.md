@@ -303,3 +303,22 @@ Verification completed:
 Remaining risks:
 - Production Kakao login still requires real Kakao access token validation against Kakao userinfo.
 - Store receipt validation remains a later monetization hardening item.
+
+## Provider Place Detail Result Record
+
+Completed:
+- Added D1 query layer for `provider_places`.
+- Upsert provider search results into D1 with a seven-day expiry.
+- Implemented `GET /api/v1/places/:placeId` from D1 provider place storage.
+- Preserved graceful empty search responses when provider secrets are unavailable.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Worker local smoke for `GET /api/v1/places/:placeId`.
+- Worker local smoke for provider-secret-missing search warnings.
+
+Remaining risks:
+- Full provider detail freshness depends on real Naver/Kakao/Tour credentials and quota behavior in Cloudflare preview.
+- Search result persistence currently happens only after search calls; direct provider detail refresh by provider id can be added later if needed.

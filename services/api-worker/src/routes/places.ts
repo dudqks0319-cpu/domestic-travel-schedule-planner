@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { getProviderPlace, upsertProviderPlaces } from "../db/places";
 import { errorResponse } from "../http/errors";
 import { searchPlaces } from "../providers";
 
@@ -30,16 +31,28 @@ placeRoutes.get("/search", async (c) => {
     ...(radius !== undefined ? { radius } : {}),
     limit: numberParam(c.req.query("limit")) ?? 20
   });
+  const savedPlaces = result.places.length
+    ? await upsertProviderPlaces(c.env.DB, result.places)
+    : [];
 
   return c.json({
     ok: true,
-    places: result.places,
+    places: savedPlaces.length ? savedPlaces : result.places,
     warnings: result.warnings,
     cacheStatus: result.cacheStatus,
     requestId: c.get("requestId")
   });
 });
 
-placeRoutes.get("/:placeId", (c) =>
-  errorResponse(c, 501, "NOT_IMPLEMENTED", "장소 상세 API는 provider cache 저장 이후 구현됩니다.")
-);
+placeRoutes.get("/:placeId", async (c) => {
+  const place = await getProviderPlace(c.env.DB, c.req.param("placeId"));
+  if (!place) {
+    return errorResponse(c, 404, "PLACE_NOT_FOUND", "장소 정보를 찾을 수 없습니다.");
+  }
+
+  return c.json({
+    ok: true,
+    place,
+    requestId: c.get("requestId")
+  });
+});
