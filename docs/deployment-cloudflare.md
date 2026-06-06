@@ -95,6 +95,20 @@ curl -X POST -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
 
 The retention endpoint deletes `audit_logs` older than `auditDays` and `operational_events` older than `operationalDays`. Use dry run before production execution, keep audit retention at 365 days or longer unless legal policy changes, and run it only from trusted operations automation. The endpoint records an `ops.retention.run` audit event with counts and never stores the operations token.
 
+Scheduled retention:
+
+- Preview cron: `37 18 * * *` UTC, daily.
+- Production cron: `17 18 * * *` UTC, daily.
+- The scheduled handler runs the same 365-day audit and 90-day operational event retention policy, records `ops.retention.scheduled`, and writes a privacy-safe operational event.
+- Cloudflare cron triggers execute on UTC time and may take several minutes to propagate after deployment.
+
+Local scheduled test with Wrangler:
+
+```sh
+npm run worker:dev
+curl "http://localhost:8787/cdn-cgi/handler/scheduled?format=json"
+```
+
 Worker v1 smoke:
 
 ```sh

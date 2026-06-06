@@ -1,16 +1,13 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
-import {
-  countAuditLogsOlderThan,
-  createAuditLog,
-  deleteAuditLogsOlderThan
-} from "../db/audit";
-import {
-  countOperationalEventsOlderThan,
-  deleteOperationalEventsOlderThan
-} from "../db/operations";
+import { createAuditLog } from "../db/audit";
 import { errorResponse } from "../http/errors";
+import {
+  DEFAULT_AUDIT_RETENTION_DAYS,
+  DEFAULT_OPERATIONAL_RETENTION_DAYS,
+  runOpsRetention
+} from "../ops/retention";
 
 export const opsRoutes = new Hono<AppBindings>();
 
@@ -173,52 +170,23 @@ opsRoutes.get("/summary", async (c) => {
 });
 
 opsRoutes.post("/retention", async (c) => {
-  const auditRetentionDays = daysParam(c.req.query("auditDays"), 365, 30, 2555);
-  const operationalRetentionDays = daysParam(c.req.query("operationalDays"), 90, 7, 730);
-  const dryRun = booleanParam(c.req.query("dryRun"));
-
-  const [matchedAuditLogs, matchedOperationalEvents] = await Promise.all([
-    countAuditLogsOlderThan(c.env.DB, auditRetentionDays),
-    countOperationalEventsOlderThan(c.env.DB, operationalRetentionDays)
-  ]);
-
-  const [deletedAuditLogs, deletedOperationalEvents] = dryRun
-    ? [0, 0]
-    : await Promise.all([
-        deleteAuditLogsOlderThan(c.env.DB, auditRetentionDays),
-        deleteOperationalEventsOlderThan(c.env.DB, operationalRetentionDays)
-      ]);
-
-  await createAuditLog(c.env.DB, {
+  const result = await runOpsRetention({
+    db: c.env.DB,
+    auditRetentionDays: daysParam(c.req.query("auditDays"), DEFAULT_AUDIT_RETENTION_DAYS, 30, 2555),
+    operationalRetentionDays: daysParam(
+      c.req.query("operationalDays"),
+      DEFAULT_OPERATIONAL_RETENTION_DAYS,
+      7,
+      730
+    ),
+    dryRun: booleanParam(c.req.query("dryRun")),
     action: "ops.retention.run",
-    entityType: "ops_retention",
-    requestId: c.get("requestId") ?? "unknown",
-    metadata: {
-      auditRetentionDays,
-      operationalRetentionDays,
-      matchedAuditLogs,
-      matchedOperationalEvents,
-      deletedAuditLogs,
-      deletedOperationalEvents,
-      dryRun
-    }
+    requestId: c.get("requestId") ?? "unknown"
   });
 
   return c.json({
     ok: true,
-    dryRun,
-    retention: {
-      auditDays: auditRetentionDays,
-      operationalDays: operationalRetentionDays
-    },
-    matched: {
-      auditLogs: matchedAuditLogs,
-      operationalEvents: matchedOperationalEvents
-    },
-    deleted: {
-      auditLogs: deletedAuditLogs,
-      operationalEvents: deletedOperationalEvents
-    },
+    ...result,
     requestId: c.get("requestId")
   });
 });

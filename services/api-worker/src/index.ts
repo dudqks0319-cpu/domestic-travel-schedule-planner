@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-import type { AppBindings } from "./bindings";
+import type { AppBindings, Env } from "./bindings";
 import { errorResponse } from "./http/errors";
 import { requestIdMiddleware } from "./middleware/request-id";
+import { recordOperationalEvent } from "./db/operations";
+import { runOpsRetention } from "./ops/retention";
 import { healthRoutes } from "./routes/health";
 import { sharePageRoutes } from "./routes/share-page";
 import { v1Routes } from "./routes/v1";
@@ -50,4 +52,53 @@ app.onError((error, c) => {
   return errorResponse(c, 500, "INTERNAL_ERROR", "일시적인 오류가 발생했습니다.");
 });
 
-export default app;
+async function runScheduledRetention(
+  controller: ScheduledController,
+  env: Env
+): Promise<void> {
+  const startedAt = Date.now();
+  const requestId = `scheduled-retention-${controller.scheduledTime}`;
+
+  try {
+    const result = await runOpsRetention({
+      db: env.DB,
+      requestId,
+      action: "ops.retention.scheduled"
+    });
+    await recordOperationalEvent(env.DB, {
+      eventType: "retention",
+      target: "ops.retention.scheduled",
+      status: "success",
+      durationMs: Date.now() - startedAt,
+      requestId
+    });
+    console.log(JSON.stringify({
+      level: "info",
+      message: "scheduled_retention_completed",
+      requestId,
+      deleted: result.deleted
+    }));
+  } catch (error) {
+    await recordOperationalEvent(env.DB, {
+      eventType: "retention",
+      target: "ops.retention.scheduled",
+      status: "failure",
+      durationMs: Date.now() - startedAt,
+      requestId
+    });
+    console.error(JSON.stringify({
+      level: "error",
+      message: "scheduled_retention_failed",
+      requestId,
+      error: error instanceof Error ? error.message : "unknown"
+    }));
+    throw error;
+  }
+}
+
+export default {
+  fetch: (request, env, ctx) => app.fetch(request, env, ctx),
+  scheduled: (controller, env, ctx) => {
+    ctx.waitUntil(runScheduledRetention(controller, env));
+  }
+} satisfies ExportedHandler<Env>;

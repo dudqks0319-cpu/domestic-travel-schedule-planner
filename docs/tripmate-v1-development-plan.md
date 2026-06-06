@@ -1464,3 +1464,32 @@ Verification completed:
 Remaining risks:
 - Actual production retention cadence still needs to be wired to trusted operator automation or a scheduled Worker trigger after Cloudflare resources are configured.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Scheduled Ops Retention Result Record
+
+Plan:
+- Convert the manual retention endpoint into an automated production operations path.
+- Use Cloudflare Workers scheduled handler support and environment-specific cron triggers.
+- Keep the same retention policy and privacy-safe audit/operational event logging.
+
+Completed:
+- Extracted retention execution into `services/api-worker/src/ops/retention.ts` so HTTP ops and scheduled execution share one policy.
+- Added a Cloudflare `scheduled` handler in the Worker module export.
+- Added scheduled retention success/failure operational events.
+- Added preview and production cron triggers to `wrangler.toml`.
+- Added release contract checks for the scheduled handler and cron configuration.
+- Updated Cloudflare deployment docs with cron times and local scheduled test instructions.
+- Updated the privacy/security checklist with scheduled retention coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Scheduled retention still needs a live Cloudflare preview deployment test after D1/KV/R2 binding ids are configured.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

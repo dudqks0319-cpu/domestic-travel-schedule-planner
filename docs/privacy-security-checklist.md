@@ -50,4 +50,5 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Trip, trip day, trip place, share link, export, and entitlement write operations create audit records.
 - [ ] Ops summary reads require `OPS_ADMIN_TOKEN`, create audit records, and never store the token.
 - [ ] Ops retention runs require `OPS_ADMIN_TOKEN`, support dry run, create audit records, and never store the token.
+- [ ] Scheduled retention cron is deployed for preview/production and records privacy-safe operational events.
 - [ ] Account deletion anonymizes prior audit log `user_id` values while retaining non-personal operational history.

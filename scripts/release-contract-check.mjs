@@ -105,6 +105,7 @@ const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
+  [indexRoutes, "scheduled: (controller, env, ctx)", "Cloudflare scheduled handler"],
   [v1Routes, 'v1Routes.route("/health"', "GET /api/v1/health"],
   [authRoutes, 'authRoutes.post("/login/kakao"', "POST /api/v1/auth/login/kakao"],
   [authRoutes, 'authRoutes.post("/refresh"', "POST /api/v1/auth/refresh"],
@@ -228,9 +229,21 @@ const requiredTables = [
   "operational_events"
 ];
 const schema = readText("services/api-worker/src/db/schema.sql");
+const wranglerConfig = readText("services/api-worker/wrangler.toml");
 for (const tableName of requiredTables) {
   if (!new RegExp(`CREATE TABLE IF NOT EXISTS ${tableName}\\b`).test(schema)) {
     errors.push(`Missing D1 table in schema.sql: ${tableName}`);
+  }
+}
+
+for (const text of [
+  "[env.preview.triggers]",
+  "[env.production.triggers]",
+  "37 18 * * *",
+  "17 18 * * *"
+]) {
+  if (!wranglerConfig.includes(text)) {
+    errors.push(`Missing Worker cron trigger contract in wrangler.toml: ${text}`);
   }
 }
 
