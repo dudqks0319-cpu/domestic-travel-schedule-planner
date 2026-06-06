@@ -3710,3 +3710,35 @@ Verification completed:
 Remaining risks:
 - The runner is not executed against remote Cloudflare D1 in local verification because real preview/production D1 IDs and Cloudflare auth are required.
 - Existing migration SQL must still be reviewed before production execution, especially non-idempotent `ALTER TABLE` statements.
+
+## Remote D1 Migration Ledger Result Record
+
+Plan:
+- Make the remote D1 migration runner safe to repeat.
+- Create a `schema_migrations` ledger table in the target D1 database before applying app migrations.
+- Read already applied migration filenames and skip them.
+- Record each successfully applied migration with `INSERT OR IGNORE`.
+
+Completed:
+- Updated `scripts/d1-migrate.mjs` to create and use `schema_migrations`.
+- Added applied migration discovery with `SELECT name FROM schema_migrations ORDER BY name`.
+- Added skip logging for already applied migrations.
+- Added idempotent migration recording after each successful file execution.
+- Updated release contract checks for ledger creation, applied migration skip, and idempotent recording.
+- Updated README and Cloudflare deployment docs to describe pending-only migration execution.
+
+Verification completed:
+- `node --check scripts/d1-migrate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run d1:migrate:preview -- --help`
+- `npm run d1:migrate:production -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Remote D1 execution is still not run locally because real Cloudflare binding IDs and auth are required.
+- If a database was manually migrated before the ledger existed, operators may need to backfill `schema_migrations` before running the automated runner against production.

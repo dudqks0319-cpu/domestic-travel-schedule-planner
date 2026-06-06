@@ -45,6 +45,8 @@ Before preview deploy:
 - Apply preview D1 migrations with `npm run d1:migrate:preview`.
 - Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, release contract checks, tests, health checks, and strict Naver provider smoke by default.
 
+The D1 migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
+
 ## Production Deploy
 
 Production deploy must use Cloudflare Workers Paid for monetized service operation. Do not deploy the monetized API to a free personal-only hosting plan.

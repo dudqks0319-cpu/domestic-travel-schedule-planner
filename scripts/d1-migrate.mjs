@@ -13,6 +13,7 @@ const wranglerPath = path.join(workerRoot, "wrangler.toml");
 const migrationsDir = path.join(workerRoot, "migrations");
 const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
 const allowedTargets = new Set(["preview", "production"]);
+const migrationLedgerTable = "schema_migrations";
 
 function readArg(name, fallback = "") {
   const prefix = `${name}=`;
@@ -46,8 +47,9 @@ Options:
   --target                preview or production.
   --confirm-production    Required for production migrations.
 
-This command executes every SQL file in services/api-worker/migrations against
-the remote D1 database configured for the target in services/api-worker/wrangler.toml.
+This command records applied SQL files in schema_migrations and executes only
+pending files from services/api-worker/migrations against the remote D1 database
+configured for the target in services/api-worker/wrangler.toml.
 Run it from a Cloudflare-authenticated shell after real D1 binding IDs are set.
 `);
 }
@@ -93,10 +95,13 @@ function listMigrationFiles() {
     .sort();
 }
 
-function runMigration(databaseName, migrationFile) {
-  console.log(`\n[d1:migrate] ${target}: apply ${migrationFile} to ${databaseName}`);
+function runWranglerD1(databaseName, args, options = {}) {
+  if (options.label) {
+    console.log(`\n[d1:migrate] ${options.label}`);
+  }
 
   return new Promise((resolve, reject) => {
+    let output = "";
     const child = spawn(
       npmBin,
       [
@@ -109,25 +114,88 @@ function runMigration(databaseName, migrationFile) {
         "--env",
         target,
         "--remote",
-        `--file=./migrations/${migrationFile}`
+        ...args
       ],
       {
         cwd: workerRoot,
         env: process.env,
-        stdio: "inherit"
+        stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit"
       }
     );
+
+    if (options.capture) {
+      child.stdout.on("data", (chunk) => {
+        const text = chunk.toString();
+        output += text;
+        process.stdout.write(chunk);
+      });
+      child.stderr.on("data", (chunk) => {
+        const text = chunk.toString();
+        output += text;
+        process.stderr.write(chunk);
+      });
+    }
 
     child.on("error", reject);
     child.on("exit", (code, signal) => {
       if (code === 0) {
-        resolve();
+        resolve(output);
         return;
       }
 
-      reject(new Error(`${migrationFile} failed with ${signal ?? `exit code ${code}`}`));
+      reject(new Error(`${options.label ?? "wrangler d1 execute"} failed with ${signal ?? `exit code ${code}`}`));
     });
   });
+}
+
+async function ensureMigrationLedger(databaseName) {
+  await runWranglerD1(
+    databaseName,
+    [
+      `--command=CREATE TABLE IF NOT EXISTS ${migrationLedgerTable} (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')));`
+    ],
+    { label: `${target}: ensure ${migrationLedgerTable}` }
+  );
+}
+
+function parseAppliedMigrations(output) {
+  const applied = new Set();
+  const matches = output.matchAll(/"name"\s*:\s*"([^"]+)"/g);
+  for (const match of matches) {
+    applied.add(match[1]);
+  }
+
+  return applied;
+}
+
+async function listAppliedMigrations(databaseName) {
+  const output = await runWranglerD1(
+    databaseName,
+    [`--command=SELECT name FROM ${migrationLedgerTable} ORDER BY name;`],
+    { label: `${target}: read ${migrationLedgerTable}`, capture: true }
+  );
+
+  return parseAppliedMigrations(output);
+}
+
+async function recordMigration(databaseName, migrationFile) {
+  const escapedName = migrationFile.replaceAll("'", "''");
+  await runWranglerD1(
+    databaseName,
+    [
+      `--command=INSERT OR IGNORE INTO ${migrationLedgerTable} (name) VALUES ('${escapedName}');`
+    ],
+    { label: `${target}: record ${migrationFile}` }
+  );
+}
+
+async function runMigration(databaseName, migrationFile) {
+  await runWranglerD1(
+    databaseName,
+    [`--file=./migrations/${migrationFile}`],
+    { label: `${target}: apply ${migrationFile} to ${databaseName}` }
+  );
+  await recordMigration(databaseName, migrationFile);
 }
 
 async function main() {
@@ -139,8 +207,17 @@ async function main() {
   }
 
   console.log(`[d1:migrate] target=${target} database=${databaseName} migrations=${migrations.length}`);
+  await ensureMigrationLedger(databaseName);
+  const appliedMigrations = await listAppliedMigrations(databaseName);
+
   for (const migrationFile of migrations) {
+    if (appliedMigrations.has(migrationFile)) {
+      console.log(`[d1:migrate] ${target}: skip already applied ${migrationFile}`);
+      continue;
+    }
+
     await runMigration(databaseName, migrationFile);
+    appliedMigrations.add(migrationFile);
   }
 
   console.log(`\n[d1:migrate] completed: ${target} ${databaseName}`);

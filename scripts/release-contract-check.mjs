@@ -189,6 +189,21 @@ const d1MigrationRunnerContracts = [
     d1MigrateScript,
     "database_name",
     "D1 migration runner must read the configured target D1 database name"
+  ],
+  [
+    d1MigrateScript,
+    "schema_migrations",
+    "D1 migration runner must maintain a migration ledger"
+  ],
+  [
+    d1MigrateScript,
+    "skip already applied",
+    "D1 migration runner must skip already applied migrations"
+  ],
+  [
+    d1MigrateScript,
+    "INSERT OR IGNORE INTO",
+    "D1 migration runner must record applied migrations idempotently"
   ]
 ];
 

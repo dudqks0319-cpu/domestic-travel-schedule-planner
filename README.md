@@ -33,7 +33,7 @@ npm run check:env
 
 `npm run worker:smoke:local` applies local D1 migrations, starts the local Worker, runs the full write smoke against `http://127.0.0.1:8787`, and stops the Worker process. It is the preferred local runtime gate before preview smoke.
 
-`npm run d1:migrate:preview` and `npm run d1:migrate:production` apply every SQL file in `services/api-worker/migrations` to the corresponding remote D1 database from `wrangler.toml`. Run them from a Cloudflare-authenticated shell after real binding IDs are configured.
+`npm run d1:migrate:preview` and `npm run d1:migrate:production` apply pending SQL files in `services/api-worker/migrations` to the corresponding remote D1 database from `wrangler.toml`. The runner records applied files in `schema_migrations`; run it from a Cloudflare-authenticated shell after real binding IDs are configured.
 
 `npm run release:preview:gate -- --base-url https://<preview-worker>` runs the preview deployment gate: preview env readiness, Cloudflare secret-name check, release contract, planner tests, health gate, and strict provider smoke. It defaults to `--require-provider naver`.
 
