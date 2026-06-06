@@ -2067,3 +2067,30 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to confirm logout clears schedule/search/route state before another account logs in on the same device.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Deleted Trip Local Draft Cleanup Result Record
+
+Plan:
+- Prevent deleted saved trips from remaining open as local `currentTrip` data on the same device.
+- Clear the cached optimized route only when the deleted trip matches the currently open local trip.
+- Keep unrelated local drafts untouched when another saved trip is deleted from the profile list.
+- Add release contract checks and privacy checklist coverage for targeted trip deletion cleanup.
+
+Completed:
+- Added `clearLocalTripDraftDataForTrip()` to parse the stored `currentTrip` and clear local draft data only when the ids match.
+- Updated the profile trip deletion flow to call targeted local cleanup after the Worker delete succeeds.
+- Updated the deletion confirmation and success copy to explain that an open local itinerary can be cleared.
+- Added release contract checks for targeted local cleanup and profile deletion usage.
+- Updated the privacy/security checklist with saved-trip deletion local cleanup.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to delete the currently open saved trip and confirm the schedule/search/route screens return to safe empty states.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

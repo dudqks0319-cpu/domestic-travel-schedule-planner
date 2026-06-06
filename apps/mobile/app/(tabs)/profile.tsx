@@ -12,6 +12,7 @@ import {
   type PremiumEntitlementState
 } from "../../services/monetization";
 import { restorePremiumPurchase, startPremiumPurchase } from "../../services/iap";
+import { clearLocalTripDraftDataForTrip } from "../../services/localTripStorage";
 import { useAuth } from "../providers/auth-provider";
 
 const EARN_ITEMS = [
@@ -205,7 +206,7 @@ export default function ProfileScreen() {
   };
 
   const deleteTrip = (trip: TripWithPlacesDto) => {
-    Alert.alert("여행 삭제", `${trip.title} 여행을 삭제할까요? 공유 링크도 더 이상 사용할 수 없습니다.`, [
+    Alert.alert("여행 삭제", `${trip.title} 여행을 삭제할까요? 공유 링크와 이 기기의 열린 일정도 함께 정리됩니다.`, [
       { text: "취소", style: "cancel" },
       {
         text: "삭제",
@@ -215,8 +216,9 @@ export default function ProfileScreen() {
           setTripNotice(null);
           try {
             await tripsApi.delete(trip.id);
+            const clearedLocalDraft = await clearLocalTripDraftDataForTrip(trip.id);
             setSavedTrips((current) => current.filter((item) => item.id !== trip.id));
-            setTripNotice("여행을 삭제했어요.");
+            setTripNotice(clearedLocalDraft ? "여행을 삭제했고 이 기기의 열린 일정도 정리했어요." : "여행을 삭제했어요.");
           } catch {
             setTripNotice("여행을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.");
           } finally {

@@ -96,6 +96,7 @@ const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
+const profileScreen = readText("apps/mobile/app/(tabs)/profile.tsx");
 const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
 const indexRoutes = readText("services/api-worker/src/index.ts");
@@ -103,6 +104,7 @@ const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
 const searchScreen = readText("apps/mobile/app/(tabs)/search.tsx");
 const mobileApi = readText("apps/mobile/services/api.ts");
 const tripHydration = readText("apps/mobile/services/tripHydration.ts");
+const localTripStorage = readText("apps/mobile/services/localTripStorage.ts");
 const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
@@ -582,6 +584,35 @@ const mobileAuthPrivacyContracts = [
 for (const [content, expectedText, label] of mobileAuthPrivacyContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing mobile auth privacy contract: ${label}`);
+  }
+}
+
+const mobileTripDeletionPrivacyContracts = [
+  [
+    localTripStorage,
+    "clearLocalTripDraftDataForTrip",
+    "Mobile local trip storage must support targeted currentTrip cleanup"
+  ],
+  [
+    localTripStorage,
+    "JSON.parse(raw)",
+    "Targeted currentTrip cleanup must parse the stored trip before deleting local data"
+  ],
+  [
+    profileScreen,
+    "clearLocalTripDraftDataForTrip(trip.id)",
+    "Mobile trip deletion must clear matching local drafts and cached routes"
+  ],
+  [
+    profileScreen,
+    "이 기기의 열린 일정",
+    "Mobile trip deletion copy must explain local open-itinerary cleanup"
+  ]
+];
+
+for (const [content, expectedText, label] of mobileTripDeletionPrivacyContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing mobile trip deletion privacy contract: ${label}`);
   }
 }
 
