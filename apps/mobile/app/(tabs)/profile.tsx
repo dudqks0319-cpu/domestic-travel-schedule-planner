@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
+import { buildTripShareUrl, tripsApi, type TripWithPlacesDto } from "../../services/api";
+import { hydrateCurrentTripFromServerTrip } from "../../services/tripHydration";
 import {
   DEFAULT_FREE_ENTITLEMENT,
   loadEntitlementState,
@@ -24,12 +26,6 @@ const USE_ITEMS = [
   { id: "use-gift", icon: "cafe-outline" as const, label: "스타벅스", point: "300P" }
 ];
 
-const TRIPS = [
-  { id: "trip-1", title: "성산일출봉", image: "https://images.unsplash.com/photo-1573270689103-d7a4e42b6096?w=500&q=80" },
-  { id: "trip-2", title: "한라산", image: "https://images.unsplash.com/photo-1528127269322-539801943592?w=500&q=80" },
-  { id: "trip-3", title: "우도", image: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=500&q=80" }
-];
-
 function ActionCard({ icon, label, point }: { icon: keyof typeof Ionicons.glyphMap; label: string; point: string }) {
   return (
     <TouchableOpacity style={styles.actionCard} activeOpacity={0.8}>
@@ -45,6 +41,10 @@ export default function ProfileScreen() {
   const { deleteAccount, logout } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
+  const [savedTrips, setSavedTrips] = useState<TripWithPlacesDto[]>([]);
+  const [tripsStatus, setTripsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [tripActionId, setTripActionId] = useState<string | null>(null);
+  const [tripNotice, setTripNotice] = useState<string | null>(null);
 
   const point = 1850;
   const nextTierPoint = 2000;
@@ -75,6 +75,22 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  const loadSavedTrips = async () => {
+    setTripsStatus("loading");
+    try {
+      const response = await tripsApi.listWithPlaces();
+      setSavedTrips(response.data.trips ?? []);
+      setTripsStatus("ready");
+    } catch {
+      setSavedTrips([]);
+      setTripsStatus("error");
+    }
+  };
+
+  useEffect(() => {
+    void loadSavedTrips();
+  }, []);
+
   const handleLogout = () => {
     Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
       { text: "취소", style: "cancel" },
@@ -101,6 +117,69 @@ export default function ProfileScreen() {
             router.replace("/auth/login");
           } catch {
             Alert.alert("계정 삭제", "계정 삭제 요청에 실패했어요. 잠시 후 다시 시도해주세요.");
+          }
+        }
+      }
+    ]);
+  };
+
+  const openTrip = async (trip: TripWithPlacesDto) => {
+    setTripActionId(trip.id);
+    setTripNotice(null);
+    try {
+      await hydrateCurrentTripFromServerTrip(trip);
+      router.push("/trip/schedule");
+    } catch {
+      setTripNotice("저장된 여행을 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setTripActionId(null);
+    }
+  };
+
+  const shareTrip = async (trip: TripWithPlacesDto) => {
+    setTripActionId(trip.id);
+    setTripNotice(null);
+    try {
+      const response = await tripsApi.createShare(trip.id);
+      const shareUrl = buildTripShareUrl(response.data.share.token);
+      const message = `${trip.title}\n${shareUrl}`;
+      if (Platform.OS === "web") {
+        const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
+          .navigator?.clipboard;
+        if (clipboard) {
+          await clipboard.writeText(shareUrl);
+          setTripNotice("공유 링크를 클립보드에 복사했어요.");
+        } else {
+          setTripNotice(`공유 링크가 생성됐어요: ${shareUrl}`);
+        }
+      } else {
+        await Share.share({ title: trip.title, message, url: shareUrl });
+        setTripNotice("공유 링크를 만들었어요.");
+      }
+    } catch {
+      setTripNotice("공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
+    } finally {
+      setTripActionId(null);
+    }
+  };
+
+  const deleteTrip = (trip: TripWithPlacesDto) => {
+    Alert.alert("여행 삭제", `${trip.title} 여행을 삭제할까요? 공유 링크도 더 이상 사용할 수 없습니다.`, [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          setTripActionId(trip.id);
+          setTripNotice(null);
+          try {
+            await tripsApi.delete(trip.id);
+            setSavedTrips((current) => current.filter((item) => item.id !== trip.id));
+            setTripNotice("여행을 삭제했어요.");
+          } catch {
+            setTripNotice("여행을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.");
+          } finally {
+            setTripActionId(null);
           }
         }
       }
@@ -191,12 +270,66 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>내 여행</Text>
-        <View style={styles.tripRow}>
-          {TRIPS.map((trip) => (
-            <TouchableOpacity key={trip.id} style={styles.tripItem} activeOpacity={0.85}>
-              <Image source={{ uri: trip.image }} style={styles.tripImage} />
-              <Text style={styles.tripTitle}>{trip.title}</Text>
-            </TouchableOpacity>
+        <View style={styles.tripListCard}>
+          {tripNotice ? <Text style={styles.tripNotice}>{tripNotice}</Text> : null}
+          {tripsStatus === "loading" ? (
+            <Text style={styles.tripEmptyText}>저장된 여행을 불러오는 중...</Text>
+          ) : null}
+          {tripsStatus === "error" ? (
+            <View style={styles.tripEmptyWrap}>
+              <Text style={styles.tripEmptyTitle}>저장된 여행을 불러오지 못했어요.</Text>
+              <TouchableOpacity style={styles.retryTripButton} onPress={() => { void loadSavedTrips(); }}>
+                <Text style={styles.retryTripButtonText}>다시 불러오기</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {tripsStatus === "ready" && savedTrips.length === 0 ? (
+            <View style={styles.tripEmptyWrap}>
+              <Text style={styles.tripEmptyTitle}>저장된 여행이 아직 없어요.</Text>
+              <Text style={styles.tripEmptyText}>지역, 날짜, 스타일만 골라 첫 일정을 만들어보세요.</Text>
+              <TouchableOpacity style={styles.retryTripButton} onPress={() => router.push("/trip/create")}>
+                <Text style={styles.retryTripButtonText}>일정 만들기</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {savedTrips.map((trip) => (
+            <View key={trip.id} style={styles.tripCard}>
+              <View style={styles.tripCardHeader}>
+                <View style={styles.tripIconCircle}>
+                  <Ionicons name="map-outline" size={18} color={Theme.colors.primary} />
+                </View>
+                <View style={styles.tripCardBody}>
+                  <Text style={styles.tripCardTitle} numberOfLines={1}>{trip.title}</Text>
+                  <Text style={styles.tripCardMeta} numberOfLines={1}>
+                    {trip.destination} · {trip.startDate} - {trip.endDate}
+                  </Text>
+                  <Text style={styles.tripCardMeta}>{`${trip.places.length}개 장소 저장됨`}</Text>
+                </View>
+              </View>
+              <View style={styles.tripActionRow}>
+                <TouchableOpacity
+                  style={styles.tripActionButton}
+                  onPress={() => { void openTrip(trip); }}
+                  disabled={tripActionId === trip.id}
+                >
+                  <Text style={styles.tripActionText}>열기</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.tripActionButton}
+                  onPress={() => { void shareTrip(trip); }}
+                  disabled={tripActionId === trip.id}
+                >
+                  <Text style={styles.tripActionText}>공유</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tripActionButton, styles.tripDeleteActionButton]}
+                  onPress={() => deleteTrip(trip)}
+                  disabled={tripActionId === trip.id}
+                >
+                  <Text style={[styles.tripActionText, styles.tripDeleteActionText]}>삭제</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ))}
         </View>
 
@@ -428,25 +561,118 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     fontWeight: "700"
   },
-  tripRow: {
-    flexDirection: "row",
-    gap: 10
+  tripListCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 12,
+    gap: 10,
+    ...Theme.shadow.sm
   },
-  tripItem: {
-    flex: 1
+  tripNotice: {
+    borderRadius: 10,
+    backgroundColor: Theme.colors.primaryLight,
+    color: Theme.colors.primaryDark,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "700"
   },
-  tripImage: {
-    width: "100%",
-    height: 74,
-    borderRadius: 10
+  tripEmptyWrap: {
+    borderRadius: 12,
+    backgroundColor: Theme.colors.background,
+    padding: 14
   },
-  tripTitle: {
-    marginTop: 6,
+  tripEmptyTitle: {
     fontSize: 14,
     lineHeight: 18,
     color: Theme.colors.textPrimary,
-    fontWeight: "700",
-    textAlign: "center"
+    fontWeight: "800"
+  },
+  tripEmptyText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  retryTripButton: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    borderRadius: 999,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 13,
+    paddingVertical: 8
+  },
+  retryTripButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textOnPrimary,
+    fontWeight: "800"
+  },
+  tripCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: "#FAFCFF",
+    padding: 12
+  },
+  tripCardHeader: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start"
+  },
+  tripIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  tripCardBody: {
+    flex: 1,
+    minWidth: 0
+  },
+  tripCardTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  tripCardMeta: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  tripActionRow: {
+    marginTop: 11,
+    flexDirection: "row",
+    gap: 8
+  },
+  tripActionButton: {
+    flex: 1,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    paddingVertical: 9,
+    alignItems: "center"
+  },
+  tripActionText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  tripDeleteActionButton: {
+    borderColor: "#FCA5A5"
+  },
+  tripDeleteActionText: {
+    color: Theme.colors.error
   },
   logoutButton: {
     marginTop: 22,

@@ -592,3 +592,28 @@ Verification completed:
 Remaining risks:
 - The aggregate response includes all saved trip places for the authenticated user; pagination or date filtering may be needed after real usage volume is known.
 - A dedicated trip list/detail screen is still better suited for bulk manage/delete/share actions.
+
+## Profile Saved Trip Management Result Record
+
+Plan:
+- Replace static profile "내 여행" examples with real saved trips.
+- Provide saved trip open, share, and delete actions from a management surface.
+- Reuse existing hydration and share link helpers so schedule state stays canonical.
+
+Completed:
+- Removed hardcoded profile trip cards.
+- Loaded saved trips through `tripsApi.listWithPlaces()`.
+- Added saved trip empty, loading, retry, and error states.
+- Connected "열기" to `hydrateCurrentTripFromServerTrip()` and the schedule screen.
+- Connected "공유" to Worker share link creation and native/web share behavior.
+- Connected "삭제" to `DELETE /api/v1/trips/:tripId` with confirmation.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Profile trip management is still compact; a dedicated full-screen trip manager would handle bulk operations and filters better.
+- Delete/share flows require an authenticated saved trip, which is expected but should be covered by device-level smoke tests before release.
