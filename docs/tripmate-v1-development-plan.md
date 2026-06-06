@@ -3416,3 +3416,32 @@ Verification completed:
 
 Remaining risks:
 - Public shared export download uses the existing share token as a bearer URL; preview smoke with real D1/R2 bindings is still needed before production handoff.
+
+## Mobile Store Verification UI Result Record
+
+Plan:
+- Add a profile-screen store verification panel that can submit a transaction id or receipt to the existing IAP service boundary.
+- Keep raw store data transient in component state and rely on the Worker to hash/store verification evidence.
+- Make the UI explicit that store-platform submissions remain pending until live Apple/Google validation is implemented.
+- Add release contract coverage so the mobile submission UI and pending-status copy do not regress.
+
+Completed:
+- Added a "스토어 구매 검증" panel to the profile premium card.
+- Connected the panel to `submitStoreVerification()` without adding a billing SDK dependency.
+- Kept the existing production safety rule: store submissions do not unlock premium until server-side live validation exists.
+- Updated the API Worker README to replace the stale "mobile IAP receipt submission UI" gap with the remaining live SDK/store-validation gap.
+- Added release contract checks for the mobile IAP submission boundary and profile UI.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- A real Apple/Google IAP SDK is still required to collect receipts or transaction ids automatically.
+- Live App Store Server API and Google Play Developer API validation are still required before production premium purchases can unlock benefits.

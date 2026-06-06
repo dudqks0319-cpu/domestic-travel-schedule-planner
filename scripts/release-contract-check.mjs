@@ -126,6 +126,7 @@ const indexRoutes = readText("services/api-worker/src/index.ts");
 const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
 const searchScreen = readText("apps/mobile/app/(tabs)/search.tsx");
 const mobileApi = readText("apps/mobile/services/api.ts");
+const mobileIap = readText("apps/mobile/services/iap.ts");
 const tripHydration = readText("apps/mobile/services/tripHydration.ts");
 const localTripStorage = readText("apps/mobile/services/localTripStorage.ts");
 const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
@@ -1614,6 +1615,36 @@ const entitlementVerificationContracts = [
     workerSmokeScript,
     "manual entitlement smoke should only activate through the non-production verification mode",
     "Worker smoke must verify manual active entitlement is non-production only"
+  ],
+  [
+    mobileIap,
+    "submitStoreVerification",
+    "Mobile IAP service must expose a store receipt or transaction submission boundary"
+  ],
+  [
+    profileScreen,
+    "스토어 구매 검증",
+    "Mobile profile must expose store purchase verification UI"
+  ],
+  [
+    profileScreen,
+    "storeVerificationInput",
+    "Mobile profile must keep store verification input transient in component state"
+  ],
+  [
+    profileScreen,
+    "storeVerificationPayload",
+    "Mobile profile must submit store transaction data through the IAP service boundary"
+  ],
+  [
+    profileScreen,
+    "{ receipt: token }",
+    "Mobile profile must support receipt-shaped store verification submissions"
+  ],
+  [
+    profileScreen,
+    "서버 검증 전에는 권한이 대기 상태로만 저장됩니다.",
+    "Mobile store verification UI must explain pending status before live validation"
   ]
 ];
 

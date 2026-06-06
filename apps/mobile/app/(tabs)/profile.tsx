@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Image, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -11,7 +11,7 @@ import {
   loadEntitlementState,
   type PremiumEntitlementState
 } from "../../services/monetization";
-import { restorePremiumPurchase, startPremiumPurchase } from "../../services/iap";
+import { restorePremiumPurchase, startPremiumPurchase, submitStoreVerification } from "../../services/iap";
 import { clearLocalTripDraftDataForTrip } from "../../services/localTripStorage";
 import { useAuth } from "../providers/auth-provider";
 
@@ -43,8 +43,9 @@ export default function ProfileScreen() {
   const { deleteAccount, logout, user } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
-  const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "purchasing" | "restoring">("idle");
+  const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "purchasing" | "restoring" | "submitting">("idle");
   const [premiumNotice, setPremiumNotice] = useState<string | null>(null);
+  const [storeVerificationInput, setStoreVerificationInput] = useState("");
   const [savedTrips, setSavedTrips] = useState<TripWithPlacesDto[]>([]);
   const [tripsStatus, setTripsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tripActionId, setTripActionId] = useState<string | null>(null);
@@ -160,6 +161,32 @@ export default function ProfileScreen() {
       setPremiumNotice(result.message);
     } catch {
       setPremiumNotice("프리미엄 권한 상태를 확인하지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
+    } finally {
+      setPremiumActionStatus("idle");
+    }
+  };
+
+  const handleSubmitStoreVerification = async () => {
+    const token = storeVerificationInput.trim();
+    if (!token) {
+      setPremiumNotice("스토어 거래 ID 또는 영수증 값을 입력해주세요.");
+      return;
+    }
+
+    setPremiumNotice(null);
+    setPremiumActionStatus("submitting");
+    try {
+      const storeVerificationPayload = token.length > 64 ? { receipt: token } : { transactionId: token };
+      const result = await submitStoreVerification(storeVerificationPayload);
+      if (result.status === "active") {
+        const nextEntitlement = await loadEntitlementState();
+        setEntitlement(nextEntitlement);
+        setEntitlementStatus("ready");
+      }
+      setStoreVerificationInput("");
+      setPremiumNotice(result.message);
+    } catch {
+      setPremiumNotice("스토어 구매 정보를 제출하지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
     } finally {
       setPremiumActionStatus("idle");
     }
@@ -333,6 +360,33 @@ export default function ProfileScreen() {
             >
               <Text style={[styles.premiumActionText, styles.premiumSecondaryText]}>
                 {premiumActionStatus === "restoring" ? "권한 확인 중..." : "구매 복원"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.storeVerificationPanel}>
+            <Text style={styles.storeVerificationTitle}>스토어 구매 검증</Text>
+            <Text style={styles.storeVerificationDescription}>
+              Apple/Google 결제 SDK가 반환한 거래 ID 또는 영수증을 서버에 제출합니다. 서버 검증 전에는 권한이 대기 상태로만 저장됩니다.
+            </Text>
+            <TextInput
+              style={styles.storeVerificationInput}
+              value={storeVerificationInput}
+              onChangeText={setStoreVerificationInput}
+              placeholder="거래 ID 또는 영수증"
+              placeholderTextColor={Theme.colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              editable={premiumActionStatus === "idle"}
+            />
+            <TouchableOpacity
+              style={[styles.storeVerificationButton, premiumActionStatus !== "idle" ? styles.disabledButton : null]}
+              onPress={() => { void handleSubmitStoreVerification(); }}
+              disabled={premiumActionStatus !== "idle"}
+              activeOpacity={0.78}
+            >
+              <Text style={styles.storeVerificationButtonText}>
+                {premiumActionStatus === "submitting" ? "검증 제출 중..." : "스토어 검증 제출"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -669,6 +723,60 @@ const styles = StyleSheet.create({
   },
   premiumSecondaryText: {
     color: Theme.colors.primary
+  },
+  storeVerificationPanel: {
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: Theme.colors.background,
+    padding: 12
+  },
+  storeVerificationTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: Theme.colors.textPrimary,
+    fontWeight: "900"
+  },
+  storeVerificationDescription: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  storeVerificationInput: {
+    marginTop: 10,
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  storeVerificationButton: {
+    marginTop: 8,
+    minHeight: 40,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.textPrimary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12
+  },
+  storeVerificationButtonText: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: "#FFFFFF",
+    fontWeight: "900",
+    textAlign: "center"
+  },
+  disabledButton: {
+    opacity: 0.55
   },
   sectionTitle: {
     marginTop: 20,

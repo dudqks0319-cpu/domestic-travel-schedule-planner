@@ -44,6 +44,6 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 
 - binary PDF rendering worker
 - live strict provider smoke evidence from a configured preview Worker
-- mobile IAP receipt submission UI
+- live mobile IAP SDK purchase/receipt capture and store validation
 
 See `docs/tripmate-v1-development-plan.md` for the release plan and phase order.
