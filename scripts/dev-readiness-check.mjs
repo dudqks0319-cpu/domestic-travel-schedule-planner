@@ -126,34 +126,55 @@ const forbiddenMobileKeys = [
   "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
   "OPS_ADMIN_TOKEN"
 ];
-if (!fs.existsSync(mobileEnvPath)) {
-  warnings.push(
-    "apps/mobile/.env not found. Mobile app will use default Worker API base URL (http://localhost:8787/api/v1)."
-  );
-} else {
-  const mobileEnv = parseEnvFile(mobileEnvPath);
+
+function listMobileRuntimeEnvFiles() {
+  const mobileDir = fromRoot("apps", "mobile");
+  if (!fs.existsSync(mobileDir)) {
+    return [];
+  }
+
+  return fs.readdirSync(mobileDir)
+    .filter((entry) => entry === ".env" || entry.startsWith(".env."))
+    .filter((entry) => !entry.endsWith(".example"))
+    .map((entry) => path.join(mobileDir, entry));
+}
+
+function checkMobileEnvFile(filePath) {
+  const label = path.relative(repoRoot, filePath);
+  const mobileEnv = parseEnvFile(filePath);
   if (mobileEnv.has("EXPO_PUBLIC_API_BASE_URL") && !hasNonEmptyValue(mobileEnv.get("EXPO_PUBLIC_API_BASE_URL"))) {
-    warnings.push("apps/mobile/.env has empty EXPO_PUBLIC_API_BASE_URL.");
+    warnings.push(`${label} has empty EXPO_PUBLIC_API_BASE_URL.`);
   }
 
   if (
     mobileEnv.get("EXPO_PUBLIC_MAP_PROVIDER") === "kakao" &&
     !hasNonEmptyValue(mobileEnv.get("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY"))
   ) {
-    warnings.push("apps/mobile/.env selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.");
+    warnings.push(`${label} selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
   }
 
   for (const key of mobileEnv.keys()) {
     if (!key.startsWith("EXPO_PUBLIC_")) {
-      errors.push(`Forbidden non-public key in apps/mobile/.env: ${key}. Mobile env keys must start with EXPO_PUBLIC_.`);
+      errors.push(`Forbidden non-public key in ${label}: ${key}. Mobile env keys must start with EXPO_PUBLIC_.`);
     }
   }
 
   for (const key of forbiddenMobileKeys) {
     if (mobileEnv.has(key)) {
-      errors.push(`Forbidden server-only key in apps/mobile/.env: ${key}`);
+      errors.push(`Forbidden server-only key in ${label}: ${key}`);
     }
   }
+}
+
+const mobileRuntimeEnvFiles = listMobileRuntimeEnvFiles();
+if (!fs.existsSync(mobileEnvPath)) {
+  warnings.push(
+    "apps/mobile/.env not found. Mobile app will use default Worker API base URL (http://localhost:8787/api/v1)."
+  );
+}
+
+for (const filePath of mobileRuntimeEnvFiles) {
+  checkMobileEnvFile(filePath);
 }
 
 function cloudflareEnvBlock(content, target) {

@@ -2283,3 +2283,29 @@ Verification completed:
 Remaining risks:
 - `check:env` cannot verify that Cloudflare secrets actually exist remotely; preview/production deploy still needs `wrangler secret list` or deployment smoke with configured secrets.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Mobile Env Variant Scan Result Record
+
+Plan:
+- Extend mobile env validation beyond `apps/mobile/.env`.
+- Scan Expo runtime env variants such as `.env.local`, `.env.development`, and `.env.production`.
+- Keep `.env.example` as documentation-only and excluded from runtime secret failure checks.
+- Add release contract and env documentation coverage for the expanded scan.
+
+Completed:
+- Added `listMobileRuntimeEnvFiles()` to `scripts/dev-readiness-check.mjs`.
+- Added `checkMobileEnvFile()` and applied the public-key/server-only checks to every runtime `apps/mobile/.env*` file except `.env.example`.
+- Updated release contract checks to require all mobile runtime env variants to be scanned.
+- Updated `docs/env.md` to document the expanded mobile env scan boundary.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- `check:env` only scans env files under `apps/mobile`; CI and app-store build systems must still keep secrets out of external build profile configuration.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

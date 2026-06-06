@@ -742,11 +742,22 @@ for (const key of [
 }
 
 if (!devReadinessCheck.includes('!key.startsWith("EXPO_PUBLIC_")')) {
-  errors.push("dev-readiness-check must reject non-EXPO_PUBLIC keys in apps/mobile/.env.");
+  errors.push("dev-readiness-check must reject non-EXPO_PUBLIC keys in mobile runtime env files.");
 }
 
 if (!devReadinessCheck.includes("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY")) {
   errors.push("dev-readiness-check must warn when Kakao web map rendering key is missing.");
+}
+
+for (const text of [
+  "listMobileRuntimeEnvFiles",
+  "entry === \".env\" || entry.startsWith(\".env.\")",
+  "!entry.endsWith(\".example\")",
+  "checkMobileEnvFile(filePath)"
+]) {
+  if (!devReadinessCheck.includes(text)) {
+    errors.push(`dev-readiness-check must scan all mobile runtime env variants: ${text}`);
+  }
 }
 
 for (const text of [
