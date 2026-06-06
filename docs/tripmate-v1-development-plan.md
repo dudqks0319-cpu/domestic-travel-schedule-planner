@@ -1624,3 +1624,28 @@ Remaining risks:
 - Binary PDF/image rendering remains separate from the current print-ready HTML export asset.
 - Public/shared export links still require a separate token model if they become a v1.0 product requirement.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Weather Alternative Replan UI Result Record
+
+Plan:
+- Make the premium "weather alternatives" entitlement visible as an actual schedule action.
+- Reuse the existing Worker `/planner/replan` path and planner `rainy_backup` style instead of introducing a new weather dependency.
+- Keep free users behind a premium gate and log the request as a monetization event.
+
+Completed:
+- Added a "비 오는 날 대체코스" action to the schedule replan card.
+- Extended schedule replan handling with a weather alternative mode.
+- Weather alternative mode uses `rainy_backup` and a 실내/전시/카페/비 오는 날 replacement query to bias provider-backed replacements.
+- Preserved existing local persistence, optimized-route cache clearing, remote saved-trip sync, and warning UI.
+- Added premium gate copy and ad-event logging for free users requesting weather alternatives.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is weather-style replanning, not a live weather forecast integration; live forecast triggers can be added after a weather provider policy is finalized.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

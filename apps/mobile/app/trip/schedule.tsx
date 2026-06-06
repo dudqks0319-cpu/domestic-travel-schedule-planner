@@ -941,19 +941,35 @@ export default function ScheduleScreen() {
     }
   };
 
-  const replanSchedule = async () => {
-    if (!entitlement.benefits.advancedReplan) {
-      setReplanNotice("고급 일정 재생성은 프리미엄 기능입니다. 무료 사용자는 장소 편집과 기본 경로 최적화를 사용할 수 있어요.");
+  const replanSchedule = async (options?: { weatherAlternative?: boolean }) => {
+    const weatherAlternative = options?.weatherAlternative === true;
+    const hasBenefit = weatherAlternative
+      ? entitlement.benefits.weatherAlternatives
+      : entitlement.benefits.advancedReplan;
+
+    if (!hasBenefit) {
+      setReplanNotice(
+        weatherAlternative
+          ? "비 오는 날 대체코스는 프리미엄 기능입니다. 무료 사용자는 장소 편집과 기본 경로 최적화를 사용할 수 있어요."
+          : "고급 일정 재생성은 프리미엄 기능입니다. 무료 사용자는 장소 편집과 기본 경로 최적화를 사용할 수 있어요."
+      );
       await logAdEvent({
         placement: "schedule_bottom",
         eventType: "requested",
-        metadata: { screen: "trip_schedule", result: "advanced_replan_gate" }
+        metadata: {
+          screen: "trip_schedule",
+          result: weatherAlternative ? "weather_alternative_gate" : "advanced_replan_gate"
+        }
       }).catch(() => undefined);
       return;
     }
 
     if (!editableTripPoints.length) {
-      setReplanNotice("재생성할 실제 장소가 없어요. 검색 화면에서 장소를 먼저 담아주세요.");
+      setReplanNotice(
+        weatherAlternative
+          ? "대체코스로 정리할 실제 장소가 없어요. 검색 화면에서 실내 장소를 먼저 담아주세요."
+          : "재생성할 실제 장소가 없어요. 검색 화면에서 장소를 먼저 담아주세요."
+      );
       return;
     }
 
@@ -961,9 +977,11 @@ export default function ScheduleScreen() {
     setReplanNotice(null);
     try {
       const styleKey =
-        typeof currentTripDraft?.styleKey === "string" && currentTripDraft.styleKey.trim()
-          ? currentTripDraft.styleKey
-          : "sea_cafe_food";
+        weatherAlternative
+          ? "rainy_backup"
+          : typeof currentTripDraft?.styleKey === "string" && currentTripDraft.styleKey.trim()
+            ? currentTripDraft.styleKey
+            : "sea_cafe_food";
       const mode =
         typeof currentTripDraft?.mode === "string"
           ? currentTripDraft.mode
@@ -977,7 +995,9 @@ export default function ScheduleScreen() {
         styleKey,
         mode,
         places: editableTripPoints.map(editablePointToNormalizedPlace),
-        replacementQuery: tripMeta.destination
+        replacementQuery: weatherAlternative
+          ? `${tripMeta.destination} 실내 전시 카페 비 오는 날`
+          : tripMeta.destination
       });
       const nextPoints = replanResponseToEditablePoints(response.data as PlannerReplanResponse, editableTripPoints);
       if (nextPoints.length < 2) {
@@ -996,11 +1016,17 @@ export default function ScheduleScreen() {
         : "";
       setReplanNotice(
         syncResult.updated > 0
-          ? `일정을 다시 정리하고 저장된 장소 ${syncResult.updated}개를 서버에 반영했어요.${createdNotice}`
-          : "일정을 다시 정리했어요. 로그인 후 저장된 여행에서는 새 순서를 서버에도 반영할 수 있습니다."
+          ? `${weatherAlternative ? "비 오는 날 대체코스를" : "일정을"} 다시 정리하고 저장된 장소 ${syncResult.updated}개를 서버에 반영했어요.${createdNotice}`
+          : weatherAlternative
+            ? "비 오는 날 대체코스를 정리했어요. 로그인 후 저장된 여행에서는 새 순서를 서버에도 반영할 수 있습니다."
+            : "일정을 다시 정리했어요. 로그인 후 저장된 여행에서는 새 순서를 서버에도 반영할 수 있습니다."
       );
     } catch {
-      setReplanNotice("일정을 다시 정리했지만 서버 동기화 또는 provider 호출을 완료하지 못했어요. 네트워크 상태를 확인해 주세요.");
+      setReplanNotice(
+        weatherAlternative
+          ? "대체코스를 정리했지만 서버 동기화 또는 provider 호출을 완료하지 못했어요. 네트워크 상태를 확인해 주세요."
+          : "일정을 다시 정리했지만 서버 동기화 또는 provider 호출을 완료하지 못했어요. 네트워크 상태를 확인해 주세요."
+      );
     } finally {
       setReplanLoading(false);
     }
@@ -1223,7 +1249,7 @@ export default function ScheduleScreen() {
         </Text>
       </View>
       <Text style={styles.replanDescription}>
-        현재 담긴 장소와 provider 추천을 다시 정렬해 날짜별 동선을 정리합니다. 재생성 후 경로 최적화를 실행하면 새 순서 기준 이동시간을 계산합니다.
+        현재 담긴 장소와 provider 추천을 다시 정렬해 날짜별 동선을 정리합니다. 비 오는 날은 실내·전시·카페 중심 대체코스로 다시 구성할 수 있습니다.
       </Text>
       {replanNotice ? <Text style={styles.replanNotice}>{replanNotice}</Text> : null}
       <TouchableOpacity
@@ -1233,6 +1259,15 @@ export default function ScheduleScreen() {
       >
         <Text style={styles.replanButtonText}>
           {replanLoading ? "재생성 중..." : "일정 다시 정리"}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.weatherReplanButton, replanLoading ? styles.replanButtonDisabled : null]}
+        onPress={() => { void replanSchedule({ weatherAlternative: true }); }}
+        disabled={replanLoading}
+      >
+        <Text style={styles.weatherReplanButtonText}>
+          {replanLoading ? "대체코스 정리 중..." : "비 오는 날 대체코스"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -1832,6 +1867,22 @@ const styles = StyleSheet.create({
   replanButtonText: {
     ...Typography.normal.caption,
     color: Colors.common.white,
+    fontWeight: "800",
+    textAlign: "center"
+  },
+  weatherReplanButton: {
+    minHeight: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    backgroundColor: Colors.common.white,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  weatherReplanButtonText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
     fontWeight: "800",
     textAlign: "center"
   },
