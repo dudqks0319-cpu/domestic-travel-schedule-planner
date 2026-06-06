@@ -473,6 +473,19 @@ shareRoutes.get("/:shareId", async (c) => {
     return errorResponse(c, 404, "SHARE_NOT_FOUND", "공유 링크를 찾을 수 없습니다.");
   }
 
+  const [days, places] = await Promise.all([
+    listTripDays(c.env.DB, sharedTrip.user_id, sharedTrip.id),
+    listTripPlaces(c.env.DB, sharedTrip.user_id, sharedTrip.id)
+  ]);
+  const publicPlaces = (places ?? []).map(toPublicTripPlace);
+  const publicDays = (days ?? []).map((day) => {
+    const publicDay = toPublicTripDay(day);
+    return {
+      ...publicDay,
+      places: publicPlaces.filter((place) => place.dayId === publicDay.id)
+    };
+  });
+
   return c.json({
     ok: true,
     share: {
@@ -480,7 +493,11 @@ shareRoutes.get("/:shareId", async (c) => {
       token: sharedTrip.share_token,
       expiresAt: sharedTrip.share_expires_at
     },
-    trip: toPublicTrip(sharedTrip),
+    trip: {
+      ...toPublicTrip(sharedTrip),
+      days: publicDays,
+      places: publicPlaces
+    },
     requestId: c.get("requestId")
   });
 });

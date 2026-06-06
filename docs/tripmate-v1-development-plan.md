@@ -520,3 +520,26 @@ Verification completed:
 Remaining risks:
 - The share URL currently points to the Worker JSON read-only endpoint; a user-friendly public share page remains a release polish item.
 - Mobile share creation still requires an authenticated saved trip, which is intentional for v1 privacy and ownership enforcement.
+
+## Share Read-Only Detail Result Record
+
+Plan:
+- Expand the public share lookup response beyond trip metadata.
+- Include read-only trip days and trip places without requiring authentication.
+- Preserve ownership boundaries by resolving data through the shared trip owner id.
+
+Completed:
+- Updated `GET /api/v1/share/:shareId` to include `trip.days`.
+- Added read-only `places` arrays per shared day.
+- Added a flat `trip.places` array for clients that need direct map rendering.
+- Kept expired/deleted share link filtering unchanged.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The response is still JSON and not yet a user-facing HTML/share page.
+- Shared places include lat/lng for map rendering; public share pages must avoid presenting raw coordinates as primary user-facing content.
