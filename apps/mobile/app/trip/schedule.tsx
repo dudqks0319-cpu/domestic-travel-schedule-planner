@@ -1079,6 +1079,31 @@ export default function ScheduleScreen() {
             <View style={styles.savedPlaceBody}>
               <Text style={styles.savedPlaceName}>{point.name ?? "저장된 장소"}</Text>
               <Text style={styles.savedPlaceMeta}>방문 장소 · 좌표는 일정표에 표시하지 않아요</Text>
+              <View style={styles.dayMoveChips}>
+                {visibleDayTabs.map((dayTab) => {
+                  const selected = dayTab.dayNumber === point.dayNumber;
+                  return (
+                    <TouchableOpacity
+                      key={`${point.id ?? point.name}-day-${dayTab.dayNumber}`}
+                      style={[
+                        styles.dayMoveChip,
+                        selected ? styles.dayMoveChipSelected : null
+                      ]}
+                      disabled={selected}
+                      onPress={() => moveSavedPlace(point.id, dayTab.dayNumber)}
+                    >
+                      <Text
+                        style={[
+                          styles.dayMoveChipText,
+                          selected ? styles.dayMoveChipTextSelected : null
+                        ]}
+                      >
+                        {`${dayTab.dayNumber}일차`}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
               <View style={styles.savedPlaceActions}>
                 <TouchableOpacity
                   style={[styles.placeActionButton, activeDay.dayNumber <= 1 ? styles.placeActionDisabled : null]}
@@ -1661,6 +1686,33 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
     marginTop: 4
+  },
+  dayMoveChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10
+  },
+  dayMoveChip: {
+    minHeight: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Colors.common.white,
+    paddingHorizontal: 10,
+    justifyContent: "center"
+  },
+  dayMoveChipSelected: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
+  },
+  dayMoveChipText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  dayMoveChipTextSelected: {
+    color: Theme.colors.primary
   },
   savedPlaceActions: {
     flexDirection: "row",

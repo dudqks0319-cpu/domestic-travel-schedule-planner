@@ -1521,3 +1521,26 @@ Remaining risks:
 - Export download remains authenticated rather than publicly signed; public/shared export links still require a separate token model if they become a product requirement.
 - Binary PDF/image rendering is still separate from the current print-ready HTML export asset.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Schedule Move-To-Day UI Result Record
+
+Plan:
+- Close the saved-trip editor gap where places could only move to adjacent days.
+- Reuse the existing local persistence, route cache invalidation, and Worker `trip_places` update sync path.
+- Keep the itinerary table free of raw latitude/longitude details.
+
+Completed:
+- Added direct day chips to each saved-place card on the schedule screen.
+- Disabled the chip for the place's current day and reused `moveSavedPlace()` for all other day selections.
+- Preserved existing previous/next day shortcuts, local `currentTrip` persistence, optimized-route cache clearing, and remote saved-trip sync.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to verify the touch target density and horizontal wrapping on small phones.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
