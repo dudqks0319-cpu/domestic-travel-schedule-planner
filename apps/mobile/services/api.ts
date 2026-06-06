@@ -241,6 +241,7 @@ export interface TripPlaceSyncResponse {
     created: number;
     relinked: number;
     updated: number;
+    pruned: number;
     skipped: number;
     items: Array<{
       clientId: string;
@@ -334,8 +335,11 @@ export const tripsApi = {
     apiClient.post<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days/${dayId}/places`, data),
-  syncPlaces: (tripId: string, places: TripPlaceSyncItem[]) =>
-    apiClient.patch<TripPlaceSyncResponse>(`/trips/${tripId}/places/sync`, { places }),
+  syncPlaces: (tripId: string, places: TripPlaceSyncItem[], options?: { pruneMissing?: boolean }) =>
+    apiClient.patch<TripPlaceSyncResponse>(`/trips/${tripId}/places/sync`, {
+      places,
+      ...(options?.pruneMissing === true ? { pruneMissing: true } : {})
+    }),
   reorderPlaces: (tripId: string, places: TripPlaceReorderItem[]) =>
     apiClient.patch<{ ok: true; places: TripPlaceDto[] }>(`/trips/${tripId}/places/reorder`, { places }),
   updatePlaceById: (tripId: string, placeId: string, data: Record<string, unknown>) =>

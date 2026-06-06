@@ -702,6 +702,7 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
   if (!syncItems) {
     return errorResponse(c, 400, "INVALID_TRIP_PLACE_SYNC_INPUT", "장소 동기화 값을 확인해주세요.");
   }
+  const pruneMissing = raw.pruneMissing === true;
 
   const userId = currentUserId(c);
   const tripId = c.req.param("tripId");
@@ -790,11 +791,13 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
   }
 
   const updatedPlaces = [];
+  const syncedTripPlaceIds = new Set<string>();
   for (const item of syncItems) {
     const syncedItem = syncedItems.find((result) => result.clientId === item.clientId);
     if (!syncedItem) {
       continue;
     }
+    syncedTripPlaceIds.add(syncedItem.tripPlaceId);
 
     const place = await updateTripPlace(c.env.DB, userId, tripId, syncedItem.tripPlaceId, {
       dayNumber: item.dayNumber,
@@ -806,13 +809,27 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
     updatedPlaces.push(place);
   }
 
+  let pruned = 0;
+  if (pruneMissing) {
+    for (const existingPlace of existingPlaces) {
+      if (syncedTripPlaceIds.has(existingPlace.id)) {
+        continue;
+      }
+
+      const deleted = await deleteTripPlace(c.env.DB, userId, tripId, existingPlace.id);
+      if (deleted) {
+        pruned += 1;
+      }
+    }
+  }
+
   await createAuditLog(c.env.DB, {
     userId,
     action: "trip_place.sync",
     entityType: "trip",
     entityId: tripId,
     requestId: requestId(c),
-    metadata: { placeCount: updatedPlaces.length, created, relinked }
+    metadata: { placeCount: updatedPlaces.length, created, relinked, pruned }
   });
 
   return c.json({
@@ -822,6 +839,7 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
       created,
       relinked,
       updated: updatedPlaces.length,
+      pruned,
       skipped: syncItems.length - updatedPlaces.length,
       items: syncedItems
     },

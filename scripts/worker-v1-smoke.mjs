@@ -314,6 +314,7 @@ await step("trip, day, place, and share CRUD", async () => {
   );
   const sync = await request("PATCH", `/api/v1/trips/${tripId}/places/sync`, {
     json: {
+      pruneMissing: true,
       places: [
         {
           clientId: "smoke-existing-place",
@@ -343,6 +344,7 @@ await step("trip, day, place, and share CRUD", async () => {
   });
   assertOk(sync, "PATCH /api/v1/trips/:tripId/places/sync");
   assert(sync.body?.sync?.created >= 1, "place sync should create missing places");
+  assert(sync.body?.sync?.pruned >= 1, "place sync with pruneMissing should delete stale remote places");
   assert(
     Array.isArray(sync.body?.sync?.items) && sync.body.sync.items.length === 2,
     "place sync should return client id mappings"

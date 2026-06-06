@@ -301,6 +301,21 @@ const premiumStorageContracts = [
   ],
   [
     scheduleScreen,
+    "{ pruneMissing: true }",
+    "Schedule place sync must prune stale remote places when local state is canonical"
+  ],
+  [
+    tripRoutes,
+    "const pruneMissing = raw.pruneMissing === true;",
+    "Worker place sync must require explicit pruneMissing opt-in"
+  ],
+  [
+    workerSmokeScript,
+    "place sync with pruneMissing should delete stale remote places",
+    "Worker smoke must verify stale remote place pruning"
+  ],
+  [
+    scheduleScreen,
     "장소 다시 동기화",
     "Schedule screen must label saved-trip place sync retry"
   ],

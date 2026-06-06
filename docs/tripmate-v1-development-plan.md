@@ -1786,5 +1786,36 @@ Verification completed:
 
 Remaining risks:
 - Device-level smoke is still needed to verify the full retry flow after intentionally interrupting place sync.
-- The resync action does not delete stale remote places that no longer exist locally; explicit delete remains handled by the per-place delete action.
+- Stale remote place pruning was later added to explicit `pruneMissing` sync; per-place delete remains available for targeted removals.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Canonical Place Sync Pruning Result Record
+
+Plan:
+- Make schedule resync treat local currentTrip places as the canonical list when explicitly requested.
+- Add an opt-in `pruneMissing` flag to Worker place sync so stale remote places are soft-deleted only on intentional full sync.
+- Return the pruned count to mobile and surface it in the saved-trip sync notice.
+- Extend Worker smoke and release contract checks to cover stale remote place pruning.
+
+Completed:
+- Added `pruneMissing` handling to `PATCH /api/v1/trips/:tripId/places/sync`.
+- Soft-deleted existing remote places not matched by the incoming sync payload when `pruneMissing: true`.
+- Added `sync.pruned` to the Worker response and mobile `TripPlaceSyncResponse`.
+- Updated schedule sync calls to pass `pruneMissing: true` and mention pruned remote-only places.
+- Added Worker smoke coverage that verifies `pruneMissing` deletes stale remote places.
+- Added release contract checks for opt-in pruning and mobile canonical sync behavior.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm test`
+- `git diff --check`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Worker smoke with D1 is still required to execute the pruning path against a real database.
+- Pruning intentionally depends on local currentTrip being canonical; future multi-device collaboration should use conflict-aware sync instead.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

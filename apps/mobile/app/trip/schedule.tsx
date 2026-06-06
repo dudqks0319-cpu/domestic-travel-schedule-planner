@@ -788,7 +788,8 @@ export default function ScheduleScreen() {
 
     const response = await tripsApi.syncPlaces(
       tripId,
-      syncPlaces.map((item) => item.payload)
+      syncPlaces.map((item) => item.payload),
+      { pruneMissing: true }
     );
 
     const tripPlaceIdsByClientId = new Map(
@@ -803,6 +804,7 @@ export default function ScheduleScreen() {
       created: response.data.sync.created,
       relinked: response.data.sync.relinked,
       updated: response.data.sync.updated,
+      pruned: response.data.sync.pruned,
       skipped: response.data.sync.skipped
     };
   };
@@ -835,7 +837,8 @@ export default function ScheduleScreen() {
         if (syncResult.created > 0 || syncResult.relinked > 0 || syncResult.updated > 0) {
           await persistEditableTripPoints(syncResult.points);
         }
-        setSaveNotice(`현재 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 서버에 다시 동기화했어요.`);
+        const prunedNotice = syncResult.pruned > 0 ? ` 원격에만 남은 장소 ${syncResult.pruned}개도 정리했습니다.` : "";
+        setSaveNotice(`현재 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 서버에 다시 동기화했어요.${prunedNotice}`);
         return;
       }
 
@@ -886,7 +889,8 @@ export default function ScheduleScreen() {
         if (syncResult.created > 0 || syncResult.relinked > 0 || syncResult.updated > 0) {
           await persistEditableTripPoints(syncResult.points, nextDraft);
         }
-        setSaveNotice(`여행을 서버에 저장하고 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 연결했어요.`);
+        const prunedNotice = syncResult.pruned > 0 ? ` 원격에만 남은 장소 ${syncResult.pruned}개도 정리했습니다.` : "";
+        setSaveNotice(`여행을 서버에 저장하고 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 연결했어요.${prunedNotice}`);
       } else {
         setSaveNotice("여행을 서버에 저장했어요. 검색 화면에서 장소를 추가해 주세요.");
       }
