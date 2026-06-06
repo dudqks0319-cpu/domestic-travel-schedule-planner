@@ -13,6 +13,10 @@ dist/
 build/
 coverage/
 
+# Cloudflare Workers local state
+.wrangler/
+services/api-worker/.wrangler/
+
 # Expo / React Native
 .expo/
 .expo-shared/

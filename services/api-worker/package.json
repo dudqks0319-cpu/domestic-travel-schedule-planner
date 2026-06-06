@@ -1,0 +1,20 @@
+{
+  "name": "tripmate-api-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TripMate production API for Cloudflare Workers + Hono + D1",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "typecheck": "tsc --noEmit",
+    "deploy:preview": "wrangler deploy --env preview"
+  },
+  "dependencies": {
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.0.0"
+  }
+}

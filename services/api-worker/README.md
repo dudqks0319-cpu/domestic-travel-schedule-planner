@@ -1,9 +1,34 @@
 # TripMate API Worker
 
-This directory is reserved for the Cloudflare Workers + D1 API runtime.
+Cloudflare Workers + Hono + D1 production API boundary for TripMate v1.0.
 
 The current production-reference implementation remains in `services/api` until the Worker service has equivalent health, places, planner, routes, trips, sharing, and monetization endpoints.
 
-No Worker dependencies are installed yet. Add `hono`, `wrangler`, and the chosen D1 query layer only after dependency approval.
+## Commands
 
-See `docs/cloudflare-workers-mvp-plan.md` for the migration plan and binding draft.
+```sh
+npm --prefix services/api-worker run dev
+npm --prefix services/api-worker run typecheck
+npm --prefix services/api-worker run deploy:preview
+```
+
+## Implemented In Phase 4
+
+- `GET /health`
+- `GET /api/v1/health`
+- request id middleware
+- explicit CORS policy
+- shared error response schema
+- auth middleware skeleton
+- required v1 route skeletons returning `501 NOT_IMPLEMENTED`
+- D1, KV, and R2 binding types
+
+## Not Yet Implemented
+
+- D1 schema and queries
+- trip ownership checks
+- provider adapters
+- provider cache
+- monetization persistence
+
+See `docs/tripmate-v1-development-plan.md` for the release plan and phase order.

@@ -1,0 +1,64 @@
+name = "tripmate-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "local"
+API_VERSION = "v1"
+ALLOWED_ORIGINS = "http://localhost:8081,http://localhost:19006"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tripmate-local"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[kv_namespaces]]
+binding = "PLACE_CACHE"
+id = "00000000000000000000000000000000"
+
+[[r2_buckets]]
+binding = "TRIPMATE_ASSETS"
+bucket_name = "tripmate-assets-local"
+
+[env.preview]
+name = "tripmate-api-preview"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+API_VERSION = "v1"
+ALLOWED_ORIGINS = "http://localhost:8081"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "tripmate-preview"
+database_id = "REPLACE_WITH_PREVIEW_D1_DATABASE_ID"
+
+[[env.preview.kv_namespaces]]
+binding = "PLACE_CACHE"
+id = "REPLACE_WITH_PREVIEW_KV_NAMESPACE_ID"
+
+[[env.preview.r2_buckets]]
+binding = "TRIPMATE_ASSETS"
+bucket_name = "tripmate-assets-preview"
+
+[env.production]
+name = "tripmate-api"
+
+[env.production.vars]
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+ALLOWED_ORIGINS = "https://tripmate.example"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "tripmate-prod"
+database_id = "REPLACE_WITH_PROD_D1_DATABASE_ID"
+
+[[env.production.kv_namespaces]]
+binding = "PLACE_CACHE"
+id = "REPLACE_WITH_PROD_KV_NAMESPACE_ID"
+
+[[env.production.r2_buckets]]
+binding = "TRIPMATE_ASSETS"
+bucket_name = "tripmate-assets"
