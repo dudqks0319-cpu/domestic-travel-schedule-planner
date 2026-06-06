@@ -690,3 +690,28 @@ Verification completed:
 Remaining risks:
 - PDF generation still needs a Worker/R2 export job implementation before production launch.
 - Device-level smoke is still needed for `react-native-view-shot` capture and native share behavior.
+
+## Worker Export Preparation Result Record
+
+Plan:
+- Add a premium-gated Worker endpoint that prepares trip exports without introducing a PDF rendering dependency.
+- Store an export manifest in R2 so a later async renderer can generate PDF/image assets from canonical trip data.
+- Persist export job metadata in D1 with ownership boundaries.
+- Keep returned client data free of raw R2 object keys and private manifest details.
+
+Completed:
+- Added `trip_exports` D1 schema and migration.
+- Added Worker DB helpers for creating and reading owned trip export records.
+- Added `POST /api/v1/trips/:tripId/exports` with auth, trip ownership, active entitlement check, and R2 manifest storage.
+- Added `GET /api/v1/trips/:tripId/exports/:exportId` for owned export job status lookup.
+- Updated the API Worker README to reflect current implemented endpoints and remaining export work.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The endpoint prepares a manifest and queued job record; a separate renderer is still needed for final PDF/image files.
+- Signed URLs and final asset expiry policy still need to be implemented before production export downloads.

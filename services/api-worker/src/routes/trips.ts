@@ -2,6 +2,13 @@ import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
 import {
+  createTripExport,
+  getOwnedTripExport,
+  toPublicTripExport,
+  type TripExportFormat
+} from "../db/exports";
+import { listActiveEntitlements } from "../db/monetization";
+import {
   createShareLink,
   createTripDay,
   createTripPlace,
@@ -61,6 +68,19 @@ function booleanValue(value: unknown): boolean | undefined {
   }
 
   return undefined;
+}
+
+function parseExportFormat(value: unknown): TripExportFormat | null {
+  if (value === "pdf" || value === "image") {
+    return value;
+  }
+
+  return null;
+}
+
+function sqliteDateTimeAfterDays(days: number): string {
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return expiresAt.toISOString().slice(0, 19).replace("T", " ");
 }
 
 function parseTripInput(raw: Record<string, unknown>, existing?: Partial<TripInput>): TripInput | null {
@@ -420,6 +440,88 @@ tripRoutes.delete("/:tripId/days/:dayId/places/:placeId", async (c) => {
   }
 
   return c.json({ ok: true, deleted: true, requestId: c.get("requestId") });
+});
+
+tripRoutes.post("/:tripId/exports", async (c) => {
+  const raw = await c.req.json<Record<string, unknown>>().catch((): Record<string, unknown> => ({}));
+  const format = parseExportFormat(raw.format) ?? "pdf";
+  const userId = currentUserId(c);
+  const tripId = c.req.param("tripId");
+
+  const entitlements = await listActiveEntitlements(c.env.DB, userId);
+  if (!entitlements.length) {
+    return errorResponse(c, 403, "PREMIUM_REQUIRED", "내보내기는 프리미엄 기능입니다.");
+  }
+
+  const trip = await getOwnedTrip(c.env.DB, userId, tripId);
+  if (!trip) {
+    return errorResponse(c, 404, "TRIP_NOT_FOUND", "내보낼 여행을 찾을 수 없습니다.");
+  }
+
+  const [days, places] = await Promise.all([
+    listTripDays(c.env.DB, userId, tripId),
+    listTripPlaces(c.env.DB, userId, tripId)
+  ]);
+  const exportId = crypto.randomUUID();
+  const manifestKey = `exports/${userId}/${tripId}/${exportId}.json`;
+  const expiresAt = sqliteDateTimeAfterDays(7);
+  const publicPlaces = (places ?? []).map(toPublicTripPlace);
+  const publicDays = (days ?? []).map((day) => {
+    const publicDay = toPublicTripDay(day);
+    return {
+      ...publicDay,
+      places: publicPlaces.filter((place) => place.dayId === publicDay.id)
+    };
+  });
+  const manifest = {
+    kind: "trip_export_manifest",
+    version: 1,
+    exportId,
+    format,
+    generatedAt: new Date().toISOString(),
+    expiresAt,
+    requestId: c.get("requestId"),
+    trip: {
+      ...toPublicTrip(trip),
+      days: publicDays,
+      places: publicPlaces
+    }
+  };
+
+  await c.env.TRIPMATE_ASSETS.put(manifestKey, JSON.stringify(manifest), {
+    httpMetadata: { contentType: "application/json; charset=utf-8" }
+  });
+
+  const exportRecord = await createTripExport(c.env.DB, {
+    id: exportId,
+    userId,
+    tripId,
+    format,
+    status: "queued",
+    manifestKey,
+    expiresAt
+  });
+
+  return c.json({
+    ok: true,
+    export: toPublicTripExport(exportRecord),
+    requestId: c.get("requestId")
+  }, 202);
+});
+
+tripRoutes.get("/:tripId/exports/:exportId", async (c) => {
+  const exportRecord = await getOwnedTripExport(
+    c.env.DB,
+    currentUserId(c),
+    c.req.param("tripId"),
+    c.req.param("exportId")
+  );
+
+  if (!exportRecord) {
+    return errorResponse(c, 404, "EXPORT_NOT_FOUND", "내보내기 작업을 찾을 수 없습니다.");
+  }
+
+  return c.json({ ok: true, export: toPublicTripExport(exportRecord), requestId: c.get("requestId") });
 });
 
 tripRoutes.get("/:tripId", async (c) => {

@@ -1,0 +1,90 @@
+export type TripExportFormat = "pdf" | "image";
+export type TripExportStatus = "queued" | "ready" | "failed" | "expired";
+
+export interface TripExportRecord {
+  id: string;
+  user_id: string;
+  trip_id: string;
+  format: TripExportFormat;
+  status: TripExportStatus;
+  manifest_key: string;
+  asset_key: string | null;
+  error_code: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface TripExportInput {
+  id: string;
+  userId: string;
+  tripId: string;
+  format: TripExportFormat;
+  status: TripExportStatus;
+  manifestKey: string;
+  expiresAt?: string;
+}
+
+export function toPublicTripExport(record: TripExportRecord) {
+  return {
+    id: record.id,
+    tripId: record.trip_id,
+    format: record.format,
+    status: record.status,
+    expiresAt: record.expires_at,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+    downloadUrl: null as string | null
+  };
+}
+
+export async function createTripExport(
+  db: D1Database,
+  input: TripExportInput
+): Promise<TripExportRecord> {
+  await db
+    .prepare(
+      `INSERT INTO trip_exports (
+        id, user_id, trip_id, format, status, manifest_key, expires_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(
+      input.id,
+      input.userId,
+      input.tripId,
+      input.format,
+      input.status,
+      input.manifestKey,
+      input.expiresAt ?? null
+    )
+    .run();
+
+  const record = await getOwnedTripExport(db, input.userId, input.tripId, input.id);
+  if (!record) {
+    throw new Error("Created trip export could not be loaded.");
+  }
+
+  return record;
+}
+
+export async function getOwnedTripExport(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  exportId: string
+): Promise<TripExportRecord | null> {
+  const record = await db
+    .prepare(
+      `SELECT * FROM trip_exports
+       WHERE id = ?
+         AND user_id = ?
+         AND trip_id = ?
+         AND deleted_at IS NULL
+       LIMIT 1`
+    )
+    .bind(exportId, userId, tripId)
+    .first<TripExportRecord>();
+
+  return record ?? null;
+}

@@ -12,23 +12,28 @@ npm --prefix services/api-worker run typecheck
 npm --prefix services/api-worker run deploy:preview
 ```
 
-## Implemented In Phase 4
+## Implemented
 
 - `GET /health`
 - `GET /api/v1/health`
 - request id middleware
 - explicit CORS policy
 - shared error response schema
-- auth middleware skeleton
-- required v1 route skeletons returning `501 NOT_IMPLEMENTED`
+- Kakao auth/session endpoints
+- authenticated trip, trip-day, and trip-place CRUD
+- read-only share link API and public share page
+- place provider adapters and normalized place search
+- planner and route optimization endpoints
+- monetization entitlement, ad event, and affiliate click endpoints
+- premium-gated trip export preparation endpoint
 - D1, KV, and R2 binding types
+- D1 schema and migrations
 
 ## Not Yet Implemented
 
-- D1 schema and queries
-- trip ownership checks
-- provider adapters
-- provider cache
-- monetization persistence
+- production PDF/image rendering workers
+- signed download URLs for generated export assets
+- live provider smoke test with production Cloudflare secrets
+- mobile IAP receipt submission UI
 
 See `docs/tripmate-v1-development-plan.md` for the release plan and phase order.
