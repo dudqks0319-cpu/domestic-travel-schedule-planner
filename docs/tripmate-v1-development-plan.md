@@ -2676,3 +2676,26 @@ Verification completed:
 Remaining risks:
 - The actual remote checks require a Cloudflare-authenticated shell and network access, so they are not part of local `check:dev`.
 - Secret presence does not prove secret correctness; preview smoke and provider/auth flows still need to run against real configured values.
+
+## Account Deletion Release Contract Result Record
+
+Plan:
+- Convert existing account deletion implementation expectations into release contract checks.
+- Lock the Worker cleanup coverage for sessions, trips, days, places, share links, exports, entitlements, ad events, affiliate clicks, R2 export objects, and audit anonymization.
+- Lock the mobile account deletion entry point and local cleanup call so SecureStore tokens and local trip drafts are cleared after deletion.
+
+Completed:
+- Extended `scripts/release-contract-check.mjs` to read `services/api-worker/src/db/users.ts`.
+- Added account deletion contract checks for Worker R2 cleanup, audit creation/anonymization, DB soft-deletion/revocation/anonymization coverage, and mobile local cleanup.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Contract checks verify source-level coverage; a live preview smoke with seeded exports and share links is still needed before production handoff.
+- R2 bucket lifecycle rules remain a defense-in-depth operational setup item outside this repository.

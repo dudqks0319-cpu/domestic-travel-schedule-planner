@@ -100,6 +100,7 @@ const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
+const userDb = readText("services/api-worker/src/db/users.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
 const loginScreen = readText("apps/mobile/app/auth/login.tsx");
@@ -166,6 +167,90 @@ const routeContracts = [
 for (const [content, routeText, label] of routeContracts) {
   if (!content.includes(routeText)) {
     errors.push(`Missing Worker route contract: ${label}`);
+  }
+}
+
+const accountDeletionContracts = [
+  [
+    authRoutes,
+    "listUserTripExportObjectKeys(c.env.DB, userId)",
+    "Account deletion must collect owned export object keys before DB cleanup"
+  ],
+  [
+    authRoutes,
+    "c.env.TRIPMATE_ASSETS.delete(key)",
+    "Account deletion must delete owned R2 export objects"
+  ],
+  [
+    authRoutes,
+    'action: "user.delete"',
+    "Account deletion must create a privacy-safe audit event"
+  ],
+  [
+    authRoutes,
+    "anonymizeAuditLogsForUser(c.env.DB, userId)",
+    "Account deletion must anonymize historical audit ownership"
+  ],
+  [
+    userDb,
+    "UPDATE user_sessions",
+    "Account deletion must revoke user sessions"
+  ],
+  [
+    userDb,
+    "UPDATE trips",
+    "Account deletion must soft-delete trips"
+  ],
+  [
+    userDb,
+    "UPDATE trip_days",
+    "Account deletion must soft-delete trip days"
+  ],
+  [
+    userDb,
+    "UPDATE trip_places",
+    "Account deletion must soft-delete trip places"
+  ],
+  [
+    userDb,
+    "UPDATE share_links",
+    "Account deletion must disable share links"
+  ],
+  [
+    userDb,
+    "UPDATE trip_exports",
+    "Account deletion must expire trip exports"
+  ],
+  [
+    userDb,
+    "UPDATE subscription_entitlements",
+    "Account deletion must revoke premium entitlements"
+  ],
+  [
+    userDb,
+    "UPDATE ad_events",
+    "Account deletion must anonymize ad event ownership"
+  ],
+  [
+    userDb,
+    "UPDATE affiliate_clicks",
+    "Account deletion must anonymize affiliate click ownership"
+  ],
+  [
+    authProvider,
+    'clearLocalAuthState("account-deleted")',
+    "Mobile account deletion must clear SecureStore tokens and local trip draft data"
+  ],
+  [
+    profileScreen,
+    "계정 및 데이터 삭제",
+    "Mobile profile must expose an account/data deletion entry point"
+  ]
+];
+
+for (const [content, expectedText, label] of accountDeletionContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing account deletion contract: ${label}`);
   }
 }
 
