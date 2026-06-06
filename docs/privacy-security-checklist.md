@@ -49,4 +49,5 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Audit metadata is allowlisted and excludes tokens, receipts, raw provider payloads, and precise coordinates.
 - [ ] Trip, trip day, trip place, share link, export, and entitlement write operations create audit records.
 - [ ] Ops summary reads require `OPS_ADMIN_TOKEN`, create audit records, and never store the token.
+- [ ] Ops retention runs require `OPS_ADMIN_TOKEN`, support dry run, create audit records, and never store the token.
 - [ ] Account deletion anonymizes prior audit log `user_id` values while retaining non-personal operational history.

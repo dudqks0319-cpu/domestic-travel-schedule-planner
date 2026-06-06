@@ -1434,3 +1434,33 @@ Verification completed:
 Remaining risks:
 - Ordinary logout intentionally preserves local trip drafts for continuation; only account deletion performs destructive local draft cleanup.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Ops Retention Policy Result Record
+
+Plan:
+- Reduce the remaining audit/operations retention risk with an explicit Worker-side operations endpoint.
+- Keep the endpoint behind `OPS_ADMIN_TOKEN`, provide a dry-run mode, and log a privacy-safe audit event for every run.
+- Cover the endpoint in release contract checks and optional preview smoke.
+
+Completed:
+- Added D1 helpers to count/delete old `audit_logs` by retention days.
+- Added D1 helpers to count/delete old `operational_events` by retention days.
+- Added `POST /api/v1/ops/retention` with default `auditDays=365`, `operationalDays=90`, and `dryRun=true` support.
+- Added `ops.retention.run` audit logging with allowlisted count/retention metadata.
+- Added optional Worker smoke coverage for `/api/v1/ops/retention?dryRun=true`.
+- Added release contract checks for the ops retention route and smoke coverage.
+- Updated Cloudflare deployment docs and the privacy/security checklist.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Actual production retention cadence still needs to be wired to trusted operator automation or a scheduled Worker trigger after Cloudflare resources are configured.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

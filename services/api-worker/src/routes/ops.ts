@@ -1,7 +1,15 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
-import { createAuditLog } from "../db/audit";
+import {
+  countAuditLogsOlderThan,
+  createAuditLog,
+  deleteAuditLogsOlderThan
+} from "../db/audit";
+import {
+  countOperationalEventsOlderThan,
+  deleteOperationalEventsOlderThan
+} from "../db/operations";
 import { errorResponse } from "../http/errors";
 
 export const opsRoutes = new Hono<AppBindings>();
@@ -53,6 +61,28 @@ function hoursParam(value: string | undefined): number {
   }
 
   return Math.min(168, Math.max(1, Math.floor(parsed)));
+}
+
+function daysParam(
+  value: string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.floor(parsed)));
+}
+
+function booleanParam(value: string | undefined): boolean {
+  return value === "1" || value === "true" || value === "yes";
 }
 
 opsRoutes.use("*", async (c, next) => {
@@ -138,6 +168,57 @@ opsRoutes.get("/summary", async (c) => {
     adEvents: adEvents.results ?? [],
     affiliateClicks: affiliateClicks.results ?? [],
     entitlements: entitlements.results ?? [],
+    requestId: c.get("requestId")
+  });
+});
+
+opsRoutes.post("/retention", async (c) => {
+  const auditRetentionDays = daysParam(c.req.query("auditDays"), 365, 30, 2555);
+  const operationalRetentionDays = daysParam(c.req.query("operationalDays"), 90, 7, 730);
+  const dryRun = booleanParam(c.req.query("dryRun"));
+
+  const [matchedAuditLogs, matchedOperationalEvents] = await Promise.all([
+    countAuditLogsOlderThan(c.env.DB, auditRetentionDays),
+    countOperationalEventsOlderThan(c.env.DB, operationalRetentionDays)
+  ]);
+
+  const [deletedAuditLogs, deletedOperationalEvents] = dryRun
+    ? [0, 0]
+    : await Promise.all([
+        deleteAuditLogsOlderThan(c.env.DB, auditRetentionDays),
+        deleteOperationalEventsOlderThan(c.env.DB, operationalRetentionDays)
+      ]);
+
+  await createAuditLog(c.env.DB, {
+    action: "ops.retention.run",
+    entityType: "ops_retention",
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      auditRetentionDays,
+      operationalRetentionDays,
+      matchedAuditLogs,
+      matchedOperationalEvents,
+      deletedAuditLogs,
+      deletedOperationalEvents,
+      dryRun
+    }
+  });
+
+  return c.json({
+    ok: true,
+    dryRun,
+    retention: {
+      auditDays: auditRetentionDays,
+      operationalDays: operationalRetentionDays
+    },
+    matched: {
+      auditLogs: matchedAuditLogs,
+      operationalEvents: matchedOperationalEvents
+    },
+    deleted: {
+      auditLogs: deletedAuditLogs,
+      operationalEvents: deletedOperationalEvents
+    },
     requestId: c.get("requestId")
   });
 });

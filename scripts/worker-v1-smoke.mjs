@@ -31,7 +31,7 @@ Usage:
 
 Options:
   --base-url   Worker base URL. Default: ${DEFAULT_BASE_URL}
-  --ops-token  Optional server-only token for /api/v1/ops/summary smoke.
+  --ops-token  Optional server-only token for /api/v1/ops summary and retention smoke.
 
 Notes:
   - The script creates and deletes smoke-owned data.
@@ -394,6 +394,15 @@ if (opsToken) {
       }),
       "GET /api/v1/ops/summary"
     );
+  });
+
+  await step("ops retention dry run", async () => {
+    const retention = await request("POST", "/api/v1/ops/retention?dryRun=true&auditDays=365&operationalDays=90", {
+      auth: false,
+      headers: { authorization: `Bearer ${opsToken}` }
+    });
+    assertOk(retention, "POST /api/v1/ops/retention?dryRun=true");
+    assert(retention.body?.dryRun === true, "ops retention smoke should run in dryRun mode");
   });
 }
 

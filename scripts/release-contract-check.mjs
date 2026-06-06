@@ -91,6 +91,7 @@ const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
+const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
 const indexRoutes = readText("services/api-worker/src/index.ts");
 const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
@@ -134,7 +135,9 @@ const routeContracts = [
   [monetizationRoutes, 'monetizationRoutes.post("/ad-events"', "POST /api/v1/monetization/ad-events"],
   [monetizationRoutes, 'monetizationRoutes.post("/affiliate-clicks"', "POST /api/v1/monetization/affiliate-clicks"],
   [monetizationRoutes, 'monetizationRoutes.post("/entitlements/verify"', "POST /api/v1/monetization/entitlements/verify"],
-  [monetizationRoutes, 'monetizationRoutes.get("/entitlements/me"', "GET /api/v1/monetization/entitlements/me"]
+  [monetizationRoutes, 'monetizationRoutes.get("/entitlements/me"', "GET /api/v1/monetization/entitlements/me"],
+  [opsRoutes, 'opsRoutes.get("/summary"', "GET /api/v1/ops/summary"],
+  [opsRoutes, 'opsRoutes.post("/retention"', "POST /api/v1/ops/retention"]
 ];
 
 for (const [content, routeText, label] of routeContracts) {
@@ -268,6 +271,7 @@ for (const text of [
   "KV",
   "R2",
   "worker:smoke",
+  "/api/v1/ops/retention",
   "Do not run this write smoke against production"
 ]) {
   requireText("docs/deployment-cloudflare.md", text);
@@ -300,7 +304,9 @@ for (const text of [
 
 for (const text of [
   "dayNumber auto-link",
-  "dayNumber-only place create should auto-link a trip day"
+  "dayNumber-only place create should auto-link a trip day",
+  "ops retention dry run",
+  "/api/v1/ops/retention?dryRun=true"
 ]) {
   if (!workerSmokeScript.includes(text)) {
     errors.push(`Missing Worker smoke day auto-link assertion: ${text}`);

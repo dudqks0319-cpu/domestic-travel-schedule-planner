@@ -17,7 +17,14 @@ const ALLOWED_METADATA_KEYS = new Set([
   "dayNumber",
   "placeCount",
   "hasSponsored",
-  "windowHours"
+  "windowHours",
+  "auditRetentionDays",
+  "operationalRetentionDays",
+  "matchedAuditLogs",
+  "matchedOperationalEvents",
+  "deletedAuditLogs",
+  "deletedOperationalEvents",
+  "dryRun"
 ]);
 
 function sanitizeMetadata(
@@ -65,4 +72,29 @@ export async function anonymizeAuditLogsForUser(db: D1Database, userId: string):
     )
     .bind(userId)
     .run();
+}
+
+export async function countAuditLogsOlderThan(db: D1Database, retentionDays: number): Promise<number> {
+  const result = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM audit_logs
+       WHERE created_at < datetime('now', ?)`
+    )
+    .bind(`-${retentionDays} days`)
+    .first<{ count: number }>();
+
+  return result?.count ?? 0;
+}
+
+export async function deleteAuditLogsOlderThan(db: D1Database, retentionDays: number): Promise<number> {
+  const result = await db
+    .prepare(
+      `DELETE FROM audit_logs
+       WHERE created_at < datetime('now', ?)`
+    )
+    .bind(`-${retentionDays} days`)
+    .run();
+
+  return result.meta.changes ?? 0;
 }

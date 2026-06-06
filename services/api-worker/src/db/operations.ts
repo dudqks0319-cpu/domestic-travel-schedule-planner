@@ -65,3 +65,34 @@ export async function recordOperationalEvent(
     }));
   }
 }
+
+export async function countOperationalEventsOlderThan(
+  db: D1Database,
+  retentionDays: number
+): Promise<number> {
+  const result = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM operational_events
+       WHERE created_at < datetime('now', ?)`
+    )
+    .bind(`-${retentionDays} days`)
+    .first<{ count: number }>();
+
+  return result?.count ?? 0;
+}
+
+export async function deleteOperationalEventsOlderThan(
+  db: D1Database,
+  retentionDays: number
+): Promise<number> {
+  const result = await db
+    .prepare(
+      `DELETE FROM operational_events
+       WHERE created_at < datetime('now', ?)`
+    )
+    .bind(`-${retentionDays} days`)
+    .run();
+
+  return result.meta.changes ?? 0;
+}

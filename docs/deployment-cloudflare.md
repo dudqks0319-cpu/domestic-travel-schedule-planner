@@ -79,6 +79,22 @@ curl -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
 
 The summary endpoint returns grouped operational events, ad events, affiliate clicks, and entitlement counts. It requires `OPS_ADMIN_TOKEN`, must not be called from mobile clients, and records an `ops.summary.read` audit event without storing the token. Rotate `OPS_ADMIN_TOKEN` per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
+Retention dry run:
+
+```sh
+curl -X POST -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  "https://<worker-host>/api/v1/ops/retention?dryRun=true&auditDays=365&operationalDays=90"
+```
+
+Retention execution:
+
+```sh
+curl -X POST -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  "https://<worker-host>/api/v1/ops/retention?auditDays=365&operationalDays=90"
+```
+
+The retention endpoint deletes `audit_logs` older than `auditDays` and `operational_events` older than `operationalDays`. Use dry run before production execution, keep audit retention at 365 days or longer unless legal policy changes, and run it only from trusted operations automation. The endpoint records an `ops.retention.run` audit event with counts and never stores the operations token.
+
 Worker v1 smoke:
 
 ```sh
@@ -86,6 +102,6 @@ npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
-The smoke script checks health, planner generate/replan, route optimization, provider search contract, Kakao dev login, authenticated trip/day/place/share CRUD, monetization event logging, entitlement state, optional ops summary, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
+The smoke script checks health, planner generate/replan, route optimization, provider search contract, Kakao dev login, authenticated trip/day/place/share CRUD, monetization event logging, entitlement state, optional ops summary, optional ops retention dry run, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
 
 Preview smoke can also be triggered manually from GitHub Actions with `TripMate Worker Preview Smoke`. Provide the preview Worker base URL as `base_url`; the workflow uses `OPS_ADMIN_TOKEN` from repository secrets when available and still relies on the smoke script's `/health` environment guard before write requests.
