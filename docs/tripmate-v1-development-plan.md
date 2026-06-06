@@ -843,3 +843,25 @@ Verification completed:
 Remaining risks:
 - Audit logs currently do not have a retention/deletion policy beyond D1 data ownership cleanup.
 - Provider latency/error metrics are still structured-log oriented and not yet persisted as operational counters.
+
+## Account Deletion Audit Anonymization Result Record
+
+Plan:
+- Align the new audit logging with account/data deletion expectations.
+- Preserve non-personal operational audit history while removing account linkage.
+- Record account deletion itself without retaining the deleted user id afterward.
+
+Completed:
+- Added `anonymizeAuditLogsForUser()` to null out `audit_logs.user_id`.
+- Updated `DELETE /api/v1/auth/me` to create a `user.delete` audit event and then anonymize all audit logs for that user.
+- Updated the privacy/security checklist with audit anonymization expectations.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Audit logs still need an explicit time-based retention policy for production operations.
+- Entity ids in historical audit logs may reference deleted records; they should be treated as operational identifiers, not user-facing recovery handles.

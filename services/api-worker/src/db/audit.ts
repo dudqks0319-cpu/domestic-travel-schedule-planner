@@ -54,3 +54,14 @@ export async function createAuditLog(db: D1Database, input: AuditLogInput): Prom
 
   return id;
 }
+
+export async function anonymizeAuditLogsForUser(db: D1Database, userId: string): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE audit_logs
+       SET user_id = NULL
+       WHERE user_id = ?`
+    )
+    .bind(userId)
+    .run();
+}

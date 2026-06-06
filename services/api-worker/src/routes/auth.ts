@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { verifyKakaoAccessToken } from "../auth/kakao";
 import { refreshTokenExpiresAt, sha256Hex, signToken, verifyToken } from "../auth/tokens";
 import type { AppBindings, Env } from "../bindings";
+import { anonymizeAuditLogsForUser, createAuditLog } from "../db/audit";
 import {
   createUserSession,
   deleteUserData,
@@ -146,6 +147,15 @@ authRoutes.delete("/me", requireAuth, async (c) => {
   if (!deleted) {
     return errorResponse(c, 404, "USER_NOT_FOUND", "사용자를 찾을 수 없습니다.");
   }
+
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "user.delete",
+    entityType: "user",
+    entityId: userId,
+    requestId: c.get("requestId") ?? "unknown"
+  });
+  await anonymizeAuditLogsForUser(c.env.DB, userId);
 
   return c.json({ ok: true, deleted: true, requestId: c.get("requestId") });
 });
