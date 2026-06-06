@@ -726,6 +726,7 @@ for (const text of [
 
 const devReadinessCheck = readText("scripts/dev-readiness-check.mjs");
 const mobileEnvExample = readText("apps/mobile/.env.example");
+const mobileEasConfig = readText("apps/mobile/eas.json");
 for (const key of [
   "EXPO_PUBLIC_API_BASE_URL",
   "EXPO_PUBLIC_MAP_PROVIDER",
@@ -738,6 +739,18 @@ for (const key of [
 ]) {
   if (!mobileEnvExample.includes(key)) {
     errors.push(`Missing mobile public env example key: ${key}`);
+  }
+}
+
+for (const key of ["development", "preview", "production"]) {
+  if (!mobileEasConfig.includes(`"${key}"`)) {
+    errors.push(`Missing EAS mobile build profile: ${key}`);
+  }
+}
+
+for (const key of ["EXPO_PUBLIC_API_BASE_URL", "EXPO_PUBLIC_MAP_PROVIDER"]) {
+  if (!mobileEasConfig.includes(key)) {
+    errors.push(`Missing EAS public env key: ${key}`);
   }
 }
 
@@ -757,6 +770,18 @@ for (const text of [
 ]) {
   if (!devReadinessCheck.includes(text)) {
     errors.push(`dev-readiness-check must scan all mobile runtime env variants: ${text}`);
+  }
+}
+
+for (const text of [
+  "collectEasEnvObjects",
+  "checkMobilePublicEnvMap",
+  "apps/mobile/eas.json",
+  "EAS env keys must start with EXPO_PUBLIC_",
+  "EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL"
+]) {
+  if (!devReadinessCheck.includes(text)) {
+    errors.push(`dev-readiness-check must validate EAS mobile env boundaries: ${text}`);
   }
 }
 

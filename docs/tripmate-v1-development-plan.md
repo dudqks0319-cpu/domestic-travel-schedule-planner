@@ -2309,3 +2309,30 @@ Verification completed:
 Remaining risks:
 - `check:env` only scans env files under `apps/mobile`; CI and app-store build systems must still keep secrets out of external build profile configuration.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## EAS Build Env Boundary Result Record
+
+Plan:
+- Add explicit EAS build profiles for mobile development, preview, and production.
+- Keep EAS build profile env values public-only with `EXPO_PUBLIC_*` keys.
+- Make `check:env` scan EAS `env` objects for server-only keys and non-public names.
+- Fail preview/production checks when EAS API base URLs still point to localhost, placeholder, or example domains.
+
+Completed:
+- Added `apps/mobile/eas.json` with development, preview, and production build profiles.
+- Added `collectEasEnvObjects()` and `checkMobilePublicEnvMap()` to `scripts/dev-readiness-check.mjs`.
+- Extended `check:env` to reject non-`EXPO_PUBLIC_` or server-only keys in EAS build env blocks.
+- Extended preview/production checks to require real EAS `EXPO_PUBLIC_API_BASE_URL` values.
+- Updated release contract checks and env documentation for the EAS mobile env boundary.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- EAS preview/production API base URLs are intentionally placeholders until real Cloudflare Worker domains are assigned, so `npm run check:env:preview` and `npm run check:env:production` should fail before deployment setup.
+- EAS remote secret storage and native SDK keys still require direct console/CI review before store submission.

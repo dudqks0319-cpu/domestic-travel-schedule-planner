@@ -177,6 +177,85 @@ for (const filePath of mobileRuntimeEnvFiles) {
   checkMobileEnvFile(filePath);
 }
 
+function collectEasEnvObjects(value, pathParts = [], entries = []) {
+  if (!value || typeof value !== "object") {
+    return entries;
+  }
+
+  if (!Array.isArray(value) && value.env && typeof value.env === "object" && !Array.isArray(value.env)) {
+    entries.push({
+      label: `apps/mobile/eas.json:${pathParts.concat("env").join(".")}`,
+      env: value.env
+    });
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectEasEnvObjects(item, pathParts.concat(String(index)), entries));
+  } else {
+    for (const [key, child] of Object.entries(value)) {
+      collectEasEnvObjects(child, pathParts.concat(key), entries);
+    }
+  }
+
+  return entries;
+}
+
+function checkMobilePublicEnvMap(label, envMap) {
+  if (typeof envMap.EXPO_PUBLIC_API_BASE_URL === "string" && !hasNonEmptyValue(envMap.EXPO_PUBLIC_API_BASE_URL)) {
+    warnings.push(`${label} has empty EXPO_PUBLIC_API_BASE_URL.`);
+  }
+
+  if (
+    envMap.EXPO_PUBLIC_MAP_PROVIDER === "kakao" &&
+    !hasNonEmptyValue(envMap.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY)
+  ) {
+    warnings.push(`${label} selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
+  }
+
+  for (const key of Object.keys(envMap)) {
+    if (!key.startsWith("EXPO_PUBLIC_")) {
+      errors.push(`Forbidden non-public key in ${label}: ${key}. EAS env keys must start with EXPO_PUBLIC_.`);
+    }
+  }
+
+  for (const key of forbiddenMobileKeys) {
+    if (Object.prototype.hasOwnProperty.call(envMap, key)) {
+      errors.push(`Forbidden server-only key in ${label}: ${key}`);
+    }
+  }
+}
+
+const easConfigPath = fromRoot("apps", "mobile", "eas.json");
+if (!fs.existsSync(easConfigPath)) {
+  warnings.push("Missing apps/mobile/eas.json. EAS build profiles should define only public EXPO_PUBLIC_* env values.");
+} else {
+  try {
+    const easConfig = JSON.parse(fs.readFileSync(easConfigPath, "utf8"));
+    for (const entry of collectEasEnvObjects(easConfig)) {
+      checkMobilePublicEnvMap(entry.label, entry.env);
+    }
+
+    const targetBuildEnv = easConfig?.build?.[checkTarget]?.env;
+    if (checkTarget === "preview" || checkTarget === "production") {
+      if (!targetBuildEnv || typeof targetBuildEnv !== "object") {
+        errors.push(`Missing EAS ${checkTarget} build env in apps/mobile/eas.json.`);
+      } else {
+        const apiBaseUrl = String(targetBuildEnv.EXPO_PUBLIC_API_BASE_URL ?? "");
+        if (!apiBaseUrl || /REPLACE_WITH|localhost|127\.0\.0\.1|example/.test(apiBaseUrl)) {
+          errors.push(`EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL.`);
+        }
+      }
+    } else {
+      const serialized = JSON.stringify(easConfig);
+      if (/REPLACE_WITH|tripmate\.example/.test(serialized)) {
+        warnings.push("apps/mobile/eas.json still has preview/production placeholder public URLs. Run check:env with --target preview or --target production before release builds.");
+      }
+    }
+  } catch (error) {
+    errors.push(`Invalid apps/mobile/eas.json: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 function cloudflareEnvBlock(content, target) {
   const marker = `[env.${target}]`;
   const start = content.indexOf(marker);

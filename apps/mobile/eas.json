@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 15.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8787/api/v1",
+        "EXPO_PUBLIC_MAP_PROVIDER": "mock"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://tripmate-api-preview.REPLACE_WITH_ACCOUNT.workers.dev/api/v1",
+        "EXPO_PUBLIC_MAP_PROVIDER": "kakao"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tripmate.example/api/v1",
+        "EXPO_PUBLIC_MAP_PROVIDER": "kakao"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -18,6 +18,7 @@ EXPO_PUBLIC_AFFILIATE_LOCAL_TOUR_URL=
 ```
 
 Every key in mobile runtime env files must start with `EXPO_PUBLIC_`. This includes `apps/mobile/.env`, `.env.local`, `.env.development`, `.env.production`, and other `.env.*` variants. Do not add private server keys, provider REST keys, JWT secrets, admin tokens, or purchase verification secrets to any mobile env file.
+The same rule applies to `apps/mobile/eas.json` build profile `env` blocks. EAS build profiles may contain only public `EXPO_PUBLIC_*` values. Store server secrets in Cloudflare, store console, or EAS secret storage only when a native SDK specifically requires a public/mobile-safe value.
 
 Allowed map provider values are currently `mock`, `naver`, and `kakao`. The app must not read provider API secrets from public env.
 `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` is only for Kakao's web map JavaScript SDK and must be domain-restricted in the Kakao console. It is not a replacement for `KAKAO_REST_API_KEY`, which remains server-only.
@@ -84,3 +85,4 @@ Configured in `services/api-worker/wrangler.toml`:
 
 `npm run check:env` fails when any non-`EXPO_PUBLIC_` key or known server-only key appears in any `apps/mobile/.env*` runtime file, excluding `.env.example`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe production origins.
 The same check fails if server-only Worker secrets are added to `wrangler.toml` vars instead of Cloudflare secrets.
+For preview/production targets, the check also fails when the corresponding EAS `EXPO_PUBLIC_API_BASE_URL` still points to localhost, an example domain, or a placeholder Worker URL.
