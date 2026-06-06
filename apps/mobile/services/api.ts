@@ -15,6 +15,15 @@ type RetriableRequestConfig = {
   _retry?: boolean;
 } & AxiosRequestConfig;
 
+export interface ApiErrorPayload {
+  ok: false;
+  error?: {
+    code?: string;
+    message?: string;
+    requestId?: string;
+  };
+}
+
 function applyAuthorizationHeader(
   config: { headers?: AxiosRequestConfig["headers"] },
   token: string
@@ -75,6 +84,26 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
+export function getApiErrorCode(error: unknown): string | null {
+  if (!axios.isAxiosError<ApiErrorPayload>(error)) {
+    return null;
+  }
+
+  return error.response?.data?.error?.code ?? null;
+}
+
+export function getApiErrorMessage(error: unknown): string | null {
+  if (!axios.isAxiosError<ApiErrorPayload>(error)) {
+    return null;
+  }
+
+  return error.response?.data?.error?.message ?? null;
+}
+
+export function isFreeTripLimitError(error: unknown): boolean {
+  return getApiErrorCode(error) === "FREE_TRIP_LIMIT_REACHED";
+}
 
 export const tourismApi = {
   getAttractions: (area: string, page?: number, contentType?: string) =>
@@ -283,7 +312,7 @@ export const tripsApi = {
     apiClient.get<{ ok: true; trips: TripWithPlacesDto[] }>("/trips", {
       params: { include: "places" }
     }),
-  create: (data: Record<string, unknown>) => apiClient.post("/trips", data),
+  create: (data: Record<string, unknown>) => apiClient.post<{ ok: true; trip: TripDto }>("/trips", data),
   get: (tripId: string) => apiClient.get<{ ok: true; trip: TripDto }>(`/trips/${tripId}`),
   update: (tripId: string, data: Record<string, unknown>) =>
     apiClient.patch(`/trips/${tripId}`, data),

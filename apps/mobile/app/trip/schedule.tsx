@@ -19,7 +19,14 @@ import {
   type PremiumEntitlementState
 } from "../../services/monetization";
 import { getAffiliateOffers, type AffiliateOffer } from "../../services/affiliateOffers";
-import { buildTripShareUrl, plannerApi, tripsApi, type NormalizedPlaceDto } from "../../services/api";
+import {
+  buildTripShareUrl,
+  getApiErrorMessage,
+  isFreeTripLimitError,
+  plannerApi,
+  tripsApi,
+  type NormalizedPlaceDto
+} from "../../services/api";
 import {
   clearPersistedOptimizedRoute,
   loadPersistedOptimizedRoute,
@@ -588,6 +595,8 @@ export default function ScheduleScreen() {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
@@ -704,9 +713,12 @@ export default function ScheduleScreen() {
   const isFallbackTimeline = !route && !!fallbackRoute;
   const hasEditablePlaces = editableTripPoints.length > 0;
 
-  const persistEditableTripPoints = async (nextPoints: EditableTripPoint[]) => {
+  const persistEditableTripPoints = async (
+    nextPoints: EditableTripPoint[],
+    draftOverride?: Record<string, unknown>
+  ) => {
     const nextRoutePoints = nextPoints.map(editableToRoutePoint);
-    const baseDraft = currentTripDraft ?? {
+    const baseDraft = draftOverride ?? currentTripDraft ?? {
       destination: tripMeta.destination,
       startDate: tripMeta.startDate,
       endDate: tripMeta.endDate
@@ -754,12 +766,7 @@ export default function ScheduleScreen() {
     await tripsApi.deletePlaceById(tripId, point.tripPlaceId);
   };
 
-  const syncRemoteReplannedPlaces = async (nextPoints: EditableTripPoint[]) => {
-    const tripId = currentServerTripId();
-    if (!tripId) {
-      return { points: nextPoints, created: 0, relinked: 0, updated: 0, skipped: nextPoints.length };
-    }
-
+  const syncPlacesToTrip = async (tripId: string, nextPoints: EditableTripPoint[]) => {
     const syncPlaces = nextPoints.map((point, index) => ({
       clientId: point.id ?? point.providerPlaceId ?? `replan-point-${index + 1}`,
       point,
@@ -798,6 +805,90 @@ export default function ScheduleScreen() {
       updated: response.data.sync.updated,
       skipped: response.data.sync.skipped
     };
+  };
+
+  const syncRemoteReplannedPlaces = async (nextPoints: EditableTripPoint[]) => {
+    const tripId = currentServerTripId();
+    if (!tripId) {
+      return { points: nextPoints, created: 0, relinked: 0, updated: 0, skipped: nextPoints.length };
+    }
+
+    return syncPlacesToTrip(tripId, nextPoints);
+  };
+
+  const saveCurrentTripToServer = async () => {
+    if (currentServerTripId()) {
+      setSaveNotice("이미 서버에 저장된 여행입니다.");
+      return;
+    }
+
+    if (saveLoading) {
+      return;
+    }
+
+    setSaveLoading(true);
+    setSaveNotice(null);
+    try {
+      const styleKey =
+        typeof currentTripDraft?.styleKey === "string" && currentTripDraft.styleKey.trim()
+          ? currentTripDraft.styleKey
+          : "sea_cafe_food";
+      const transportMode =
+        typeof currentTripDraft?.transportMode === "string" && currentTripDraft.transportMode.trim()
+          ? currentTripDraft.transportMode
+          : typeof currentTripDraft?.mode === "string" && currentTripDraft.mode.trim()
+            ? currentTripDraft.mode
+            : "driving";
+      const title =
+        typeof currentTripDraft?.title === "string" && currentTripDraft.title.trim()
+          ? currentTripDraft.title
+          : `${tripMeta.destination} 여행`;
+      const response = await tripsApi.create({
+        title,
+        destination: tripMeta.destination,
+        startDate: tripMeta.startDate,
+        endDate: tripMeta.endDate,
+        styleKey,
+        transportMode
+      });
+      const savedTrip = response.data.trip;
+      const baseDraft = currentTripDraft ?? {};
+      const nextDraft = {
+        ...baseDraft,
+        id: savedTrip.id,
+        title: savedTrip.title,
+        destination: savedTrip.destination,
+        startDate: savedTrip.startDate,
+        endDate: savedTrip.endDate,
+        styleKey: savedTrip.styleKey ?? styleKey,
+        transportMode: savedTrip.transportMode ?? transportMode
+      };
+
+      setCurrentTripDraft(nextDraft);
+      await AsyncStorage.setItem(CURRENT_TRIP_STORAGE_KEY, JSON.stringify({
+        ...nextDraft,
+        routePoints: editableTripPoints.map(serializeEditableTripPoint),
+        providerStatus: editableTripPoints.length >= 2 ? "ready" : "empty"
+      }));
+
+      if (editableTripPoints.length) {
+        const syncResult = await syncPlacesToTrip(savedTrip.id, editableTripPoints);
+        if (syncResult.created > 0 || syncResult.relinked > 0 || syncResult.updated > 0) {
+          await persistEditableTripPoints(syncResult.points, nextDraft);
+        }
+        setSaveNotice(`여행을 서버에 저장하고 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 연결했어요.`);
+      } else {
+        setSaveNotice("여행을 서버에 저장했어요. 검색 화면에서 장소를 추가해 주세요.");
+      }
+    } catch (error) {
+      if (isFreeTripLimitError(error)) {
+        setSaveNotice(getApiErrorMessage(error) ?? "무료 플랜 저장 한도에 도달했어요. 프리미엄에서 무제한 저장을 사용할 수 있습니다.");
+      } else {
+        setSaveNotice("여행을 서버에 저장하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
+      }
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const shareCurrentTrip = async () => {
@@ -1327,6 +1418,18 @@ export default function ScheduleScreen() {
               <View style={styles.bottomActions}>
                 <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
                 <Button
+                  title={
+                    currentServerTripId()
+                      ? "서버에 저장됨"
+                      : saveLoading
+                        ? "서버 저장 중..."
+                        : "서버에 저장"
+                  }
+                  variant="outline"
+                  onPress={() => { void saveCurrentTripToServer(); }}
+                />
+                {saveNotice ? <Text style={styles.saveNoticeText}>{saveNotice}</Text> : null}
+                <Button
                   title={shareLoading ? "공유 링크 생성 중..." : "공유 링크 만들기"}
                   variant="outline"
                   onPress={() => { void shareCurrentTrip(); }}
@@ -1423,6 +1526,18 @@ export default function ScheduleScreen() {
 
               <View style={styles.bottomActions}>
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
+                <Button
+                  title={
+                    currentServerTripId()
+                      ? "서버에 저장됨"
+                      : saveLoading
+                        ? "서버 저장 중..."
+                        : "서버에 저장"
+                  }
+                  variant="outline"
+                  onPress={() => { void saveCurrentTripToServer(); }}
+                />
+                {saveNotice ? <Text style={styles.saveNoticeText}>{saveNotice}</Text> : null}
                 <Button
                   title={shareLoading ? "공유 링크 생성 중..." : "공유 링크 만들기"}
                   variant="outline"
@@ -2033,6 +2148,14 @@ const styles = StyleSheet.create({
   shareNoticeText: {
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
+    textAlign: "center"
+  },
+  saveNoticeText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primaryDark,
+    backgroundColor: Theme.colors.primaryLight,
+    borderRadius: 10,
+    padding: Spacing.sm,
     textAlign: "center"
   },
   emptyCard: {

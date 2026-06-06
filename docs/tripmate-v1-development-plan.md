@@ -1701,6 +1701,35 @@ Verification completed:
 - `npm run check:dev`
 
 Remaining risks:
-- The mobile trip creation surfaces still use generic failure handling for `FREE_TRIP_LIMIT_REACHED`; an upsell-specific error view can improve conversion.
+- Mobile `FREE_TRIP_LIMIT_REACHED` handling was later added in the schedule save action; other future save entry points should reuse that helper.
 - Active entitlement state still depends on live Apple/Google validation being completed before production purchases can unlock the limit automatically.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Mobile Saved Trip Upsell Result Record
+
+Plan:
+- Connect local schedule drafts to the Worker trip save API so users can intentionally persist a generated itinerary.
+- Surface the Worker `FREE_TRIP_LIMIT_REACHED` response as a premium storage upsell instead of a generic failure.
+- Reuse existing trip place sync so saved drafts keep their current provider-backed places and day assignments.
+- Add release contract coverage for the mobile save and free-limit error handling path.
+
+Completed:
+- Added mobile API helpers for Worker error code/message extraction and free saved-trip limit detection.
+- Added a schedule-screen "서버에 저장" action for local drafts.
+- Saved local schedule metadata through `tripsApi.create()` and synced current places through `tripsApi.syncPlaces()`.
+- Updated local `currentTrip` storage with the server trip id and returned trip place ids after save.
+- Added a free-limit specific premium upsell message for `FREE_TRIP_LIMIT_REACHED`.
+- Added release contract checks for the mobile API helper, schedule save action, and free-limit upsell copy.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:release-contract`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke with a signed-in free account at the 3-trip limit is still needed to verify the full tap-to-upsell path.
+- The save action creates the server trip first and then syncs places; if place sync fails after trip creation, the user may need to retry place sync through existing edit actions.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

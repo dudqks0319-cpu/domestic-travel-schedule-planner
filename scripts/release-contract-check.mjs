@@ -98,6 +98,7 @@ const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
 const indexRoutes = readText("services/api-worker/src/index.ts");
 const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
+const mobileApi = readText("apps/mobile/services/api.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
@@ -282,6 +283,21 @@ const premiumStorageContracts = [
     auditDb,
     '"activeTripCountBeforeCreate"',
     "Audit metadata allowlist must include the pre-create trip count"
+  ],
+  [
+    mobileApi,
+    "isFreeTripLimitError",
+    "Mobile API client must expose a free saved-trip limit error helper"
+  ],
+  [
+    scheduleScreen,
+    "saveCurrentTripToServer",
+    "Schedule screen must expose a server-save action for local drafts"
+  ],
+  [
+    scheduleScreen,
+    "무료 플랜 저장 한도",
+    "Schedule screen must surface a free limit upsell message"
   ]
 ];
 
