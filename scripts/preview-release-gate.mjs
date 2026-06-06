@@ -48,10 +48,11 @@ Options:
 The gate runs, in order:
   1. npm run check:env:preview
   2. npm run check:secrets:preview
-  3. npm run check:release-contract
-  4. npm test
-  5. npm run check:health
-  6. npm run worker:smoke against the preview Worker with strict provider mode by default
+  3. npm run d1:check:preview
+  4. npm run check:release-contract
+  5. npm test
+  6. npm run check:health
+  7. npm run worker:smoke against the preview Worker with strict provider mode by default
 `);
 }
 
@@ -107,6 +108,7 @@ function runCommand(label, command, args, options = {}) {
 async function main() {
   await runCommand("check preview env readiness", npmBin, ["run", "check:env:preview"]);
   await runCommand("check preview Cloudflare secret names", npmBin, ["run", "check:secrets:preview"]);
+  await runCommand("check preview D1 migrations", npmBin, ["run", "d1:check:preview"]);
   await runCommand("check release contract", npmBin, ["run", "check:release-contract"]);
   await runCommand("run planner tests", npmBin, ["test"]);
   await runCommand("run build/typecheck health gate", npmBin, ["run", "check:health"]);

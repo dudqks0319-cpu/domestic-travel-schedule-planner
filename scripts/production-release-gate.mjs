@@ -41,10 +41,11 @@ Required:
 The gate runs, in order:
   1. npm run check:env:production
   2. npm run check:secrets:production
-  3. npm run check:release-contract
-  4. npm test
-  5. npm run check:health
-  6. Read-only health checks against /health and /api/v1/health
+  3. npm run d1:check:production
+  4. npm run check:release-contract
+  5. npm test
+  6. npm run check:health
+  7. Read-only health checks against /health and /api/v1/health
 
 No production write smoke is run by this gate.
 `);
@@ -121,6 +122,7 @@ async function verifyProductionHealth(productionBaseUrl) {
 async function main() {
   await runCommand("check production env readiness", npmBin, ["run", "check:env:production"]);
   await runCommand("check production Cloudflare secret names", npmBin, ["run", "check:secrets:production"]);
+  await runCommand("check production D1 migrations", npmBin, ["run", "d1:check:production"]);
   await runCommand("check release contract", npmBin, ["run", "check:release-contract"]);
   await runCommand("run planner tests", npmBin, ["test"]);
   await runCommand("run build/typecheck health gate", npmBin, ["run", "check:health"]);

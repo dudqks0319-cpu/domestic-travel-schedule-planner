@@ -58,6 +58,8 @@ const requiredRootScripts = [
   "check:secrets:production",
   "d1:plan:preview",
   "d1:plan:production",
+  "d1:check:preview",
+  "d1:check:production",
   "d1:migrate:preview",
   "d1:migrate:production",
   "release:preview:gate",
@@ -168,6 +170,16 @@ const d1MigrationRunnerContracts = [
     "Root package must expose production D1 migration plan with explicit confirmation"
   ],
   [
+    packageJson.scripts?.["d1:check:preview"] ?? "",
+    "scripts/d1-migrate.mjs --target preview --plan --fail-on-pending",
+    "Root package must expose preview D1 migration pending check"
+  ],
+  [
+    packageJson.scripts?.["d1:check:production"] ?? "",
+    "scripts/d1-migrate.mjs --target production --confirm-production --plan --fail-on-pending",
+    "Root package must expose production D1 migration pending check with explicit confirmation"
+  ],
+  [
     packageJson.scripts?.["d1:migrate:preview"] ?? "",
     "scripts/d1-migrate.mjs --target preview",
     "Root package must expose preview D1 migration runner"
@@ -234,6 +246,16 @@ const d1MigrationRunnerContracts = [
   ],
   [
     d1MigrateScript,
+    "--fail-on-pending requires --plan",
+    "D1 migration runner must only allow pending-failure checks in plan mode"
+  ],
+  [
+    d1MigrateScript,
+    "Pending D1 migrations remain",
+    "D1 migration runner must fail when pending migrations remain in check mode"
+  ],
+  [
+    d1MigrateScript,
     "allowedFailurePattern",
     "D1 migration runner plan mode must narrow tolerated failures to known missing-ledger errors"
   ],
@@ -265,6 +287,11 @@ const productionReleaseGateContracts = [
     productionReleaseGateScript,
     '["run", "check:secrets:production"]',
     "Production release gate must verify Cloudflare production secret names"
+  ],
+  [
+    productionReleaseGateScript,
+    '["run", "d1:check:production"]',
+    "Production release gate must fail when production D1 migrations are pending"
   ],
   [
     productionReleaseGateScript,
@@ -333,6 +360,11 @@ const previewReleaseGateContracts = [
     previewReleaseGateScript,
     '["run", "check:secrets:preview"]',
     "Preview release gate must verify Cloudflare preview secret names"
+  ],
+  [
+    previewReleaseGateScript,
+    '["run", "d1:check:preview"]',
+    "Preview release gate must fail when preview D1 migrations are pending"
   ],
   [
     previewReleaseGateScript,

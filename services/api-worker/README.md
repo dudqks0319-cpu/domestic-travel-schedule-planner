@@ -13,9 +13,11 @@ npm --prefix services/api-worker run deploy:preview
 npm run worker:smoke:local
 npm run d1:plan:preview
 npm run d1:migrate:preview
+npm run d1:check:preview
 npm run release:preview:gate -- --base-url https://<preview-worker>
 npm run d1:plan:production
 npm run d1:migrate:production
+npm run d1:check:production
 npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"

@@ -3804,3 +3804,38 @@ Verification completed:
 Remaining risks:
 - Missing-ledger handling has not been exercised against a real remote D1 database without `schema_migrations`.
 - Live auth/network/binding failure behavior still needs real Cloudflare execution evidence before release handoff.
+
+## D1 Pending Migration Gate Result Record
+
+Plan:
+- Add a no-write D1 check that fails when remote preview or production has pending migrations.
+- Keep the check based on plan mode so it does not mutate D1.
+- Wire the check into preview and production release gates after env/secret checks.
+- Preserve production confirmation requirements for production D1 checks.
+
+Completed:
+- Added `--fail-on-pending` to `scripts/d1-migrate.mjs`.
+- Added root scripts `d1:check:preview` and `d1:check:production`.
+- Updated preview and production release gates to run the corresponding D1 pending migration check.
+- Updated release contract checks for D1 check scripts, pending migration failure, and release gate integration.
+- Updated README, API Worker README, and Cloudflare deployment docs to include D1 checks in release handoff.
+
+Verification completed:
+- `node --check scripts/d1-migrate.mjs`
+- `node --check scripts/preview-release-gate.mjs`
+- `node --check scripts/production-release-gate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run d1:check:preview -- --help`
+- `npm run d1:check:production -- --help`
+- `npm run release:preview:gate -- --help`
+- `npm run release:production:gate -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- D1 pending checks require real Cloudflare D1 bindings and auth for live evidence.
+- If pending migrations exist in preview or production, release gates will fail until `d1:migrate:*` applies them and records the ledger.

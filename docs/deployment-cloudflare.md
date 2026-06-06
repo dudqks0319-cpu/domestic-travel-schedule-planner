@@ -44,7 +44,7 @@ Before preview deploy:
 - Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
 - Review pending preview D1 migrations with `npm run d1:plan:preview`.
 - Apply preview D1 migrations with `npm run d1:migrate:preview`.
-- Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, release contract checks, tests, health checks, and strict Naver provider smoke by default.
+- Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, pending D1 migration checks, release contract checks, tests, health checks, and strict Naver provider smoke by default.
 
 The D1 migration plan mode reads `schema_migrations` without writing and prints applied/pending filenames. It tolerates a missing `schema_migrations` table as zero applied migrations, but auth, network, binding, and SQL errors still fail the command. The migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
 
@@ -57,7 +57,7 @@ Production gates:
 - `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
 - Review pending production D1 migrations with `npm run d1:plan:production`.
 - Apply production D1 migrations with `npm run d1:migrate:production` after reviewing the SQL files and confirming the target database.
-- `npm run release:production:gate -- --base-url https://<production-worker>` from a Cloudflare-authenticated shell. This includes `check:env:production`, `check:secrets:production`, release contract checks, tests, health checks, and read-only production Worker health checks. It never runs write smoke against production.
+- `npm run release:production:gate -- --base-url https://<production-worker>` from a Cloudflare-authenticated shell. This includes `check:env:production`, `check:secrets:production`, pending D1 migration checks, release contract checks, tests, health checks, and read-only production Worker health checks. It never runs write smoke against production.
 - D1 migration reviewed
 - provider keys set as Cloudflare secrets
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` set as Cloudflare secrets in preview and production
@@ -136,9 +136,11 @@ Worker v1 smoke:
 npm run worker:smoke:local
 npm run d1:plan:preview
 npm run d1:migrate:preview
+npm run d1:check:preview
 npm run release:preview:gate -- --base-url https://<preview-worker>
 npm run d1:plan:production
 npm run d1:migrate:production
+npm run d1:check:production
 npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"

@@ -41,13 +41,15 @@ Usage:
   npm run d1:migrate:preview
   npm run d1:migrate:production
   npm run d1:migrate:preview -- --plan
-  npm run d1:migrate:production -- --plan
+  npm run d1:migrate:preview -- --plan --fail-on-pending
+  npm run d1:migrate:production -- --plan --fail-on-pending
   node scripts/d1-migrate.mjs --target preview
   node scripts/d1-migrate.mjs --target production --confirm-production
 
 Options:
   --target                preview or production.
   --plan                  Print applied and pending migrations without writing.
+  --fail-on-pending       In plan mode, fail if any migration is pending.
   --confirm-production    Required for production migrations.
 
 This command records applied SQL files in schema_migrations and executes only
@@ -64,9 +66,15 @@ if (hasFlag("--help") || hasFlag("-h")) {
 
 const target = readArg("--target", "");
 const planOnly = hasFlag("--plan");
+const failOnPending = hasFlag("--fail-on-pending");
 
 if (!allowedTargets.has(target)) {
   console.error("[d1:migrate] ERROR: --target must be preview or production.");
+  process.exit(1);
+}
+
+if (failOnPending && !planOnly) {
+  console.error("[d1:migrate] ERROR: --fail-on-pending requires --plan.");
   process.exit(1);
 }
 
@@ -237,6 +245,9 @@ async function main() {
     for (const migrationFile of migrations) {
       const status = appliedMigrations.has(migrationFile) ? "applied" : "pending";
       console.log(`[d1:migrate] ${target}: ${status} ${migrationFile}`);
+    }
+    if (failOnPending && pendingMigrations.length > 0) {
+      throw new Error(`Pending D1 migrations remain for ${target}: ${pendingMigrations.join(", ")}`);
     }
     return;
   }
