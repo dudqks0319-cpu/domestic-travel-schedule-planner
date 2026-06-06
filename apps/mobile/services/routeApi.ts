@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { getApiV1BaseUrl, readApiBaseUrlFromEnv } from "./apiBase";
+
 export type RouteTransportMode = "driving" | "transit" | "walking";
-export type RouteEstimateProvider = "kakao" | "odsay" | "fallback" | "mixed";
+export type RouteEstimateProvider = "naver" | "kakao" | "odsay" | "fallback" | "mixed";
 
 export interface RoutePoint {
   id?: string;
@@ -15,7 +17,7 @@ export interface RouteSegmentEstimate {
   to: RoutePoint;
   distanceKm: number;
   durationMin: number;
-  provider: "kakao" | "odsay" | "fallback";
+  provider: "naver" | "kakao" | "odsay" | "fallback";
 }
 
 export interface OptimizedRoute {
@@ -36,6 +38,8 @@ export interface OptimizeRouteRequest {
 }
 
 interface OptimizeRouteApiResponse {
+  ok?: boolean;
+  route?: unknown;
   success?: boolean;
   data?: unknown;
   error?: string;
@@ -57,12 +61,7 @@ class RouteApiError extends Error {
 
 export const ROUTE_STORAGE_KEY = "optimizedRoute";
 
-const DEFAULT_API_BASE_URL = "http://localhost:4000";
-const ROUTE_OPTIMIZE_ENDPOINTS = ["/api/v1/route/optimize", "/api/v1/planner/route/optimize"];
-
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
+const ROUTE_OPTIMIZE_ENDPOINTS = ["/routes/optimize", "/route/optimize", "/planner/route/optimize"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -110,44 +109,6 @@ function isOptimizedRoute(value: unknown): value is OptimizedRoute {
   );
 }
 
-function readEnvApiBaseUrl(): string | undefined {
-  const maybeProcess = (
-    globalThis as {
-      process?: {
-        env?: Record<string, string | undefined>;
-      };
-    }
-  ).process;
-
-  const candidate = maybeProcess?.env?.EXPO_PUBLIC_API_BASE_URL;
-
-  if (typeof candidate !== "string") {
-    return undefined;
-  }
-
-  const trimmed = candidate.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function normalizeBaseUrl(raw?: string): string {
-  const value = (raw ?? "").trim();
-  const base = value || DEFAULT_API_BASE_URL;
-
-  let parsed: URL;
-  try {
-    parsed = new URL(base);
-  } catch {
-    throw new RouteApiError("Invalid API base URL configuration.");
-  }
-
-  if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLoopbackHost(parsed.hostname))) {
-    throw new RouteApiError("Insecure API base URL is blocked. Use HTTPS.");
-  }
-
-  const normalized = `${parsed.protocol}//${parsed.host}${parsed.pathname}`.replace(/\/$/, "");
-  return normalized;
-}
-
 function mapTransportMode(mode?: RouteTransportMode): RouteTransportMode {
   if (!mode) {
     return "driving";
@@ -161,12 +122,83 @@ function mapTransportMode(mode?: RouteTransportMode): RouteTransportMode {
 }
 
 function toApiPayload(request: OptimizeRouteRequest): Record<string, unknown> {
+  const points = [
+    request.start,
+    ...(request.waypoints ?? []),
+    ...(request.end ? [request.end] : [])
+  ];
   return {
+    points,
     start: request.start,
     waypoints: request.waypoints ?? [],
     end: request.end,
     roundTrip: request.roundTrip ?? false,
     mode: mapTransportMode(request.mode)
+  };
+}
+
+function routeProvider(value: unknown): RouteEstimateProvider {
+  if (value === "naver" || value === "kakao" || value === "odsay" || value === "mixed") {
+    return value;
+  }
+
+  return "fallback";
+}
+
+function segmentProvider(value: unknown): RouteSegmentEstimate["provider"] {
+  if (value === "naver" || value === "kakao" || value === "odsay") {
+    return value;
+  }
+
+  return "fallback";
+}
+
+function normalizeWorkerRoute(value: unknown): OptimizedRoute | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const orderedPoints = Array.isArray(value.orderedPoints)
+    ? value.orderedPoints.filter((point): point is RoutePoint => isRoutePoint(point))
+    : [];
+  const rawSegments = Array.isArray(value.segments) ? value.segments : [];
+  const segments = rawSegments.flatMap((segment, index): RouteSegmentEstimate[] => {
+    if (!isRecord(segment)) {
+      return [];
+    }
+
+    const from = orderedPoints[index];
+    const to = orderedPoints[index + 1];
+    if (!from || !to || typeof segment.distanceKm !== "number" || typeof segment.durationMin !== "number") {
+      return [];
+    }
+
+    return [{
+      from,
+      to,
+      distanceKm: segment.distanceKm,
+      durationMin: segment.durationMin,
+      provider: segmentProvider(segment.provider)
+    }];
+  });
+
+  if (
+    orderedPoints.length < 2 ||
+    typeof value.totalDistanceKm !== "number" ||
+    typeof value.totalDurationMin !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    orderedPoints,
+    segments,
+    totalDistanceKm: value.totalDistanceKm,
+    totalDurationMin: value.totalDurationMin,
+    source: routeProvider(value.provider),
+    warnings: Array.isArray(value.warnings)
+      ? value.warnings.filter((warning): warning is string => typeof warning === "string")
+      : []
   };
 }
 
@@ -212,7 +244,7 @@ async function requestOptimizeRoute(
     });
   }
 
-  const route = payload?.data;
+  const route = normalizeWorkerRoute(payload?.route) ?? payload?.data;
 
   if (!isOptimizedRoute(route)) {
     throw new RouteApiError("Route optimization response is invalid.", {
@@ -230,7 +262,12 @@ export async function optimizeRoute(
     signal?: AbortSignal;
   }
 ): Promise<OptimizedRoute> {
-  const baseUrl = normalizeBaseUrl(options?.apiBaseUrl ?? readEnvApiBaseUrl());
+  let baseUrl: string;
+  try {
+    baseUrl = getApiV1BaseUrl(options?.apiBaseUrl ?? readApiBaseUrlFromEnv());
+  } catch (error) {
+    throw new RouteApiError(error instanceof Error ? error.message : "Invalid API base URL configuration.");
+  }
   const waypoints = request.waypoints ?? [];
   const totalPoints = 1 + waypoints.length + (request.end ? 1 : 0);
 

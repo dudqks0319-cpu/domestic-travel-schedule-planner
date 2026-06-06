@@ -5,9 +5,10 @@ import {
   getRefreshToken,
   setAccessToken,
 } from "../lib/secure-storage";
+import { getApiOriginUrl, getApiV1BaseUrl } from "./apiBase";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
-const API_PREFIX = "/api/v1";
+const API_BASE = getApiV1BaseUrl();
+const API_ORIGIN = getApiOriginUrl();
 
 type RetriableRequestConfig = {
   url?: string;
@@ -32,7 +33,7 @@ function applyAuthorizationHeader(
 }
 
 const apiClient = axios.create({
-  baseURL: `${API_BASE}${API_PREFIX}`,
+  baseURL: API_BASE,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });
@@ -61,7 +62,7 @@ apiClient.interceptors.response.use(
     }
     originalRequest._retry = true;
     try {
-      const res = await axios.post(`${API_BASE}${API_PREFIX}/auth/refresh`, { refreshToken });
+      const res = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
       const newToken = res.data.accessToken as string;
       await setAccessToken(newToken);
       applyAuthorizationHeader(originalRequest, newToken);
@@ -184,7 +185,7 @@ export interface TripExportDto {
 }
 
 export function buildTripShareUrl(token: string): string {
-  return `${API_BASE.replace(/\/$/, "")}/share/${encodeURIComponent(token)}`;
+  return `${API_ORIGIN}/share/${encodeURIComponent(token)}`;
 }
 
 export const placesApi = {

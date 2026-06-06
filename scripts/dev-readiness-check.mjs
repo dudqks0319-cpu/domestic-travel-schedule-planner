@@ -127,7 +127,7 @@ const forbiddenMobileKeys = [
 ];
 if (!fs.existsSync(mobileEnvPath)) {
   warnings.push(
-    "apps/mobile/.env not found. Mobile app will use default API base URL (http://localhost:4000)."
+    "apps/mobile/.env not found. Mobile app will use default Worker API base URL (http://localhost:8787/api/v1)."
   );
 } else {
   const mobileEnv = parseEnvFile(mobileEnvPath);

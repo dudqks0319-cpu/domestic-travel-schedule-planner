@@ -1088,3 +1088,30 @@ Verification completed:
 Remaining risks:
 - The readiness checker is a lightweight TOML text check, not a full Wrangler deploy validation.
 - Preview/production checks will intentionally fail until real Cloudflare resource IDs and production origins are configured.
+
+## Mobile Worker API Base Result Record
+
+Plan:
+- Align mobile default API base URLs with the Cloudflare Worker v1 API.
+- Normalize `EXPO_PUBLIC_API_BASE_URL` whether it is set to the Worker origin, `/api`, or `/api/v1`.
+- Keep share links on the Worker origin `/share/:token`, not under `/api/v1`.
+- Make route optimization call the Worker `/api/v1/routes/optimize` contract first.
+
+Completed:
+- Added `apps/mobile/services/apiBase.ts` with HTTPS/loopback validation and `/api/v1` normalization.
+- Updated the main Axios client to default to `http://localhost:8787/api/v1`.
+- Updated share URL generation to use the Worker origin `/share/:token`.
+- Updated route optimization to use the normalized Worker v1 base URL and primary `/routes/optimize` endpoint.
+- Added Worker route response normalization for `route.provider`, `orderedPoints`, `segments`, totals, and warnings.
+- Updated local readiness messaging to the Worker default API URL.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+
+Remaining risks:
+- Device-level route optimization smoke still needs a running Worker and map screen interaction.
+- `EXPO_PUBLIC_API_BASE_URL` must point at a smoke-verified preview/prod Worker before app-store release.

@@ -23,7 +23,7 @@ npm run check:health
 npm run check:env
 ```
 
-`npm test` runs planner tests. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` also runs `scripts/dev-readiness-check.mjs`, which currently expects a local `services/api/.env` for the reference API.
+`npm test` runs planner tests. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` also runs `scripts/dev-readiness-check.mjs`; local missing env files are warnings, while `check:env:preview` and `check:env:production` enforce Cloudflare deploy readiness.
 
 ## Environment
 
@@ -33,6 +33,8 @@ Mobile public variables:
 
 - `EXPO_PUBLIC_API_BASE_URL`
 - `EXPO_PUBLIC_MAP_PROVIDER`
+
+`EXPO_PUBLIC_API_BASE_URL` may be the Worker origin or a Worker `/api/v1` URL. The mobile app normalizes it to the v1 API and defaults to `http://localhost:8787/api/v1` for local Worker development.
 
 Reference Express API variables:
 
