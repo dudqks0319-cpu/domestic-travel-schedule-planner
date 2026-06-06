@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import type { AppBindings } from "../bindings";
 import { recordOperationalEvent } from "../db/operations";
 import { getProviderPlace, upsertProviderPlaces } from "../db/places";
+import { applySponsoredPlaces } from "../db/sponsored-places";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import { geocodeAddress, reverseGeocodeCoordinate, searchPlaces } from "../providers";
@@ -53,9 +54,13 @@ placeRoutes.get("/search", async (c) => {
     ...(radius !== undefined ? { radius } : {}),
     limit: numberParam(c.req.query("limit")) ?? 20
   });
-  const savedPlaces = result.places.length
-    ? await upsertProviderPlaces(c.env.DB, result.places)
+  const sponsoredPlaces = result.places.length
+    ? await applySponsoredPlaces(c.env.DB, result.places)
     : [];
+  const savedPlaces = sponsoredPlaces.length
+    ? await upsertProviderPlaces(c.env.DB, sponsoredPlaces)
+    : [];
+  const responsePlaces = savedPlaces.length ? savedPlaces : sponsoredPlaces;
   await recordOperationalEvent(c.env.DB, {
     eventType: "provider_search",
     target: "places.search",
@@ -65,14 +70,15 @@ placeRoutes.get("/search", async (c) => {
     metadata: {
       cacheStatus: result.cacheStatus,
       category: category ?? null,
-      placeCount: result.places.length,
+      placeCount: responsePlaces.length,
+      sponsoredCount: responsePlaces.filter((place) => place.isSponsored).length,
       warningCount: result.warnings.length
     }
   });
 
   return c.json({
     ok: true,
-    places: savedPlaces.length ? savedPlaces : result.places,
+    places: responsePlaces,
     warnings: result.warnings,
     cacheStatus: result.cacheStatus,
     requestId: c.get("requestId")

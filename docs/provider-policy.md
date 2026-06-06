@@ -67,3 +67,5 @@ Sponsored places can appear only when:
 - `isSponsored` is true
 - `sponsorLabel` or disclosure text is shown in UI
 - ranking does not hide the sponsored nature of the recommendation
+
+The Worker applies active D1 `sponsored_places` campaigns to provider search results before persisting or returning `provider_places`. Matching can use `provider_place_id` or normalized place name. Sponsored matches must keep the same place data but set `isSponsored=true`, apply the explicit disclosure label, and record `sponsoredCount` in operational metadata.

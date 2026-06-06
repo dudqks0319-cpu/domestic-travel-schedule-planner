@@ -16,6 +16,7 @@ const ALLOWED_METADATA_KEYS = new Set([
   "pointCount",
   "provider",
   "segmentCount",
+  "sponsoredCount",
   "styleKey",
   "warningCount"
 ]);

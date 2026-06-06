@@ -96,6 +96,8 @@ const workerTokens = readText("services/api-worker/src/auth/tokens.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
 const auditDb = readText("services/api-worker/src/db/audit.ts");
 const routeCacheDb = readText("services/api-worker/src/db/route-cache.ts");
+const operationsDb = readText("services/api-worker/src/db/operations.ts");
+const sponsoredPlacesDb = readText("services/api-worker/src/db/sponsored-places.ts");
 const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
 const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
@@ -713,6 +715,60 @@ const mobileRouteProviderContracts = [
 for (const [content, expectedText, label] of mobileRouteProviderContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing mobile route provider contract: ${label}`);
+  }
+}
+
+const sponsoredPlaceContracts = [
+  [
+    sponsoredPlacesDb,
+    "applySponsoredPlaces",
+    "Worker must expose sponsored place application helper"
+  ],
+  [
+    sponsoredPlacesDb,
+    "FROM sponsored_places",
+    "Sponsored place helper must read active campaigns from D1"
+  ],
+  [
+    sponsoredPlacesDb,
+    "starts_at IS NULL OR starts_at <= datetime('now')",
+    "Sponsored place helper must respect campaign start time"
+  ],
+  [
+    sponsoredPlacesDb,
+    "ends_at IS NULL OR ends_at > datetime('now')",
+    "Sponsored place helper must respect campaign end time"
+  ],
+  [
+    sponsoredPlacesDb,
+    "isSponsored: true",
+    "Sponsored place helper must mark matched places as sponsored"
+  ],
+  [
+    sponsoredPlacesDb,
+    "sponsorLabel: disclosureLabel(sponsor)",
+    "Sponsored place helper must apply explicit disclosure labels"
+  ],
+  [
+    placeRoutes,
+    "applySponsoredPlaces(c.env.DB, result.places)",
+    "Place search route must apply sponsored disclosures before saving or returning results"
+  ],
+  [
+    placeRoutes,
+    "sponsoredCount",
+    "Place search operational events must count sponsored results"
+  ],
+  [
+    operationsDb,
+    '"sponsoredCount"',
+    "Operational event metadata allowlist must include sponsored result counts"
+  ]
+];
+
+for (const [content, expectedText, label] of sponsoredPlaceContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing sponsored place contract: ${label}`);
   }
 }
 

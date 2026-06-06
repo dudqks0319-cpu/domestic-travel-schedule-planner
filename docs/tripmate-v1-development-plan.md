@@ -2917,3 +2917,30 @@ Remaining risks:
 - Live planner route enrichment still needs preview smoke with `KAKAO_REST_API_KEY` and Kakao Mobility directions access.
 - Planner route enrichment currently supports driving routes only; transit/walking remain fallback estimates.
 - Naver Directions parity remains future provider work.
+
+## Sponsored Place Search Disclosure Result Record
+
+Plan:
+- Use the existing D1 `sponsored_places` table to apply sponsor campaign disclosure during provider place search.
+- Match active campaigns by `provider_place_id` or normalized place name.
+- Preserve existing provider place data while setting `isSponsored` and explicit `sponsorLabel`.
+- Record sponsored result counts in operational metadata and add release contract coverage.
+
+Completed:
+- Added `applySponsoredPlaces()` DB helper for active sponsored campaign matching.
+- Applied sponsor disclosure before `/api/v1/places/search` persists or returns provider places.
+- Added `sponsoredCount` to privacy-safe operational event metadata.
+- Updated provider policy and release contract checks for sponsored search disclosure.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- There is still no admin UI/API for creating sponsored campaigns; D1 rows must be seeded operationally.
+- Live campaign matching should be smoke-tested with seeded `sponsored_places` data in preview.
