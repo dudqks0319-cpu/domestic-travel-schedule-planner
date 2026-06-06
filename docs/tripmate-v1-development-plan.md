@@ -3300,3 +3300,32 @@ Verification completed:
 
 Remaining risks:
 - The shortcut still requires a deployed preview Worker with D1/KV/R2 bindings, provider secrets, and enabled Naver products to produce live evidence.
+
+## Worker Premium Export Smoke Result Record
+
+Plan:
+- Extend Worker smoke to exercise the premium PDF export path after non-production manual entitlement activation.
+- Verify export metadata, owned download URL, private cache headers, and printable TripMate HTML content.
+- Avoid leaving smoke-owned R2 export assets behind by cleaning up through account deletion after the smoke flow.
+- Add release contract coverage for the premium export smoke.
+
+Completed:
+- Added a reusable dev Kakao login helper to `scripts/worker-v1-smoke.mjs`.
+- Kept logout coverage by logging out once after refresh, then re-logging in for the remaining write smoke.
+- Added a `premium trip export` smoke step for `POST /api/v1/trips/:tripId/exports`, export metadata read, and owned export download.
+- Changed final cleanup to `DELETE /api/v1/auth/me` so user-owned R2 export assets are removed through the account deletion path.
+- Added release contract checks for premium export smoke coverage and account deletion cleanup.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run worker:typecheck`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Local static checks validate smoke coverage and syntax; executing the export path still requires a local or preview Worker with D1/KV/R2 bindings.

@@ -1066,6 +1066,26 @@ const exportDownloadContracts = [
     tripRoutes,
     "renderPrintableTripExport",
     "PDF export must generate print-ready HTML asset until binary renderer exists"
+  ],
+  [
+    workerSmokeScript,
+    "premium trip export",
+    "Worker smoke must exercise premium export creation"
+  ],
+  [
+    workerSmokeScript,
+    "premium PDF export should return owned download URL",
+    "Worker smoke must verify owned premium export download URL"
+  ],
+  [
+    workerSmokeScript,
+    "premium export download should be private",
+    "Worker smoke must verify private export download cache headers"
+  ],
+  [
+    workerSmokeScript,
+    "DELETE /api/v1/auth/me",
+    "Worker smoke cleanup must delete the smoke account and owned R2 export objects"
   ]
 ];
 

@@ -73,6 +73,17 @@ function smokeName(prefix) {
   return `${prefix}-${Date.now()}`;
 }
 
+async function loginWithDevKakao(label) {
+  const result = await request("POST", "/api/v1/auth/login/kakao", {
+    auth: false,
+    json: { kakaoAccessToken: `dev:${smokeName(label)}` }
+  });
+  assertOk(result, "POST /api/v1/auth/login/kakao");
+  accessToken = result.body?.accessToken ?? "";
+  refreshToken = result.body?.refreshToken ?? "";
+  assert(accessToken && refreshToken, "login should return access and refresh tokens");
+}
+
 async function request(method, path, options = {}) {
   const headers = new Headers(options.headers ?? {});
   if (options.json !== undefined) {
@@ -300,14 +311,7 @@ await step("places geocode contract", async () => {
 });
 
 await step("kakao dev login and session", async () => {
-  const result = await request("POST", "/api/v1/auth/login/kakao", {
-    auth: false,
-    json: { kakaoAccessToken: `dev:${smokeName("worker-smoke")}` }
-  });
-  assertOk(result, "POST /api/v1/auth/login/kakao");
-  accessToken = result.body?.accessToken ?? "";
-  refreshToken = result.body?.refreshToken ?? "";
-  assert(accessToken && refreshToken, "login should return access and refresh tokens");
+  await loginWithDevKakao("worker-smoke");
 
   assertOk(await request("GET", "/api/v1/auth/me"), "GET /api/v1/auth/me");
 
@@ -318,6 +322,9 @@ await step("kakao dev login and session", async () => {
   assertOk(refreshed, "POST /api/v1/auth/refresh");
   accessToken = refreshed.body?.accessToken ?? accessToken;
   refreshToken = refreshed.body?.refreshToken ?? refreshToken;
+  assertOk(await request("POST", "/api/v1/auth/logout"), "POST /api/v1/auth/logout");
+
+  await loginWithDevKakao("worker-smoke-relogin");
 });
 
 await step("trip, day, place, and share CRUD", async () => {
@@ -551,6 +558,35 @@ await step("monetization events and entitlement", async () => {
   assertOk(await request("GET", "/api/v1/monetization/entitlements/me"), "GET /api/v1/monetization/entitlements/me");
 });
 
+await step("premium trip export", async () => {
+  const createdExport = await request("POST", `/api/v1/trips/${tripId}/exports`, {
+    json: { format: "pdf" }
+  });
+  assertStatus(createdExport, 202, "POST /api/v1/trips/:tripId/exports");
+  const exportId = createdExport.body?.export?.id ?? "";
+  assert(exportId, "premium export should return export id");
+  assert(createdExport.body?.export?.format === "pdf", "premium export should preserve requested PDF format");
+  assert(createdExport.body?.export?.status === "ready", "premium PDF export should be ready immediately");
+  assert(
+    typeof createdExport.body?.export?.downloadUrl === "string" &&
+      createdExport.body.export.downloadUrl.includes(`/api/v1/trips/${tripId}/exports/${exportId}/download`),
+    "premium PDF export should return owned download URL"
+  );
+
+  const exportMetadata = await request("GET", `/api/v1/trips/${tripId}/exports/${exportId}`);
+  assertOk(exportMetadata, "GET /api/v1/trips/:tripId/exports/:exportId");
+  assert(exportMetadata.body?.export?.status === "ready", "premium export metadata should stay ready");
+
+  const downloadedExport = await request("GET", `/api/v1/trips/${tripId}/exports/${exportId}/download`);
+  assertOk(downloadedExport, "GET /api/v1/trips/:tripId/exports/:exportId/download");
+  assertHeaderIncludes(downloadedExport, "content-type", "text/html", "premium export download should return HTML");
+  assertHeaderIncludes(downloadedExport, "cache-control", "private", "premium export download should be private");
+  assert(
+    typeof downloadedExport.body === "string" && downloadedExport.body.includes("TripMate"),
+    "premium export download should return printable TripMate content"
+  );
+});
+
 if (opsToken) {
   await step("ops summary", async () => {
     assertOk(
@@ -607,7 +643,7 @@ if (opsToken) {
   });
 }
 
-await step("cleanup smoke trip and logout", async () => {
+await step("cleanup smoke trip and account", async () => {
   if (placeId && tripId) {
     assertOk(await request("DELETE", `/api/v1/trips/${tripId}/places/${placeId}`), "DELETE trip place");
   }
@@ -617,7 +653,7 @@ await step("cleanup smoke trip and logout", async () => {
   if (tripId) {
     assertOk(await request("DELETE", `/api/v1/trips/${tripId}`), "DELETE trip");
   }
-  assertOk(await request("POST", "/api/v1/auth/logout"), "POST /api/v1/auth/logout");
+  assertOk(await request("DELETE", "/api/v1/auth/me"), "DELETE /api/v1/auth/me");
 });
 
 console.log(`\nTripMate Worker v1 smoke passed: ${baseUrl}`);
