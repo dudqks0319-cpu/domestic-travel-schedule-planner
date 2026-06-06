@@ -213,22 +213,6 @@ function editablePointToNormalizedPlace(point: EditableTripPoint, index: number)
   };
 }
 
-function tripPointMatchKey(input: {
-  name?: string | null;
-  lat?: number | null;
-  lng?: number | null;
-}): string | null {
-  if (!input.name || typeof input.lat !== "number" || typeof input.lng !== "number") {
-    return null;
-  }
-
-  return [
-    input.name.trim().toLowerCase(),
-    input.lat.toFixed(5),
-    input.lng.toFixed(5)
-  ].join(":");
-}
-
 function buildExistingPointLookup(points: EditableTripPoint[]): Map<string, EditableTripPoint> {
   const lookup = new Map<string, EditableTripPoint>();
   for (const point of points) {
@@ -776,44 +760,14 @@ export default function ScheduleScreen() {
       return { points: nextPoints, created: 0, relinked: 0, updated: 0, skipped: nextPoints.length };
     }
 
-    const syncedPoints = [...nextPoints];
-    const remotePlaces = await tripsApi.getPlacesByTrip(tripId);
-    const remoteByProviderPlaceId = new Map<string, string>();
-    const remoteByMatchKey = new Map<string, string>();
-    for (const place of remotePlaces.data.places ?? []) {
-      if (place.providerPlaceId) {
-        remoteByProviderPlaceId.set(place.providerPlaceId, place.id);
-      }
-      const matchKey = tripPointMatchKey({
-        name: place.name,
-        lat: place.lat,
-        lng: place.lng
-      });
-      if (matchKey) {
-        remoteByMatchKey.set(matchKey, place.id);
-      }
-    }
-
-    let created = 0;
-    let relinked = 0;
-    for (let index = 0; index < syncedPoints.length; index += 1) {
-      const point = syncedPoints[index];
-      if (point.tripPlaceId) {
-        continue;
-      }
-
-      const matchedTripPlaceId = (
-        point.providerPlaceId ? remoteByProviderPlaceId.get(point.providerPlaceId) : undefined
-      ) ?? remoteByMatchKey.get(tripPointMatchKey(point) ?? "");
-      if (matchedTripPlaceId) {
-        syncedPoints[index] = { ...point, tripPlaceId: matchedTripPlaceId };
-        relinked += 1;
-        continue;
-      }
-
-      const response = await tripsApi.addPlace(tripId, {
-        providerPlaceId: point.providerPlaceId ?? point.id,
-        name: point.name,
+    const syncPlaces = nextPoints.map((point, index) => ({
+      clientId: point.id ?? point.providerPlaceId ?? `replan-point-${index + 1}`,
+      point,
+      payload: {
+        clientId: point.id ?? point.providerPlaceId ?? `replan-point-${index + 1}`,
+        ...(point.tripPlaceId ? { tripPlaceId: point.tripPlaceId } : {}),
+        ...(point.providerPlaceId || point.id ? { providerPlaceId: point.providerPlaceId ?? point.id } : {}),
+        name: point.name ?? `장소 ${index + 1}`,
         category: point.category ?? "장소",
         ...(point.address ? { address: point.address } : {}),
         lat: point.lat,
@@ -822,33 +776,27 @@ export default function ScheduleScreen() {
         sortOrder: index + 1,
         isSponsored: point.isSponsored === true,
         ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {})
-      });
-      syncedPoints[index] = { ...point, tripPlaceId: response.data.place.id };
-      created += 1;
-    }
-
-    const places = syncedPoints.flatMap((point, index) => {
-      if (!point.tripPlaceId) {
-        return [];
       }
+    }));
 
-      return [{
-        placeId: point.tripPlaceId,
-        dayNumber: point.dayNumber,
-        sortOrder: index + 1
-      }];
+    const response = await tripsApi.syncPlaces(
+      tripId,
+      syncPlaces.map((item) => item.payload)
+    );
+
+    const tripPlaceIdsByClientId = new Map(
+      response.data.sync.items.map((item) => [item.clientId, item.tripPlaceId])
+    );
+    const syncedPoints = syncPlaces.map(({ clientId, point }) => {
+      const tripPlaceId = tripPlaceIdsByClientId.get(clientId) ?? point.tripPlaceId;
+      return tripPlaceId ? { ...point, tripPlaceId } : point;
     });
-    if (!places.length) {
-      return { points: syncedPoints, created, relinked, updated: 0, skipped: nextPoints.length };
-    }
-
-    const response = await tripsApi.reorderPlaces(tripId, places);
     return {
       points: syncedPoints,
-      created,
-      relinked,
-      updated: response.data.places.length,
-      skipped: syncedPoints.length - places.length
+      created: response.data.sync.created,
+      relinked: response.data.sync.relinked,
+      updated: response.data.sync.updated,
+      skipped: response.data.sync.skipped
     };
   };
 

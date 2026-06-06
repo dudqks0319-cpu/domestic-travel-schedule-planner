@@ -322,6 +322,21 @@ interface TripPlaceReorderInput {
   sortOrder: number;
 }
 
+interface TripPlaceSyncInput {
+  clientId: string;
+  tripPlaceId?: string;
+  providerPlaceId?: string;
+  name: string;
+  category: string;
+  address?: string;
+  lat: number;
+  lng: number;
+  dayNumber: number;
+  sortOrder: number;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
+}
+
 function positiveIntegerValue(value: unknown): number | null {
   const parsed = numberValue(value);
   if (parsed === null || !Number.isInteger(parsed) || parsed < 1) {
@@ -329,6 +344,22 @@ function positiveIntegerValue(value: unknown): number | null {
   }
 
   return parsed;
+}
+
+function tripPlaceMatchKey(input: {
+  name?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}): string | null {
+  if (!input.name || typeof input.lat !== "number" || typeof input.lng !== "number") {
+    return null;
+  }
+
+  return [
+    input.name.trim().toLowerCase(),
+    input.lat.toFixed(5),
+    input.lng.toFixed(5)
+  ].join(":");
 }
 
 function parseTripPlaceReorderInput(raw: Record<string, unknown>): TripPlaceReorderInput[] | null {
@@ -354,6 +385,66 @@ function parseTripPlaceReorderInput(raw: Record<string, unknown>): TripPlaceReor
 
     seenPlaceIds.add(placeId);
     parsed.push({ placeId, dayNumber, sortOrder });
+  }
+
+  return parsed;
+}
+
+function parseTripPlaceSyncInput(raw: Record<string, unknown>): TripPlaceSyncInput[] | null {
+  const places = raw.places;
+  if (!Array.isArray(places) || places.length === 0 || places.length > 200) {
+    return null;
+  }
+
+  const seenClientIds = new Set<string>();
+  const parsed: TripPlaceSyncInput[] = [];
+  for (const item of places) {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+
+    const record = item as Record<string, unknown>;
+    const clientId = stringValue(record.clientId);
+    const tripPlaceId = stringValue(record.tripPlaceId);
+    const providerPlaceId = stringValue(record.providerPlaceId);
+    const name = stringValue(record.name);
+    const category = stringValue(record.category);
+    const address = stringValue(record.address);
+    const lat = numberValue(record.lat);
+    const lng = numberValue(record.lng);
+    const dayNumber = positiveIntegerValue(record.dayNumber);
+    const sortOrder = positiveIntegerValue(record.sortOrder);
+    const isSponsored = booleanValue(record.isSponsored);
+    const sponsorLabel = stringValue(record.sponsorLabel);
+
+    if (
+      !clientId ||
+      seenClientIds.has(clientId) ||
+      !name ||
+      !category ||
+      lat === null ||
+      lng === null ||
+      dayNumber === null ||
+      sortOrder === null
+    ) {
+      return null;
+    }
+
+    seenClientIds.add(clientId);
+    parsed.push({
+      clientId,
+      ...(tripPlaceId ? { tripPlaceId } : {}),
+      ...(providerPlaceId ? { providerPlaceId } : {}),
+      name,
+      category,
+      ...(address ? { address } : {}),
+      lat,
+      lng,
+      dayNumber,
+      sortOrder,
+      ...(isSponsored !== undefined ? { isSponsored } : {}),
+      ...(sponsorLabel ? { sponsorLabel } : {})
+    });
   }
 
   return parsed;
@@ -566,6 +657,143 @@ tripRoutes.post("/:tripId/days/:dayId/places", async (c) => {
     metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
   });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") }, 201);
+});
+
+tripRoutes.patch("/:tripId/places/sync", async (c) => {
+  const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (!raw) {
+    return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
+  }
+
+  const syncItems = parseTripPlaceSyncInput(raw);
+  if (!syncItems) {
+    return errorResponse(c, 400, "INVALID_TRIP_PLACE_SYNC_INPUT", "장소 동기화 값을 확인해주세요.");
+  }
+
+  const userId = currentUserId(c);
+  const tripId = c.req.param("tripId");
+  const existingPlaces = await listTripPlaces(c.env.DB, userId, tripId);
+  if (!existingPlaces) {
+    return errorResponse(c, 404, "TRIP_NOT_FOUND", "여행을 찾을 수 없습니다.");
+  }
+
+  const existingById = new Map(existingPlaces.map((place) => [place.id, place]));
+  const existingByProviderPlaceId = new Map<string, typeof existingPlaces[number]>();
+  const existingByMatchKey = new Map<string, typeof existingPlaces[number]>();
+  for (const place of existingPlaces) {
+    if (place.provider_place_id) {
+      existingByProviderPlaceId.set(place.provider_place_id, place);
+    }
+    const matchKey = tripPlaceMatchKey({
+      name: place.name,
+      lat: place.lat,
+      lng: place.lng
+    });
+    if (matchKey) {
+      existingByMatchKey.set(matchKey, place);
+    }
+  }
+
+  let created = 0;
+  let relinked = 0;
+  const syncedItems = [];
+  for (const item of syncItems) {
+    const existingByTripPlaceId = item.tripPlaceId ? existingById.get(item.tripPlaceId) : undefined;
+    const existingByProvider = item.providerPlaceId
+      ? existingByProviderPlaceId.get(item.providerPlaceId)
+      : undefined;
+    const existingByKey = existingByMatchKey.get(tripPlaceMatchKey(item) ?? "");
+    const matchedPlace = existingByTripPlaceId ?? existingByProvider ?? existingByKey;
+
+    if (matchedPlace) {
+      syncedItems.push({
+        clientId: item.clientId,
+        tripPlaceId: matchedPlace.id,
+        created: false,
+        relinked: !item.tripPlaceId || item.tripPlaceId !== matchedPlace.id
+      });
+      if (!item.tripPlaceId || item.tripPlaceId !== matchedPlace.id) {
+        relinked += 1;
+      }
+      continue;
+    }
+
+    const createdPlace = await createTripPlace(c.env.DB, userId, tripId, {
+      providerPlaceId: item.providerPlaceId ?? item.clientId,
+      name: item.name,
+      category: item.category,
+      ...(item.address ? { address: item.address } : {}),
+      lat: item.lat,
+      lng: item.lng,
+      dayNumber: item.dayNumber,
+      sortOrder: item.sortOrder,
+      isSponsored: item.isSponsored === true,
+      ...(item.sponsorLabel ? { sponsorLabel: item.sponsorLabel } : {})
+    });
+    if (!createdPlace) {
+      return errorResponse(c, 409, "TRIP_PLACE_SYNC_CREATE_FAILED", "새 장소를 저장하지 못했습니다.");
+    }
+
+    existingById.set(createdPlace.id, createdPlace);
+    if (createdPlace.provider_place_id) {
+      existingByProviderPlaceId.set(createdPlace.provider_place_id, createdPlace);
+    }
+    const createdMatchKey = tripPlaceMatchKey({
+      name: createdPlace.name,
+      lat: createdPlace.lat,
+      lng: createdPlace.lng
+    });
+    if (createdMatchKey) {
+      existingByMatchKey.set(createdMatchKey, createdPlace);
+    }
+
+    syncedItems.push({
+      clientId: item.clientId,
+      tripPlaceId: createdPlace.id,
+      created: true,
+      relinked: false
+    });
+    created += 1;
+  }
+
+  const updatedPlaces = [];
+  for (const item of syncItems) {
+    const syncedItem = syncedItems.find((result) => result.clientId === item.clientId);
+    if (!syncedItem) {
+      continue;
+    }
+
+    const place = await updateTripPlace(c.env.DB, userId, tripId, syncedItem.tripPlaceId, {
+      dayNumber: item.dayNumber,
+      sortOrder: item.sortOrder
+    });
+    if (!place) {
+      return errorResponse(c, 409, "TRIP_PLACE_SYNC_REORDER_FAILED", "장소 순서를 저장하지 못했습니다.");
+    }
+    updatedPlaces.push(place);
+  }
+
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.sync",
+    entityType: "trip",
+    entityId: tripId,
+    requestId: requestId(c),
+    metadata: { placeCount: updatedPlaces.length, created, relinked }
+  });
+
+  return c.json({
+    ok: true,
+    places: updatedPlaces.map(toPublicTripPlace),
+    sync: {
+      created,
+      relinked,
+      updated: updatedPlaces.length,
+      skipped: syncItems.length - updatedPlaces.length,
+      items: syncedItems
+    },
+    requestId: c.get("requestId")
+  });
 });
 
 tripRoutes.patch("/:tripId/places/reorder", async (c) => {

@@ -190,6 +190,38 @@ export interface TripPlaceReorderItem {
   sortOrder: number;
 }
 
+export interface TripPlaceSyncItem {
+  clientId: string;
+  tripPlaceId?: string;
+  providerPlaceId?: string;
+  name: string;
+  category: string;
+  address?: string;
+  lat: number;
+  lng: number;
+  dayNumber: number;
+  sortOrder: number;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
+}
+
+export interface TripPlaceSyncResponse {
+  ok: true;
+  places: TripPlaceDto[];
+  sync: {
+    created: number;
+    relinked: number;
+    updated: number;
+    skipped: number;
+    items: Array<{
+      clientId: string;
+      tripPlaceId: string;
+      created: boolean;
+      relinked: boolean;
+    }>;
+  };
+}
+
 export interface PlannerGenerateParams {
   destination: string;
   startDate: string;
@@ -273,6 +305,8 @@ export const tripsApi = {
     apiClient.post<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days/${dayId}/places`, data),
+  syncPlaces: (tripId: string, places: TripPlaceSyncItem[]) =>
+    apiClient.patch<TripPlaceSyncResponse>(`/trips/${tripId}/places/sync`, { places }),
   reorderPlaces: (tripId: string, places: TripPlaceReorderItem[]) =>
     apiClient.patch<{ ok: true; places: TripPlaceDto[] }>(`/trips/${tripId}/places/reorder`, { places }),
   updatePlaceById: (tripId: string, placeId: string, data: Record<string, unknown>) =>

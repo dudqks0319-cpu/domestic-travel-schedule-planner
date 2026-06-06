@@ -1258,3 +1258,30 @@ Verification completed:
 
 Remaining risks:
 - New place creation still happens sequentially from mobile; a future Worker sync endpoint could create/reorder in one authenticated server-side operation.
+
+## Worker Replan Place Sync Endpoint Result Record
+
+Plan:
+- Move saved-trip replan place creation/relink/reorder from multiple mobile requests into one authenticated Worker endpoint.
+- Keep local-first replan UX while returning `clientId -> tripPlaceId` mappings for local storage hydration.
+- Preserve ownership checks by operating only on `trip_places` loaded through the authenticated trip owner.
+
+Completed:
+- Added `PATCH /api/v1/trips/:tripId/places/sync`.
+- Validated non-empty sync payloads, client ids, coordinates, positive day/order values, and max payload size.
+- Matched existing saved places by owned `tripPlaceId`, provider place id, then normalized name/coordinate key.
+- Created missing replanned places on the Worker, then applied final day/order updates server-side.
+- Returned sync stats and client id mappings to mobile.
+- Updated mobile schedule replan sync to call one Worker endpoint and hydrate returned `tripPlaceId` values.
+- Added Worker smoke coverage and README implementation notes for the sync endpoint.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm --prefix services/api-worker run typecheck`
+- `npm test`
+- `npm run check:health`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `git diff --check`
+
+Remaining risks:
+- The endpoint performs sequential D1 writes internally; a stricter transactional/batch strategy should be considered if D1 transaction support is introduced in the project.

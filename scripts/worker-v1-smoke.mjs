@@ -295,6 +295,41 @@ await step("trip, day, place, and share CRUD", async () => {
     Array.isArray(reorder.body?.places) && reorder.body.places.length === 1,
     "place reorder should return updated places"
   );
+  const sync = await request("PATCH", `/api/v1/trips/${tripId}/places/sync`, {
+    json: {
+      places: [
+        {
+          clientId: "smoke-existing-place",
+          tripPlaceId: placeId,
+          providerPlaceId: "smoke-existing-provider",
+          name: "안목해변 카페거리",
+          category: "카페",
+          address: "강원 강릉시 창해로",
+          lat: 37.7715,
+          lng: 128.9489,
+          dayNumber: 1,
+          sortOrder: 1
+        },
+        {
+          clientId: "smoke-new-place",
+          providerPlaceId: "smoke-new-provider",
+          name: "강릉 중앙시장",
+          category: "맛집",
+          address: "강원 강릉시 금성로",
+          lat: 37.7548,
+          lng: 128.8963,
+          dayNumber: 1,
+          sortOrder: 2
+        }
+      ]
+    }
+  });
+  assertOk(sync, "PATCH /api/v1/trips/:tripId/places/sync");
+  assert(sync.body?.sync?.created >= 1, "place sync should create missing places");
+  assert(
+    Array.isArray(sync.body?.sync?.items) && sync.body.sync.items.length === 2,
+    "place sync should return client id mappings"
+  );
 
   const share = await request("POST", `/api/v1/trips/${tripId}/share`);
   assertStatus(share, 201, "POST /api/v1/trips/:tripId/share");
