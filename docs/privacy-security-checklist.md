@@ -31,6 +31,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 ## Location and Travel Data
 
 - [ ] Fine location permission copy is clear.
+- [ ] Background/Always location permission is not requested unless a background-location feature is implemented and reviewed.
 - [ ] Latitude and longitude are not shown directly in itinerary UI.
 - [ ] Detailed location history is not logged.
 - [ ] Production never shows synthetic coordinates as real provider places.

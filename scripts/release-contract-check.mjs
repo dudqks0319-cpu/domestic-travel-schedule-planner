@@ -48,6 +48,7 @@ function requireText(relativePath, expectedText) {
 }
 
 const packageJson = JSON.parse(readText("package.json"));
+const mobileAppJson = JSON.parse(readText("apps/mobile/app.json"));
 const requiredRootScripts = [
   "test",
   "check:env",
@@ -220,6 +221,21 @@ for (const [content, expectedText, label] of productionFallbackContracts) {
 
 if (scheduleScreen.includes("개발 환경에서만 저장된 경유지")) {
   errors.push("Schedule fallback copy must not claim production-visible fallback timelines are development-only.");
+}
+
+const mobileInfoPlist = mobileAppJson.expo?.ios?.infoPlist ?? {};
+const androidPermissions = mobileAppJson.expo?.android?.permissions ?? [];
+
+if (!mobileInfoPlist.NSLocationWhenInUseUsageDescription) {
+  errors.push("Mobile app must include an iOS when-in-use location permission explanation.");
+}
+
+if ("NSLocationAlwaysUsageDescription" in mobileInfoPlist) {
+  errors.push("Mobile app must not request iOS Always location permission before a background-location feature exists.");
+}
+
+if (androidPermissions.includes("ACCESS_BACKGROUND_LOCATION")) {
+  errors.push("Mobile app must not request Android background location permission before a background-location feature exists.");
 }
 
 const exportDownloadContracts = [

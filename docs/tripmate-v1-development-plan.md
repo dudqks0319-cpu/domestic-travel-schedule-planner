@@ -2387,3 +2387,29 @@ Verification completed:
 Remaining risks:
 - Real domain-restricted Kakao JavaScript keys still need to be created and configured in EAS/hosting environments before preview or production release.
 - `check:env:preview` and `check:env:production` still intentionally fail while EAS Worker URLs and Cloudflare binding IDs are placeholders.
+
+## Mobile Location Permission Boundary Result Record
+
+Plan:
+- Remove unused iOS Always location permission copy from the Expo app config.
+- Keep TripMate v1.0 scoped to foreground location access unless a reviewed background-location feature is implemented.
+- Add release contract checks so background/Always location permission requests cannot return silently.
+- Update the privacy/security checklist with the location permission boundary.
+
+Completed:
+- Removed `NSLocationAlwaysUsageDescription` from `apps/mobile/app.json`.
+- Updated `NSLocationWhenInUseUsageDescription` to describe foreground nearby-place and route-context usage.
+- Added `scripts/release-contract-check.mjs` assertions for required iOS When-In-Use copy and forbidden iOS/Android background location permissions.
+- Added the background/Always location boundary to `docs/privacy-security-checklist.md`.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- App Store and Play Store console privacy nutrition/data safety answers still require manual review before submission.
+- Device-level permission prompt copy should be checked on a real Expo/EAS build after native config regeneration.
