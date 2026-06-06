@@ -1115,3 +1115,25 @@ Verification completed:
 Remaining risks:
 - Device-level route optimization smoke still needs a running Worker and map screen interaction.
 - `EXPO_PUBLIC_API_BASE_URL` must point at a smoke-verified preview/prod Worker before app-store release.
+
+## Mobile Planner Replan Contract Result Record
+
+Plan:
+- Align mobile `plannerApi.replan` with the Worker v1 `POST /api/v1/planner/replan` endpoint.
+- Add request typing for current places, locked places, removed places, and replacement search.
+- Keep the existing generate helper compatible with both `mode` and transport naming used across the app.
+
+Completed:
+- Added `PlannerGenerateParams` and `PlannerReplanParams` mobile service types.
+- Changed `plannerApi.replan` from the obsolete `/planner/trips/:tripId/replan` path to `/planner/replan`.
+- Added fields for `places`, `lockedPlaceIds`, `removedPlaceIds`, and `replacementQuery` so the mobile app can call the Worker replan contract.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- No screen currently invokes `plannerApi.replan`; a later UI Phase still needs to wire this to the schedule regeneration action.
+- `plannerApi.summary` and `plannerApi.suggestions` still point to legacy/non-Worker endpoints and should be removed or implemented in a later Phase.

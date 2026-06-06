@@ -184,6 +184,28 @@ export interface TripExportDto {
   downloadUrl: string | null;
 }
 
+export interface PlannerGenerateParams {
+  destination: string;
+  startDate: string;
+  endDate: string;
+  styleKey?: string;
+  mode?: string;
+  transport?: string;
+  transportMode?: string;
+  companions?: string;
+  keyword?: string;
+  attractionKeywords?: string[];
+  restaurantKeywords?: string[];
+}
+
+export interface PlannerReplanParams extends PlannerGenerateParams {
+  trip?: Partial<PlannerGenerateParams>;
+  places?: NormalizedPlaceDto[];
+  lockedPlaceIds?: string[];
+  removedPlaceIds?: string[];
+  replacementQuery?: string;
+}
+
 export function buildTripShareUrl(token: string): string {
   return `${API_ORIGIN}/share/${encodeURIComponent(token)}`;
 }
@@ -213,18 +235,8 @@ export const authApi = {
 };
 
 export const plannerApi = {
-  generate: (params: {
-    destination: string;
-    startDate: string;
-    endDate: string;
-    styleKey?: string;
-    transport?: string;
-    companions?: string;
-    keyword?: string;
-    attractionKeywords?: string[];
-    restaurantKeywords?: string[];
-  }) => apiClient.post("/planner/generate", params),
-  replan: (tripId: string) => apiClient.post(`/planner/trips/${tripId}/replan`),
+  generate: (params: PlannerGenerateParams) => apiClient.post("/planner/generate", params),
+  replan: (params: PlannerReplanParams) => apiClient.post("/planner/replan", params),
   summary: (tripId: string) => apiClient.get(`/planner/trips/${tripId}/summary`),
   suggestions: () => apiClient.get("/planner/suggestions/destinations"),
 };
