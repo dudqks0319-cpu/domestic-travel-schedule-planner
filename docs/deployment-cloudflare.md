@@ -80,4 +80,4 @@ npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
-The smoke script checks health, planner generate/replan, route optimization, provider search contract, Kakao dev login, authenticated trip/day/place/share CRUD, monetization event logging, entitlement state, optional ops summary, cleanup, and logout. It creates and deletes smoke-owned data. Run it only against local or preview Workers where `ENVIRONMENT=local` or `ENVIRONMENT=preview`; do not run this write smoke against production.
+The smoke script checks health, planner generate/replan, route optimization, provider search contract, Kakao dev login, authenticated trip/day/place/share CRUD, monetization event logging, entitlement state, optional ops summary, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.

@@ -36,6 +36,7 @@ Options:
 Notes:
   - The script creates and deletes smoke-owned data.
   - Kakao login uses a dev: token and therefore requires Worker ENVIRONMENT=local or preview.
+  - The script verifies /health environment before sending write requests.
   - Do not run this write smoke against production.
 `);
 }
@@ -55,6 +56,7 @@ let tripId = "";
 let dayId = "";
 let placeId = "";
 let shareId = "";
+let workerEnvironment = "";
 
 function smokeName(prefix) {
   return `${prefix}-${Date.now()}`;
@@ -109,8 +111,17 @@ async function step(label, fn) {
 }
 
 await step("health endpoints", async () => {
-  assertOk(await request("GET", "/health", { auth: false }), "GET /health");
-  assertOk(await request("GET", "/api/v1/health", { auth: false }), "GET /api/v1/health");
+  const rootHealth = await request("GET", "/health", { auth: false });
+  assertOk(rootHealth, "GET /health");
+  const v1Health = await request("GET", "/api/v1/health", { auth: false });
+  assertOk(v1Health, "GET /api/v1/health");
+
+  workerEnvironment = v1Health.body?.environment ?? rootHealth.body?.environment ?? "";
+  assert(workerEnvironment, "health response should include environment before write smoke");
+  assert(
+    workerEnvironment === "local" || workerEnvironment === "preview",
+    `refusing write smoke against ENVIRONMENT=${workerEnvironment}; use local or preview only`
+  );
 });
 
 await step("planner generate and replan", async () => {

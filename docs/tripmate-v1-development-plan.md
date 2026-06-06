@@ -1036,3 +1036,26 @@ Verification completed:
 Remaining risks:
 - The smoke script has not been run against a live Worker in this Phase because no Worker process and D1 preview binding are guaranteed to be active.
 - Live preview smoke still needs configured D1/KV/R2 resources and provider secrets.
+
+## Worker Smoke Production Guard Result Record
+
+Plan:
+- Prevent the v1 smoke script from sending write requests to production by mistake.
+- Use the Worker health response as the environment source of truth.
+- Document the executable guard, not only the operating convention.
+
+Completed:
+- Added a `/health` and `/api/v1/health` environment check before any write smoke step.
+- Made `worker:smoke` refuse to continue unless `ENVIRONMENT` is `local` or `preview`.
+- Updated the smoke help text and Cloudflare deployment guide to describe the executable guard.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run worker:smoke -- --help`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The guard depends on the deployed Worker health response exposing the correct `ENVIRONMENT` value.
+- Live preview smoke still needs an actual Worker URL and configured D1/KV/R2 bindings.
