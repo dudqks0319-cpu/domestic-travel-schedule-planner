@@ -433,6 +433,31 @@ await step("monetization events and entitlement", async () => {
     }
   });
   assertOk(entitlement, "POST /api/v1/monetization/entitlements/verify");
+  assert(
+    entitlement.body?.data?.verificationMode === "manual-non-production",
+    "manual entitlement smoke should only activate through the non-production verification mode"
+  );
+  assert(
+    entitlement.body?.data?.premium === true,
+    "manual entitlement smoke should activate premium only outside production"
+  );
+  const storeEntitlement = await request("POST", "/api/v1/monetization/entitlements/verify", {
+    json: {
+      platform: "apple",
+      productId: "tripmate_premium_store_smoke",
+      status: "active",
+      transactionId: `smoke-store-${Date.now()}`
+    }
+  });
+  assertOk(storeEntitlement, "POST /api/v1/monetization/entitlements/verify store pending");
+  assert(
+    storeEntitlement.body?.data?.entitlement?.status === "pending",
+    "store entitlement should remain pending until live validation is implemented"
+  );
+  assert(
+    storeEntitlement.body?.data?.premium === false,
+    "store entitlement should not unlock premium until live validation is implemented"
+  );
   assertOk(await request("GET", "/api/v1/monetization/entitlements/me"), "GET /api/v1/monetization/entitlements/me");
 });
 

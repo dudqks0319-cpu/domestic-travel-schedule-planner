@@ -580,6 +580,45 @@ for (const [content, expectedText, label] of rewardedExportContracts) {
   }
 }
 
+const entitlementVerificationContracts = [
+  [
+    monetizationRoutes,
+    "manual_entitlements_disabled_in_production",
+    "Worker must disable manual entitlement activation in production"
+  ],
+  [
+    monetizationRoutes,
+    "manual_entitlement_allowed_outside_production",
+    "Worker must mark manual entitlement activation as non-production only"
+  ],
+  [
+    monetizationRoutes,
+    "live_store_validation_not_yet_implemented",
+    "Worker must keep store entitlements pending until live validation is implemented"
+  ],
+  [
+    monetizationRoutes,
+    'premium: entitlement.status === "active"',
+    "Entitlement verify response must derive premium only from persisted active status"
+  ],
+  [
+    workerSmokeScript,
+    "store entitlement should remain pending until live validation is implemented",
+    "Worker smoke must verify store entitlement requests remain pending before live validation"
+  ],
+  [
+    workerSmokeScript,
+    "manual entitlement smoke should only activate through the non-production verification mode",
+    "Worker smoke must verify manual active entitlement is non-production only"
+  ]
+];
+
+for (const [content, expectedText, label] of entitlementVerificationContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing entitlement verification contract: ${label}`);
+  }
+}
+
 const mobileAuthPrivacyContracts = [
   [
     authCleanup,

@@ -2413,3 +2413,29 @@ Verification completed:
 Remaining risks:
 - App Store and Play Store console privacy nutrition/data safety answers still require manual review before submission.
 - Device-level permission prompt copy should be checked on a real Expo/EAS build after native config regeneration.
+
+## Store Entitlement Pending Contract Result Record
+
+Plan:
+- Strengthen the monetization boundary so store-platform entitlement requests cannot unlock premium before live Apple/Google validation exists.
+- Keep manual entitlement activation restricted to non-production smoke/operations use.
+- Add Worker smoke assertions for both manual non-production activation and store-platform pending behavior.
+- Add release contract checks and policy documentation so this boundary cannot regress silently.
+
+Completed:
+- Added Worker smoke assertions that manual entitlement activation reports `manual-non-production` and premium true only in the non-production smoke path.
+- Added Worker smoke assertions that an Apple-style store entitlement request with requested `active` status remains `pending` and does not unlock premium.
+- Added release contract checks for production manual entitlement blocking, non-production manual verification mode, live store validation pending behavior, and smoke coverage.
+- Updated the monetization policy to state that submitted Apple/Google receipts or transaction ids must remain pending until live validation confirms them.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Apple App Store Server API and Google Play Developer API validation still need real SDK/server integration before production premium purchases can be enabled.
+- Worker smoke remains intentionally limited to local/preview because it creates and deletes smoke-owned data.

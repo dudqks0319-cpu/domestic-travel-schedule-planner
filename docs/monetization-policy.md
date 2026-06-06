@@ -33,6 +33,8 @@ Digital premium purchases must use Apple IAP or Google Play Billing. The Worker 
 
 The mobile client must not decide premium status by itself. Apple/Google verification requests may submit a store receipt or transaction id to the Worker, but the Worker stores only a hash and returns `pending` until live store validation is implemented. Manual active entitlements are allowed only outside production for operations/testing.
 
+Production must not treat a submitted Apple/Google receipt, transaction id, or requested `active` status as premium until live store validation confirms it. Until that integration exists, store-platform verification responses must remain `pending` and must not unlock premium benefits.
+
 ## Affiliate Links
 
 Allowed affiliate categories:
