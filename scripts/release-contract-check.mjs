@@ -288,6 +288,16 @@ const geocodeContracts = [
     "Naver geocode calls must use server-only NCP credentials"
   ],
   [
+    naverProvider,
+    "env.NAVER_MAPS_CLIENT_ID ?? env.NAVER_CLIENT_ID",
+    "Naver Cloud Maps calls must prefer split Maps credentials with legacy fallback"
+  ],
+  [
+    naverProvider,
+    "env.NAVER_SEARCH_CLIENT_ID ?? env.NAVER_CLIENT_ID",
+    "Naver Local Search calls must prefer split Search credentials with legacy fallback"
+  ],
+  [
     providerIndex,
     "new NaverPlaceAdapter(env),\n    new KakaoPlaceAdapter(env)",
     "Provider geocode orchestration must try Naver before Kakao"
@@ -484,6 +494,16 @@ const directionsProviderContracts = [
     providerIndex,
     "getProviderDirections",
     "Provider index must expose directions orchestration"
+  ],
+  [
+    plannerRoutes,
+    "hasNaverMapsCredentials(env) || Boolean(env.KAKAO_REST_API_KEY)",
+    "Planner provider route enrichment must run with Naver or Kakao directions credentials"
+  ],
+  [
+    plannerRoutes,
+    "Route provider could not enrich planner day routes",
+    "Planner provider route warning must not be Kakao-specific"
   ],
   [
     providerIndex,
@@ -1768,11 +1788,21 @@ for (const text of [
   "exec\", \"--\", \"wrangler",
   "--json",
   "--print-required",
+  "--print-recommended",
+  "recommendedSecrets",
+  "NAVER_SEARCH_CLIENT_ID",
+  "NAVER_SEARCH_CLIENT_SECRET",
+  "NAVER_MAPS_CLIENT_ID",
+  "NAVER_MAPS_CLIENT_SECRET",
   "Missing Cloudflare ${target} secret",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
   "NAVER_CLIENT_ID",
   "NAVER_CLIENT_SECRET",
+  "NAVER_SEARCH_CLIENT_ID",
+  "NAVER_SEARCH_CLIENT_SECRET",
+  "NAVER_MAPS_CLIENT_ID",
+  "NAVER_MAPS_CLIENT_SECRET",
   "KAKAO_REST_API_KEY",
   "DATA_GO_KR_API_KEY",
   "ODSAY_API_KEY",

@@ -14,6 +14,8 @@ TripMate uses provider data to build travel schedules. Provider failures must be
 
 Provider API calls happen through `services/api-worker`. Mobile code can choose a display provider with `EXPO_PUBLIC_MAP_PROVIDER`, but it must never contain provider secrets.
 
+Naver credentials can be split by provider family. `NAVER_SEARCH_CLIENT_ID` and `NAVER_SEARCH_CLIENT_SECRET` are used for Naver Local Search. `NAVER_MAPS_CLIENT_ID` and `NAVER_MAPS_CLIENT_SECRET` are used for Naver Cloud Maps geocoding, reverse geocoding, and directions. If split secrets are absent, the Worker falls back to `NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` for backward compatibility.
+
 ## Normalization
 
 All provider adapters return `NormalizedPlace` with:

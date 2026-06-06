@@ -15,6 +15,13 @@ const requiredSecrets = [
   "OPS_ADMIN_TOKEN"
 ];
 
+const recommendedSecrets = [
+  "NAVER_SEARCH_CLIENT_ID",
+  "NAVER_SEARCH_CLIENT_SECRET",
+  "NAVER_MAPS_CLIENT_ID",
+  "NAVER_MAPS_CLIENT_SECRET"
+];
+
 function readArg(name) {
   const inline = process.argv.find((arg) => arg.startsWith(`${name}=`));
   if (inline) {
@@ -27,6 +34,11 @@ function readArg(name) {
 
 if (process.argv.includes("--print-required")) {
   console.log(requiredSecrets.join("\n"));
+  process.exit(0);
+}
+
+if (process.argv.includes("--print-recommended")) {
+  console.log([...requiredSecrets, ...recommendedSecrets].join("\n"));
   process.exit(0);
 }
 
@@ -82,6 +94,14 @@ if (missing.length > 0) {
     console.error(`[check:secrets] ERROR: Missing Cloudflare ${target} secret: ${secretName}`);
   }
   process.exit(1);
+}
+
+const missingRecommended = recommendedSecrets.filter((secretName) => !configuredNames.has(secretName));
+if (missingRecommended.length > 0) {
+  console.warn(
+    `[check:secrets] WARN: Optional Naver split credential secrets are not fully configured: ${missingRecommended.join(", ")}. ` +
+    "Worker will reuse NAVER_CLIENT_ID/NAVER_CLIENT_SECRET as fallback for Naver Search and Naver Cloud Maps."
+  );
 }
 
 console.log(`[check:secrets] Cloudflare ${target} required secrets are configured.`);

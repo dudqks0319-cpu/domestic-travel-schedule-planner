@@ -51,6 +51,10 @@ wrangler secret put JWT_ACCESS_SECRET
 wrangler secret put JWT_REFRESH_SECRET
 wrangler secret put NAVER_CLIENT_ID
 wrangler secret put NAVER_CLIENT_SECRET
+wrangler secret put NAVER_SEARCH_CLIENT_ID
+wrangler secret put NAVER_SEARCH_CLIENT_SECRET
+wrangler secret put NAVER_MAPS_CLIENT_ID
+wrangler secret put NAVER_MAPS_CLIENT_SECRET
 wrangler secret put KAKAO_REST_API_KEY
 wrangler secret put DATA_GO_KR_API_KEY
 wrangler secret put ODSAY_API_KEY
@@ -60,6 +64,8 @@ wrangler secret put OPS_ADMIN_TOKEN
 ```
 
 `OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token without leading/trailing whitespace. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
+
+`NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` remain required fallback secrets for compatibility. For production, also set split Naver secrets: `NAVER_SEARCH_CLIENT_ID`/`NAVER_SEARCH_CLIENT_SECRET` for Naver Local Search, and `NAVER_MAPS_CLIENT_ID`/`NAVER_MAPS_CLIENT_SECRET` for Naver Cloud Maps geocoding, reverse geocoding, and directions.
 
 Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[vars]` or `[env.*.vars]`. Those blocks are for non-secret configuration such as `ENVIRONMENT`, `API_VERSION`, and `ALLOWED_ORIGINS`. Use `wrangler secret put` for every provider key, JWT secret, admin token, and purchase verification secret.
 
@@ -79,6 +85,10 @@ Configured in `services/api-worker/wrangler.toml`:
 
 - `NAVER_CLIENT_ID`
 - `NAVER_CLIENT_SECRET`
+- `NAVER_SEARCH_CLIENT_ID`
+- `NAVER_SEARCH_CLIENT_SECRET`
+- `NAVER_MAPS_CLIENT_ID`
+- `NAVER_MAPS_CLIENT_SECRET`
 - `KAKAO_REST_API_KEY`
 - `DATA_GO_KR_API_KEY`
 - `ODSAY_API_KEY`
@@ -97,3 +107,4 @@ For preview/production targets, the check also fails when the corresponding EAS 
 Use Node 20/22 LTS when running Expo web visual QA. Node 25+ is not treated as a supported TripMate mobile QA runtime because Expo web can fail before opening a browser listener with `ERR_SOCKET_BAD_PORT`. Run `npm run mobile:web:qa` for browser verification; it starts Expo web in localhost/offline mode so QA does not depend on LAN discovery.
 
 Use `npm run check:secrets:preview` and `npm run check:secrets:production` from a Cloudflare-authenticated shell before deploy. These commands call `wrangler secret list --json` and verify that every required secret name exists remotely without printing secret values.
+Use `node scripts/check-cloudflare-secrets.mjs --print-recommended` to print both required secrets and recommended split Naver credential names.

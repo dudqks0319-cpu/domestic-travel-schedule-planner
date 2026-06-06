@@ -89,10 +89,30 @@ function coordinate(point: { lat: number; lng: number }): string {
   return `${point.lng},${point.lat}`;
 }
 
+function naverSearchClientId(env: Env): string | undefined {
+  return env.NAVER_SEARCH_CLIENT_ID ?? env.NAVER_CLIENT_ID;
+}
+
+function naverSearchClientSecret(env: Env): string | undefined {
+  return env.NAVER_SEARCH_CLIENT_SECRET ?? env.NAVER_CLIENT_SECRET;
+}
+
+export function naverMapsClientId(env: Env): string | undefined {
+  return env.NAVER_MAPS_CLIENT_ID ?? env.NAVER_CLIENT_ID;
+}
+
+export function naverMapsClientSecret(env: Env): string | undefined {
+  return env.NAVER_MAPS_CLIENT_SECRET ?? env.NAVER_CLIENT_SECRET;
+}
+
+export function hasNaverMapsCredentials(env: Env): boolean {
+  return Boolean(naverMapsClientId(env) && naverMapsClientSecret(env));
+}
+
 function naverCloudHeaders(env: Env): Record<string, string> {
   return {
-    "x-ncp-apigw-api-key-id": env.NAVER_CLIENT_ID ?? "",
-    "x-ncp-apigw-api-key": env.NAVER_CLIENT_SECRET ?? ""
+    "x-ncp-apigw-api-key-id": naverMapsClientId(env) ?? "",
+    "x-ncp-apigw-api-key": naverMapsClientSecret(env) ?? ""
   };
 }
 
@@ -170,7 +190,9 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
   constructor(private readonly env: Env) {}
 
   async searchPlaces(input: PlaceProviderSearchInput): Promise<NormalizedPlace[]> {
-    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET) {
+    const clientId = naverSearchClientId(this.env);
+    const clientSecret = naverSearchClientSecret(this.env);
+    if (!clientId || !clientSecret) {
       return [];
     }
 
@@ -181,8 +203,8 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
 
     const response = await fetchProvider(url, {
       headers: {
-        "X-Naver-Client-Id": this.env.NAVER_CLIENT_ID,
-        "X-Naver-Client-Secret": this.env.NAVER_CLIENT_SECRET
+        "X-Naver-Client-Id": clientId,
+        "X-Naver-Client-Secret": clientSecret
       }
     });
     if (!response.ok) return [];
@@ -214,7 +236,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
   }
 
   async geocode(input: { address: string }): Promise<{ lat: number; lng: number } | null> {
-    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET || !input.address.trim()) {
+    if (!hasNaverMapsCredentials(this.env) || !input.address.trim()) {
       return null;
     }
 
@@ -238,7 +260,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
   }
 
   async reverseGeocode(input: { lat: number; lng: number }): Promise<{ address: string } | null> {
-    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET) {
+    if (!hasNaverMapsCredentials(this.env)) {
       return null;
     }
 
@@ -270,7 +292,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     points: Array<{ id?: string; lat: number; lng: number; name?: string }>;
     mode: TravelMode;
   }): Promise<NormalizedRoute | null> {
-    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET || input.mode !== "driving") {
+    if (!hasNaverMapsCredentials(this.env) || input.mode !== "driving") {
       return null;
     }
     if (input.points.length < 2 || input.points.length > 7) {

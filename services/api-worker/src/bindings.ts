@@ -9,6 +9,10 @@ export interface Env {
   JWT_REFRESH_SECRET?: string;
   NAVER_CLIENT_ID?: string;
   NAVER_CLIENT_SECRET?: string;
+  NAVER_SEARCH_CLIENT_ID?: string;
+  NAVER_SEARCH_CLIENT_SECRET?: string;
+  NAVER_MAPS_CLIENT_ID?: string;
+  NAVER_MAPS_CLIENT_SECRET?: string;
   KAKAO_REST_API_KEY?: string;
   DATA_GO_KR_API_KEY?: string;
   ODSAY_API_KEY?: string;

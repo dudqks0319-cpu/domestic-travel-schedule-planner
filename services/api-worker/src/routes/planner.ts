@@ -17,6 +17,7 @@ import { recordOperationalEvent } from "../db/operations";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import { getProviderDirections, searchPlaces } from "../providers";
+import { hasNaverMapsCredentials } from "../providers/naver";
 
 export const plannerRoutes = new Hono<AppBindings>();
 
@@ -254,7 +255,8 @@ async function enrichPlanWithProviderRoutes(
   places: NormalizedPlace[],
   selectedMode: TravelMode
 ): Promise<TripPlanResult> {
-  if (selectedMode !== "driving" || !env.KAKAO_REST_API_KEY) {
+  const canUseDirectionsProvider = hasNaverMapsCredentials(env) || Boolean(env.KAKAO_REST_API_KEY);
+  if (selectedMode !== "driving" || !canUseDirectionsProvider) {
     return plan;
   }
 
@@ -285,7 +287,7 @@ async function enrichPlanWithProviderRoutes(
 
     if (!result.route) {
       if (result.warnings.length) {
-        const message = "Kakao route provider could not enrich planner day routes; fallback movement times remain.";
+        const message = "Route provider could not enrich planner day routes; fallback movement times remain.";
         providerWarnings.push(routeWarning(message));
         routeSummaryWarnings.push(message);
       }

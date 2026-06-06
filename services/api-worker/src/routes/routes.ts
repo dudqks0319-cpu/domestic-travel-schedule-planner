@@ -6,6 +6,7 @@ import { createRouteCacheKey, getCachedRoute, upsertRouteCache } from "../db/rou
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import { getProviderDirections } from "../providers";
+import { hasNaverMapsCredentials } from "../providers/naver";
 import type { NormalizedRoute, RouteProviderKind, TravelMode } from "../providers/types";
 
 export const routeRoutes = new Hono<AppBindings>();
@@ -72,7 +73,7 @@ function providerCacheScopes(env: AppBindings["Bindings"], selectedMode: TravelM
   }
 
   const scopes: RouteProviderKind[] = [];
-  if (env.NAVER_CLIENT_ID && env.NAVER_CLIENT_SECRET) {
+  if (hasNaverMapsCredentials(env)) {
     scopes.push("naver");
   }
   if (env.KAKAO_REST_API_KEY) {

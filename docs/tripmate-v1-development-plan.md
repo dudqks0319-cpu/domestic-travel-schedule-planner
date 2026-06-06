@@ -3109,3 +3109,37 @@ Verification completed:
 Remaining risks:
 - Live Naver geocode success requires Naver Cloud Maps Geocoding and Reverse Geocoding enabled for the configured key pair.
 - Existing env names are reused for Naver Cloud Maps credentials; deployments must ensure these are NCP API key id/key values, not only legacy Naver Search client credentials.
+
+## Naver Credential Split And Planner Enrichment Result Record
+
+Plan:
+- Remove the remaining planner enrichment dependency on Kakao-only credentials so Naver-only route providers can enrich generated schedules.
+- Support split Naver credentials for Local Search and Cloud Maps while preserving existing `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` fallback.
+- Keep split Naver credentials server-only and covered by mobile secret boundary checks.
+- Update Cloudflare secret validation, env docs, provider policy, and release contract checks.
+
+Completed:
+- Added optional Worker bindings for `NAVER_SEARCH_CLIENT_ID`, `NAVER_SEARCH_CLIENT_SECRET`, `NAVER_MAPS_CLIENT_ID`, and `NAVER_MAPS_CLIENT_SECRET`.
+- Updated Naver Local Search to prefer split search credentials with legacy fallback.
+- Updated Naver Cloud Maps geocode/reverse-geocode/directions to prefer split Maps credentials with legacy fallback.
+- Updated route optimize cache scope detection to use the shared Naver Maps credential helper.
+- Updated planner generate/replan provider route enrichment to run when either Naver Maps or Kakao directions credentials are available.
+- Removed Kakao-specific planner enrichment failure copy.
+- Added recommended split Naver secret reporting to the Cloudflare secret check script.
+- Updated env/provider docs and release contract checks for the split credential boundary.
+
+Verification completed:
+- `node --check scripts/check-cloudflare-secrets.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `node scripts/check-cloudflare-secrets.mjs --print-recommended`
+- `npm run check:env`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` remain required for backward compatibility; production should configure split Naver secrets before live provider smoke.
+- Secret presence still does not prove provider product activation; preview smoke must verify real Naver Search and Naver Cloud Maps responses.
