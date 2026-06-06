@@ -138,9 +138,11 @@ export const addressApi = {
     apiClient.get("/address/search", { params: { keyword, page } }),
 };
 
+export type PlaceProviderDto = "naver" | "kakao" | "tour" | "manual";
+
 export interface NormalizedPlaceDto {
   id: string;
-  provider: "naver" | "kakao" | "tour" | "manual";
+  provider: PlaceProviderDto;
   providerPlaceId?: string;
   name: string;
   category: string;
@@ -305,6 +307,7 @@ export const placesApi = {
     apiClient.get<{
       ok: true;
       geocode: GeocodeDto | null;
+      provider: PlaceProviderDto | null;
       warnings: string[];
       cacheStatus: string;
     }>("/places/geocode", { params: { address } }),
@@ -312,6 +315,7 @@ export const placesApi = {
     apiClient.get<{
       ok: true;
       reverseGeocode: ReverseGeocodeDto | null;
+      provider: PlaceProviderDto | null;
       warnings: string[];
       cacheStatus: string;
     }>("/places/reverse-geocode", { params: { lat, lng } }),

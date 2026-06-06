@@ -3225,3 +3225,28 @@ Verification completed:
 
 Remaining risks:
 - Existing `geocode:v1` and `reverse-geocode:v1` KV entries can remain until TTL expiry, but the Worker no longer reads them for current provider metadata responses.
+
+## Mobile Geocode Provider Contract Result Record
+
+Plan:
+- Align the mobile API DTOs with the Worker geocode/reverse-geocode provider metadata response.
+- Keep provider values typed internally without exposing raw provider codes in user-facing UI.
+- Add release contract coverage for the mobile response type boundary.
+
+Completed:
+- Added `PlaceProviderDto` to the mobile API service.
+- Updated `placesApi.geocode()` and `placesApi.reverseGeocode()` response types to include `provider: PlaceProviderDto | null`.
+- Added release contract coverage so mobile geocode response types stay aligned with the Worker.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is a type contract alignment pass; visual/mobile runtime smoke is still needed wherever geocode provider metadata is later surfaced in UI.

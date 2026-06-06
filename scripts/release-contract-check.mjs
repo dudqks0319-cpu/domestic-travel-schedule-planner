@@ -389,6 +389,11 @@ const geocodeContracts = [
   ],
   [
     mobileApi,
+    "provider: PlaceProviderDto | null",
+    "Mobile API geocode client must expose provider metadata returned by the Worker"
+  ],
+  [
+    mobileApi,
     "placesApi = {",
     "Mobile places API namespace must remain available"
   ],
