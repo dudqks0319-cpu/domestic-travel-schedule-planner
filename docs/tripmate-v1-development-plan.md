@@ -1137,3 +1137,25 @@ Verification completed:
 Remaining risks:
 - No screen currently invokes `plannerApi.replan`; a later UI Phase still needs to wire this to the schedule regeneration action.
 - `plannerApi.summary` and `plannerApi.suggestions` still point to legacy/non-Worker endpoints and should be removed or implemented in a later Phase.
+
+## Mobile Planner Legacy Helper Cleanup Result Record
+
+Plan:
+- Remove unused mobile planner helpers that point to legacy/non-Worker endpoints.
+- Keep `plannerApi` limited to Worker v1 implemented planner routes.
+- Verify no screen imports the removed helpers.
+
+Completed:
+- Removed `plannerApi.summary` and `plannerApi.suggestions` from the mobile API service.
+- Kept `plannerApi.generate` and `plannerApi.replan` aligned with Worker `/planner/generate` and `/planner/replan`.
+- Confirmed no app screen currently calls the removed helpers.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `rg "plannerApi\\.(summary|suggestions)" apps/mobile`
+- `git diff --check`
+
+Remaining risks:
+- Destination suggestions are not currently a Worker v1 endpoint; if the product needs them later, implement them server-side instead of restoring legacy paths.

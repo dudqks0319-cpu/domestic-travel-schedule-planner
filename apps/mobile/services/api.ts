@@ -237,8 +237,6 @@ export const authApi = {
 export const plannerApi = {
   generate: (params: PlannerGenerateParams) => apiClient.post("/planner/generate", params),
   replan: (params: PlannerReplanParams) => apiClient.post("/planner/replan", params),
-  summary: (tripId: string) => apiClient.get(`/planner/trips/${tripId}/summary`),
-  suggestions: () => apiClient.get("/planner/suggestions/destinations"),
 };
 
 export const tripsApi = {
