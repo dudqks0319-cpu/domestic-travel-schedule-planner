@@ -2,9 +2,17 @@ import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
 import { errorResponse } from "../http/errors";
+import { rateLimit } from "../middleware/rate-limit";
 import type { TravelMode } from "../providers";
 
 export const routeRoutes = new Hono<AppBindings>();
+
+routeRoutes.use("/optimize", rateLimit({
+  keyPrefix: "routes_optimize",
+  limit: 30,
+  windowSeconds: 60,
+  methods: ["POST"]
+}));
 
 interface RoutePointInput {
   id?: string;

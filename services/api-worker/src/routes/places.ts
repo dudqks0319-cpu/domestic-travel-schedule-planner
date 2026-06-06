@@ -3,9 +3,17 @@ import { Hono } from "hono";
 import type { AppBindings } from "../bindings";
 import { getProviderPlace, upsertProviderPlaces } from "../db/places";
 import { errorResponse } from "../http/errors";
+import { rateLimit } from "../middleware/rate-limit";
 import { searchPlaces } from "../providers";
 
 export const placeRoutes = new Hono<AppBindings>();
+
+placeRoutes.use("/search", rateLimit({
+  keyPrefix: "places_search",
+  limit: 60,
+  windowSeconds: 60,
+  methods: ["GET"]
+}));
 
 function numberParam(value: string | undefined): number | undefined {
   if (!value) return undefined;

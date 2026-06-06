@@ -33,6 +33,7 @@ import {
 } from "../db/trips";
 import { errorResponse } from "../http/errors";
 import { requireAuth } from "../middleware/auth";
+import { rateLimit } from "../middleware/rate-limit";
 
 export const tripRoutes = new Hono<AppBindings>();
 export const shareRoutes = new Hono<AppBindings>();
@@ -311,6 +312,12 @@ function parseTripPlacePatch(
 }
 
 tripRoutes.use("*", requireAuth);
+tripRoutes.use("/:tripId/exports", rateLimit({
+  keyPrefix: "trip_exports",
+  limit: 20,
+  windowSeconds: 3600,
+  methods: ["POST"]
+}));
 
 tripRoutes.get("/", async (c) => {
   const userId = currentUserId(c);

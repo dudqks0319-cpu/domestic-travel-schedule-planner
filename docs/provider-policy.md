@@ -33,6 +33,17 @@ Provider raw responses should not be stored indefinitely. Cache only normalized 
 - route summaries: 1 to 24 hours
 - festivals/events: expire based on event date
 
+## Rate Limits
+
+Provider and cost-sensitive Worker endpoints must be rate limited before they call external APIs or create export assets. Current KV-backed limits are:
+
+- `GET /api/v1/places/search`: 60 requests per minute
+- `POST /api/v1/planner/generate`: 20 requests per minute
+- `POST /api/v1/routes/optimize`: 30 requests per minute
+- `POST /api/v1/trips/:tripId/exports`: 20 requests per hour
+
+Authenticated requests are limited by user id. Guest/public requests are limited by Cloudflare client IP or forwarded IP. Responses include `x-ratelimit-limit`, `x-ratelimit-remaining`, and `x-ratelimit-reset`.
+
 ## Production Fallback
 
 Production must not display synthetic coordinates as real provider places. If all providers fail, return an empty result with warnings and show a retry/empty UI.

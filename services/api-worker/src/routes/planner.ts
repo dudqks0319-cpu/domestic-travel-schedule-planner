@@ -3,9 +3,17 @@ import { generateTripPlan, type TravelMode, type TravelStyleKey } from "@tripmat
 
 import type { AppBindings } from "../bindings";
 import { errorResponse } from "../http/errors";
+import { rateLimit } from "../middleware/rate-limit";
 import { searchPlaces } from "../providers";
 
 export const plannerRoutes = new Hono<AppBindings>();
+
+plannerRoutes.use("/generate", rateLimit({
+  keyPrefix: "planner_generate",
+  limit: 20,
+  windowSeconds: 60,
+  methods: ["POST"]
+}));
 
 const STYLE_KEYS = new Set<TravelStyleKey>([
   "sea_cafe_food",

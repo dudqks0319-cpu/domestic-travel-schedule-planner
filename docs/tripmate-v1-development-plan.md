@@ -793,3 +793,27 @@ Verification completed:
 Remaining risks:
 - Live Apple App Store Server API and Google Play Developer API validation are still not implemented.
 - The mobile app still needs a real IAP SDK integration before store purchase/restore can submit actual receipts.
+
+## Worker Rate Limit Result Record
+
+Plan:
+- Add a shared Worker rate-limit middleware using the existing Cloudflare KV binding.
+- Apply it before provider/cost-sensitive operations.
+- Use authenticated user id when available and client IP for public/guest traffic.
+- Return standard rate-limit headers and a safe 429 error message.
+
+Completed:
+- Added `services/api-worker/src/middleware/rate-limit.ts`.
+- Applied rate limits to place search, planner generation, route optimization, and trip export creation.
+- Added per-endpoint limits for provider calls and export asset creation.
+- Documented the current limits and identifier policy in `docs/provider-policy.md`.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- KV increments are not atomic, so extremely concurrent bursts may exceed the exact limit slightly.
+- Production limits should be tuned after real Cloudflare analytics and provider quota data are available.
