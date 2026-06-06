@@ -57,6 +57,7 @@ const requiredRootScripts = [
   "check:secrets:preview",
   "check:secrets:production",
   "mobile:typecheck",
+  "mobile:web:qa",
   "api:build",
   "planner:build",
   "worker:typecheck",
@@ -1643,6 +1644,16 @@ if (!devReadinessCheck.includes('!key.startsWith("EXPO_PUBLIC_")')) {
 
 if (!devReadinessCheck.includes("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY")) {
   errors.push("dev-readiness-check must warn when Kakao web map rendering key is missing.");
+}
+
+for (const text of [
+  "Node.js v25+ is not a supported TripMate mobile visual QA runtime",
+  "ERR_SOCKET_BAD_PORT",
+  "npm run mobile:web:qa"
+]) {
+  if (!devReadinessCheck.includes(text)) {
+    errors.push(`dev-readiness-check must flag Expo web Node 25 visual QA blockers: ${text}`);
+  }
 }
 
 for (const text of [

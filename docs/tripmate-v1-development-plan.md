@@ -3025,3 +3025,27 @@ Verification completed:
 
 Remaining risks:
 - Visual verification in Expo is still needed to confirm provider label wrapping inside compact result cards.
+
+## Mobile Web QA Runtime Gate Result Record
+
+Plan:
+- Reproduce the Expo web startup issue that blocked search screen visual verification.
+- Check whether a fixed port command is enough to make Expo web usable in the current environment.
+- Add a deterministic QA command and readiness warning so future visual QA runs fail early on unsupported runtimes.
+- Keep the change scoped to scripts, readiness checks, release contract coverage, and documentation.
+
+Completed:
+- Confirmed the current runtime is Node `v25.6.1`.
+- Confirmed default `npm run mobile:web` can fail with `ERR_SOCKET_BAD_PORT` before opening a listener.
+- Confirmed `expo start --web --port 19006` is not a sufficient web QA fix because Expo documents that `--port` does not apply to web.
+- Added `npm run mobile:web:qa`, backed by `expo start --web --localhost --offline`, as the intended local browser QA command.
+- Added a `check:env` warning for Node 25+ so this runtime mismatch is visible before visual QA.
+- Added release contract coverage for the mobile web QA command and Node 25 Expo web warning.
+
+Verification completed:
+- `npm --prefix apps/mobile exec -- expo start --help`
+- `npm --prefix apps/mobile run web -- --port 19006` started Expo but did not open a local listener before manual stop.
+
+Remaining risks:
+- Actual browser visual verification still needs rerunning under Node 20/22 LTS with `npm run mobile:web:qa`.
+- The QA command reduces LAN/network variance but does not make Node 25+ a supported Expo web runtime.

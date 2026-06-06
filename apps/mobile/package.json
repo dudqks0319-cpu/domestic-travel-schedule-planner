@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "web:qa": "expo start --web --localhost --offline",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

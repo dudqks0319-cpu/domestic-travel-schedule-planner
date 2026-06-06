@@ -81,6 +81,11 @@ const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10);
 if (!Number.isFinite(nodeMajor) || nodeMajor < 20) {
   errors.push(`Node.js >= 20 is required (current: ${process.version}).`);
 }
+if (Number.isFinite(nodeMajor) && nodeMajor >= 25) {
+  warnings.push(
+    `Node.js v25+ is not a supported TripMate mobile visual QA runtime (current: ${process.version}). Expo web can fail before opening a listener with ERR_SOCKET_BAD_PORT; use Node 20/22 LTS and npm run mobile:web:qa for browser verification.`
+  );
+}
 
 const apiEnvPath = fromRoot("services", "api", ".env");
 if (!fs.existsSync(apiEnvPath)) {

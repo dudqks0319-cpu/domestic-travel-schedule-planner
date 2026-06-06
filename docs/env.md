@@ -92,4 +92,8 @@ Configured in `services/api-worker/wrangler.toml`:
 The same check fails if server-only Worker secrets are added to `wrangler.toml` vars instead of Cloudflare secrets.
 For preview/production targets, the check also fails when the corresponding EAS `EXPO_PUBLIC_API_BASE_URL` still points to localhost, an example domain, or a placeholder Worker URL.
 
+## Mobile Web QA Runtime
+
+Use Node 20/22 LTS when running Expo web visual QA. Node 25+ is not treated as a supported TripMate mobile QA runtime because Expo web can fail before opening a browser listener with `ERR_SOCKET_BAD_PORT`. Run `npm run mobile:web:qa` for browser verification; it starts Expo web in localhost/offline mode so QA does not depend on LAN discovery.
+
 Use `npm run check:secrets:preview` and `npm run check:secrets:production` from a Cloudflare-authenticated shell before deploy. These commands call `wrangler secret list --json` and verify that every required secret name exists remotely without printing secret values.

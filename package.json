@@ -18,6 +18,7 @@
     "check:dev": "npm run check:env && npm run check:release-contract && npm run check:health",
     "mobile:start": "npm --prefix apps/mobile run start",
     "mobile:web": "npm --prefix apps/mobile run web",
+    "mobile:web:qa": "npm --prefix apps/mobile run web:qa",
     "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
     "api:dev": "npm --prefix services/api run dev",
     "api:build": "npm --prefix services/api run build",
