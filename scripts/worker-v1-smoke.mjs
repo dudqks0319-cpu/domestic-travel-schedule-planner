@@ -166,6 +166,7 @@ await step("planner generate and replan", async () => {
   });
   assertOk(replanned, "POST /api/v1/planner/replan");
   assert(replanned.body?.replan?.removedPlaceCount === 1, "planner replan should report removed place count");
+  assert(Array.isArray(replanned.body?.places), "planner replan should return normalized places used for route rebuild");
 });
 
 await step("route optimize", async () => {

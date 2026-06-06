@@ -292,6 +292,7 @@ plannerRoutes.post("/replan", async (c) => {
       searchedProvider: shouldSearch,
       cacheStatus: providerResult.cacheStatus
     },
+    places,
     requestId: c.get("requestId")
   });
 });

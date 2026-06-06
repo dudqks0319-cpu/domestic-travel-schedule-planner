@@ -1159,3 +1159,30 @@ Verification completed:
 
 Remaining risks:
 - Destination suggestions are not currently a Worker v1 endpoint; if the product needs them later, implement them server-side instead of restoring legacy paths.
+
+## Schedule Advanced Replan Result Record
+
+Plan:
+- Connect the schedule screen premium advanced replan action to the Worker `/planner/replan` API.
+- Return normalized places from Worker replan so mobile can rebuild route points with coordinates.
+- Keep free users behind a premium gate and log the request as a monetization event.
+- Persist replanned place order back into `currentTrip` and clear stale optimized routes.
+
+Completed:
+- Extended Worker replan responses with the normalized places used by the planner.
+- Added schedule-screen replan request/response mapping and coordinate restoration.
+- Added a premium-gated "고급 일정 재생성" card to the schedule screen.
+- Replanned schedules now update local route points, reset active day, and clear stale route optimization.
+- Added a smoke assertion that `/planner/replan` returns normalized places for route rebuild.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm test`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Device-level smoke with a premium entitlement is still needed to verify the full tap-to-replan user flow.
+- Replanned local order is not yet written back to remote `trip_places` ordering; the persisted remote trip remains the source for saved trips.

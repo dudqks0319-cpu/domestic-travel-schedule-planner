@@ -19,7 +19,7 @@ import {
   type PremiumEntitlementState
 } from "../../services/monetization";
 import { getAffiliateOffers, type AffiliateOffer } from "../../services/affiliateOffers";
-import { buildTripShareUrl, tripsApi } from "../../services/api";
+import { buildTripShareUrl, plannerApi, tripsApi, type NormalizedPlaceDto } from "../../services/api";
 import {
   clearPersistedOptimizedRoute,
   loadPersistedOptimizedRoute,
@@ -44,6 +44,10 @@ interface DayTab {
 interface EditableTripPoint extends RoutePoint {
   tripPlaceId?: string;
   providerPlaceId?: string;
+  category?: string;
+  address?: string;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
   dayNumber: number;
 }
 
@@ -54,6 +58,27 @@ type DayRow = {
   title: string;
   detail: string;
 };
+
+interface PlannerReplanDayPlace {
+  id?: string;
+  placeId?: string;
+  dayNumber?: number;
+  title?: string;
+  category?: string;
+  address?: string;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
+}
+
+interface PlannerReplanDay {
+  places?: PlannerReplanDayPlace[];
+}
+
+interface PlannerReplanResponse {
+  ok: true;
+  days: PlannerReplanDay[];
+  places?: NormalizedPlaceDto[];
+}
 
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 const STOP_DWELL_MINUTES = 60;
@@ -128,11 +153,19 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
   const tripPlaceId = typeof value.tripPlaceId === "string" ? value.tripPlaceId : undefined;
   const providerPlaceId =
     typeof value.providerPlaceId === "string" ? value.providerPlaceId : undefined;
+  const category = typeof value.category === "string" ? value.category : undefined;
+  const address = typeof value.address === "string" ? value.address : undefined;
+  const isSponsored = typeof value.isSponsored === "boolean" ? value.isSponsored : undefined;
+  const sponsorLabel = typeof value.sponsorLabel === "string" ? value.sponsorLabel : undefined;
   const dayNumber = rawDayNumber && rawDayNumber >= 1 ? Math.floor(rawDayNumber) : 1;
   return {
     ...point,
     ...(tripPlaceId ? { tripPlaceId } : {}),
     ...(providerPlaceId ? { providerPlaceId } : {}),
+    ...(category ? { category } : {}),
+    ...(address ? { address } : {}),
+    ...(isSponsored !== undefined ? { isSponsored } : {}),
+    ...(sponsorLabel ? { sponsorLabel } : {}),
     dayNumber
   };
 }
@@ -152,10 +185,65 @@ function serializeEditableTripPoint(point: EditableTripPoint): Record<string, un
     ...(point.tripPlaceId ? { tripPlaceId: point.tripPlaceId } : {}),
     ...(point.providerPlaceId ? { providerPlaceId: point.providerPlaceId } : {}),
     name: point.name,
+    ...(point.category ? { category: point.category } : {}),
+    ...(point.address ? { address: point.address } : {}),
+    ...(point.isSponsored !== undefined ? { isSponsored: point.isSponsored } : {}),
+    ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {}),
     latitude: point.lat,
     longitude: point.lng,
     dayNumber: point.dayNumber
   };
+}
+
+function editablePointToNormalizedPlace(point: EditableTripPoint, index: number): NormalizedPlaceDto {
+  const id = point.providerPlaceId ?? point.id ?? `manual-${index + 1}`;
+  return {
+    id,
+    provider: "manual",
+    providerPlaceId: point.providerPlaceId ?? id,
+    name: point.name ?? `장소 ${index + 1}`,
+    category: point.category ?? "장소",
+    ...(point.address ? { address: point.address } : {}),
+    lat: point.lat,
+    lng: point.lng,
+    tags: [],
+    score: Math.max(40, 70 - index),
+    isSponsored: point.isSponsored === true,
+    ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {})
+  };
+}
+
+function replanResponseToEditablePoints(response: PlannerReplanResponse): EditableTripPoint[] {
+  const sourcePlaces = response.places ?? [];
+  const placesById = new Map<string, NormalizedPlaceDto>();
+  for (const place of sourcePlaces) {
+    placesById.set(place.id, place);
+    if (place.providerPlaceId) {
+      placesById.set(place.providerPlaceId, place);
+    }
+  }
+
+  return response.days.flatMap((day) =>
+    (day.places ?? []).flatMap((place): EditableTripPoint[] => {
+      const source = place.placeId ? placesById.get(place.placeId) : undefined;
+      if (!source) {
+        return [];
+      }
+
+      return [{
+        id: source.id,
+        providerPlaceId: source.providerPlaceId ?? source.id,
+        name: place.title ?? source.name,
+        lat: source.lat,
+        lng: source.lng,
+        category: place.category ?? source.category,
+        address: place.address ?? source.roadAddress ?? source.address,
+        isSponsored: place.isSponsored ?? source.isSponsored,
+        sponsorLabel: place.sponsorLabel ?? source.sponsorLabel,
+        dayNumber: place.dayNumber && place.dayNumber >= 1 ? place.dayNumber : 1
+      }];
+    })
+  );
 }
 
 function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
@@ -483,6 +571,8 @@ export default function ScheduleScreen() {
   const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [replanLoading, setReplanLoading] = useState(false);
+  const [replanNotice, setReplanNotice] = useState<string | null>(null);
   const affiliateOffers = useMemo(() => getAffiliateOffers(), []);
 
   useEffect(() => {
@@ -783,6 +873,60 @@ export default function ScheduleScreen() {
     }
   };
 
+  const replanSchedule = async () => {
+    if (!entitlement.benefits.advancedReplan) {
+      setReplanNotice("고급 일정 재생성은 프리미엄 기능입니다. 무료 사용자는 장소 편집과 기본 경로 최적화를 사용할 수 있어요.");
+      await logAdEvent({
+        placement: "schedule_bottom",
+        eventType: "requested",
+        metadata: { screen: "trip_schedule", result: "advanced_replan_gate" }
+      }).catch(() => undefined);
+      return;
+    }
+
+    if (!editableTripPoints.length) {
+      setReplanNotice("재생성할 실제 장소가 없어요. 검색 화면에서 장소를 먼저 담아주세요.");
+      return;
+    }
+
+    setReplanLoading(true);
+    setReplanNotice(null);
+    try {
+      const styleKey =
+        typeof currentTripDraft?.styleKey === "string" && currentTripDraft.styleKey.trim()
+          ? currentTripDraft.styleKey
+          : "sea_cafe_food";
+      const mode =
+        typeof currentTripDraft?.mode === "string"
+          ? currentTripDraft.mode
+          : typeof currentTripDraft?.transportMode === "string"
+            ? currentTripDraft.transportMode
+            : "driving";
+      const response = await plannerApi.replan({
+        destination: tripMeta.destination,
+        startDate: tripMeta.startDate,
+        endDate: tripMeta.endDate,
+        styleKey,
+        mode,
+        places: editableTripPoints.map(editablePointToNormalizedPlace),
+        replacementQuery: tripMeta.destination
+      });
+      const nextPoints = replanResponseToEditablePoints(response.data as PlannerReplanResponse);
+      if (nextPoints.length < 2) {
+        setReplanNotice("재생성 결과에 경로를 만들 만큼의 좌표가 없어요. 장소를 더 담은 뒤 다시 시도해 주세요.");
+        return;
+      }
+
+      await persistEditableTripPoints(nextPoints);
+      setActiveDayIndex(0);
+      setReplanNotice("일정을 다시 정리했어요. 경로 최적화를 실행하면 새 순서로 이동시간을 계산합니다.");
+    } catch {
+      setReplanNotice("일정을 다시 정리하지 못했어요. 네트워크나 provider 상태를 확인해 주세요.");
+    } finally {
+      setReplanLoading(false);
+    }
+  };
+
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
     if (!pointId || nextDayNumber < 1 || nextDayNumber > visibleDayTabs.length) {
       return;
@@ -966,6 +1110,30 @@ export default function ScheduleScreen() {
     </View>
   );
 
+  const replanSection = (
+    <View style={styles.replanCard}>
+      <View style={styles.replanHeader}>
+        <Text style={styles.replanTitle}>고급 일정 재생성</Text>
+        <Text style={[styles.replanBadge, entitlement.benefits.advancedReplan ? styles.replanBadgePremium : null]}>
+          {entitlement.benefits.advancedReplan ? "PREMIUM" : "프리미엄"}
+        </Text>
+      </View>
+      <Text style={styles.replanDescription}>
+        현재 담긴 장소와 provider 추천을 다시 정렬해 날짜별 동선을 정리합니다. 재생성 후 경로 최적화를 실행하면 새 순서 기준 이동시간을 계산합니다.
+      </Text>
+      {replanNotice ? <Text style={styles.replanNotice}>{replanNotice}</Text> : null}
+      <TouchableOpacity
+        style={[styles.replanButton, replanLoading ? styles.replanButtonDisabled : null]}
+        onPress={() => { void replanSchedule(); }}
+        disabled={replanLoading}
+      >
+        <Text style={styles.replanButtonText}>
+          {replanLoading ? "재생성 중..." : "일정 다시 정리"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.frame}>
@@ -1014,6 +1182,7 @@ export default function ScheduleScreen() {
               <View ref={scheduleExportRef} collapsable={false} style={styles.exportCaptureArea}>
                 {savedPlaceSection}
               </View>
+              {replanSection}
               {exportSection}
               {affiliateSection}
               <View style={styles.bottomActions}>
@@ -1109,6 +1278,7 @@ export default function ScheduleScreen() {
                 {savedPlaceSection}
               </View>
 
+              {replanSection}
               {exportSection}
               {affiliateSection}
 
@@ -1468,6 +1638,71 @@ const styles = StyleSheet.create({
   },
   exportCaptureArea: {
     gap: 12
+  },
+  replanCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: Spacing.md,
+    gap: 10,
+    ...Theme.shadow.sm
+  },
+  replanHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  replanTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  replanBadge: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
+    fontWeight: "800",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  replanBadgePremium: {
+    color: "#146C43",
+    borderColor: "#A8E6C1",
+    backgroundColor: "#EAF8EF"
+  },
+  replanDescription: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    lineHeight: 18
+  },
+  replanNotice: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    borderRadius: 10,
+    backgroundColor: "#FFF9DB",
+    padding: Spacing.sm
+  },
+  replanButton: {
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  replanButtonDisabled: {
+    opacity: 0.65
+  },
+  replanButtonText: {
+    ...Typography.normal.caption,
+    color: Colors.common.white,
+    fontWeight: "800",
+    textAlign: "center"
   },
   exportCard: {
     backgroundColor: Theme.colors.surface,
