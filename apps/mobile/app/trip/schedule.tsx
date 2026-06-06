@@ -817,11 +817,6 @@ export default function ScheduleScreen() {
   };
 
   const saveCurrentTripToServer = async () => {
-    if (currentServerTripId()) {
-      setSaveNotice("이미 서버에 저장된 여행입니다.");
-      return;
-    }
-
     if (saveLoading) {
       return;
     }
@@ -829,6 +824,21 @@ export default function ScheduleScreen() {
     setSaveLoading(true);
     setSaveNotice(null);
     try {
+      const existingTripId = currentServerTripId();
+      if (existingTripId) {
+        if (!editableTripPoints.length) {
+          setSaveNotice("서버에 저장된 여행입니다. 동기화할 장소가 아직 없어요.");
+          return;
+        }
+
+        const syncResult = await syncPlacesToTrip(existingTripId, editableTripPoints);
+        if (syncResult.created > 0 || syncResult.relinked > 0 || syncResult.updated > 0) {
+          await persistEditableTripPoints(syncResult.points);
+        }
+        setSaveNotice(`현재 장소 ${syncResult.created + syncResult.relinked + syncResult.updated}개를 서버에 다시 동기화했어요.`);
+        return;
+      }
+
       const styleKey =
         typeof currentTripDraft?.styleKey === "string" && currentTripDraft.styleKey.trim()
           ? currentTripDraft.styleKey
@@ -1419,10 +1429,10 @@ export default function ScheduleScreen() {
                 <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
                 <Button
                   title={
-                    currentServerTripId()
-                      ? "서버에 저장됨"
-                      : saveLoading
-                        ? "서버 저장 중..."
+                    saveLoading
+                      ? "서버 저장 중..."
+                      : currentServerTripId()
+                        ? "장소 다시 동기화"
                         : "서버에 저장"
                   }
                   variant="outline"
@@ -1528,10 +1538,10 @@ export default function ScheduleScreen() {
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
                 <Button
                   title={
-                    currentServerTripId()
-                      ? "서버에 저장됨"
-                      : saveLoading
-                        ? "서버 저장 중..."
+                    saveLoading
+                      ? "서버 저장 중..."
+                      : currentServerTripId()
+                        ? "장소 다시 동기화"
                         : "서버에 저장"
                   }
                   variant="outline"

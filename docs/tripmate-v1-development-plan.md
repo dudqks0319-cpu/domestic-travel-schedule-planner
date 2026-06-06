@@ -1761,3 +1761,30 @@ Remaining risks:
 - The smoke script syntax and static contract are verified locally; live execution still requires a running local/preview Worker with D1/KV/R2 bindings.
 - If a future smoke step activates premium before this limit check, the free-limit assertion would become invalid; the current ordering keeps it before entitlement activation.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Saved Trip Place Resync Result Record
+
+Plan:
+- Close the retry gap after a local draft is saved to the server but place sync fails.
+- Reuse the existing schedule save action for saved-trip place resync instead of adding another control.
+- Keep local `currentTrip` updated with returned server `tripPlaceId` values after resync.
+- Add release contract checks so the saved-trip resync action remains available.
+
+Completed:
+- Changed the schedule save action so saved server trips run `syncPlacesToTrip()` instead of returning "already saved".
+- Updated the saved-trip button label to "장소 다시 동기화".
+- Kept local route point persistence in sync after created/relinked/updated server places are returned.
+- Added release contract checks for saved-trip resync behavior and button copy.
+
+Verification completed:
+- `npm test`
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to verify the full retry flow after intentionally interrupting place sync.
+- The resync action does not delete stale remote places that no longer exist locally; explicit delete remains handled by the per-place delete action.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

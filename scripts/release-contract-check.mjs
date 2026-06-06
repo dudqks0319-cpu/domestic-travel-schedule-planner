@@ -296,6 +296,16 @@ const premiumStorageContracts = [
   ],
   [
     scheduleScreen,
+    "syncPlacesToTrip(existingTripId, editableTripPoints)",
+    "Schedule screen must allow saved trips to retry place sync"
+  ],
+  [
+    scheduleScreen,
+    "장소 다시 동기화",
+    "Schedule screen must label saved-trip place sync retry"
+  ],
+  [
+    scheduleScreen,
     "무료 플랜 저장 한도",
     "Schedule screen must surface a free limit upsell message"
   ]
