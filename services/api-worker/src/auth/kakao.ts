@@ -1,4 +1,5 @@
 import type { Env } from "../bindings";
+import { fetchProvider } from "../providers/http";
 
 export interface VerifiedKakaoProfile {
   kakaoUserId: string;
@@ -55,7 +56,7 @@ export async function verifyKakaoAccessToken(
     };
   }
 
-  const response = await fetch("https://kapi.kakao.com/v2/user/me", {
+  const response = await fetchProvider("https://kapi.kakao.com/v2/user/me", {
     headers: {
       Authorization: `Bearer ${trimmed}`,
       "Content-Type": "application/x-www-form-urlencoded;charset=utf-8"

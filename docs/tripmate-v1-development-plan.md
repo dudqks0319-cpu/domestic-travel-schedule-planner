@@ -3935,3 +3935,28 @@ Verification completed:
 Remaining risks:
 - D1 pending checks require real Cloudflare D1 bindings and auth for live evidence.
 - If pending migrations exist in preview or production, release gates will fail until `d1:migrate:*` applies them and records the ledger.
+
+## Kakao Auth Rate Limit And Timeout Result Record
+
+Plan:
+- Keep Kakao dev tokens limited to local and preview environments.
+- Add abuse protection to Kakao login and refresh endpoints.
+- Route Kakao userinfo verification through the shared provider timeout helper.
+- Lock the auth security expectations into the release contract checker.
+
+Completed:
+- Added Worker rate limits to `POST /api/v1/auth/login/kakao` and `POST /api/v1/auth/refresh`.
+- Updated Kakao userinfo verification to use `fetchProvider()` so slow Kakao calls are aborted by the shared provider timeout boundary.
+- Added release contract checks for auth endpoint rate limits, local/preview-only dev tokens, explicit `dev:` handling, and Kakao userinfo timeout usage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Live Kakao auth validation still requires a real Kakao access token and configured network access in local/preview Worker smoke.

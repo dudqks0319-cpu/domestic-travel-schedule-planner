@@ -120,6 +120,7 @@ const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
+const kakaoAuth = readText("services/api-worker/src/auth/kakao.ts");
 const providerIndex = readText("services/api-worker/src/providers/index.ts");
 const kakaoProvider = readText("services/api-worker/src/providers/kakao.ts");
 const naverProvider = readText("services/api-worker/src/providers/naver.ts");
@@ -501,6 +502,40 @@ const routeContracts = [
 for (const [content, routeText, label] of routeContracts) {
   if (!content.includes(routeText)) {
     errors.push(`Missing Worker route contract: ${label}`);
+  }
+}
+
+const authSecurityContracts = [
+  [
+    authRoutes,
+    'keyPrefix: "auth_kakao_login"',
+    "Kakao login endpoint must be rate limited"
+  ],
+  [
+    authRoutes,
+    'keyPrefix: "auth_refresh"',
+    "Refresh endpoint must be rate limited"
+  ],
+  [
+    kakaoAuth,
+    'env.ENVIRONMENT === "local" || env.ENVIRONMENT === "preview"',
+    "Kakao dev login tokens must be limited to local/preview"
+  ],
+  [
+    kakaoAuth,
+    'trimmed.startsWith("dev:")',
+    "Kakao dev login token path must stay explicit"
+  ],
+  [
+    kakaoAuth,
+    'fetchProvider("https://kapi.kakao.com/v2/user/me"',
+    "Kakao userinfo verification must use the provider timeout helper"
+  ]
+];
+
+for (const [content, expectedText, label] of authSecurityContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing auth security contract: ${label}`);
   }
 }
 

@@ -18,8 +18,23 @@ import {
 } from "../db/users";
 import { errorResponse } from "../http/errors";
 import { requireAuth } from "../middleware/auth";
+import { rateLimit } from "../middleware/rate-limit";
 
 export const authRoutes = new Hono<AppBindings>();
+
+authRoutes.use("/login/kakao", rateLimit({
+  keyPrefix: "auth_kakao_login",
+  limit: 10,
+  windowSeconds: 60,
+  methods: ["POST"]
+}));
+
+authRoutes.use("/refresh", rateLimit({
+  keyPrefix: "auth_refresh",
+  limit: 30,
+  windowSeconds: 60,
+  methods: ["POST"]
+}));
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
