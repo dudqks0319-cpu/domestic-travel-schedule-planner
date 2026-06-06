@@ -99,7 +99,9 @@ const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
 const indexRoutes = readText("services/api-worker/src/index.ts");
 const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
+const searchScreen = readText("apps/mobile/app/(tabs)/search.tsx");
 const mobileApi = readText("apps/mobile/services/api.ts");
+const tripHydration = readText("apps/mobile/services/tripHydration.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
@@ -368,6 +370,45 @@ for (const [content, expectedText, label] of publicShareApiPrivacyContracts) {
 
 if (tripRoutes.includes("token: sharedTrip.share_token")) {
   errors.push("Public share API must not echo sharedTrip.share_token.");
+}
+
+const mobileDayLinkContracts = [
+  [
+    searchScreen,
+    "remotePlace?.dayId",
+    "Search add-to-trip must persist the Worker-created dayId locally"
+  ],
+  [
+    searchScreen,
+    "remotePlace?.sortOrder",
+    "Search add-to-trip must persist the Worker canonical sort order locally"
+  ],
+  [
+    scheduleScreen,
+    "dayId?: string;",
+    "Schedule editable trip points must carry canonical dayId"
+  ],
+  [
+    scheduleScreen,
+    "...(point.dayId ? { dayId: point.dayId } : {})",
+    "Schedule currentTrip serialization must preserve canonical dayId"
+  ],
+  [
+    scheduleScreen,
+    "syncedPlace?.dayId",
+    "Schedule remote sync must refresh canonical dayId from Worker places"
+  ],
+  [
+    tripHydration,
+    "place.dayId ? { dayId: place.dayId } : {}",
+    "Saved trip hydration must preserve canonical dayId"
+  ]
+];
+
+for (const [content, expectedText, label] of mobileDayLinkContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing mobile day-link contract: ${label}`);
+  }
 }
 
 const premiumStorageContracts = [

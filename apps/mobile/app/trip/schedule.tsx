@@ -51,6 +51,7 @@ interface DayTab {
 
 interface EditableTripPoint extends RoutePoint {
   tripPlaceId?: string;
+  dayId?: string;
   providerPlaceId?: string;
   category?: string;
   address?: string;
@@ -158,6 +159,7 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
   const value = raw as Record<string, unknown>;
   const rawDayNumber = toFiniteNumber(value.dayNumber);
   const tripPlaceId = typeof value.tripPlaceId === "string" ? value.tripPlaceId : undefined;
+  const dayId = typeof value.dayId === "string" ? value.dayId : undefined;
   const providerPlaceId =
     typeof value.providerPlaceId === "string" ? value.providerPlaceId : undefined;
   const category = typeof value.category === "string" ? value.category : undefined;
@@ -168,6 +170,7 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
   return {
     ...point,
     ...(tripPlaceId ? { tripPlaceId } : {}),
+    ...(dayId ? { dayId } : {}),
     ...(providerPlaceId ? { providerPlaceId } : {}),
     ...(category ? { category } : {}),
     ...(address ? { address } : {}),
@@ -190,6 +193,7 @@ function serializeEditableTripPoint(point: EditableTripPoint): Record<string, un
   return {
     id: point.id,
     ...(point.tripPlaceId ? { tripPlaceId: point.tripPlaceId } : {}),
+    ...(point.dayId ? { dayId: point.dayId } : {}),
     ...(point.providerPlaceId ? { providerPlaceId: point.providerPlaceId } : {}),
     name: point.name,
     ...(point.category ? { category: point.category } : {}),
@@ -261,6 +265,7 @@ function replanResponseToEditablePoints(
       return [{
         id: source.id,
         ...(existing?.tripPlaceId ? { tripPlaceId: existing.tripPlaceId } : {}),
+        ...(existing?.dayId ? { dayId: existing.dayId } : {}),
         providerPlaceId: source.providerPlaceId ?? source.id,
         name: place.title ?? source.name,
         lat: source.lat,
@@ -795,9 +800,18 @@ export default function ScheduleScreen() {
     const tripPlaceIdsByClientId = new Map(
       response.data.sync.items.map((item) => [item.clientId, item.tripPlaceId])
     );
+    const syncedPlacesById = new Map(response.data.places.map((place) => [place.id, place]));
     const syncedPoints = syncPlaces.map(({ clientId, point }) => {
       const tripPlaceId = tripPlaceIdsByClientId.get(clientId) ?? point.tripPlaceId;
-      return tripPlaceId ? { ...point, tripPlaceId } : point;
+      const syncedPlace = tripPlaceId ? syncedPlacesById.get(tripPlaceId) : undefined;
+      return tripPlaceId
+        ? {
+            ...point,
+            tripPlaceId,
+            ...(syncedPlace?.dayId ? { dayId: syncedPlace.dayId } : {}),
+            dayNumber: syncedPlace?.dayNumber ?? point.dayNumber
+          }
+        : point;
     });
     return {
       points: syncedPoints,

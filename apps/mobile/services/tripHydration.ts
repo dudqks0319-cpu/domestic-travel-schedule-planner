@@ -20,6 +20,7 @@ function toRoutePoint(place: TripPlaceDto) {
   return {
     id: place.providerPlaceId ?? place.id,
     tripPlaceId: place.id,
+    ...(place.dayId ? { dayId: place.dayId } : {}),
     ...(place.providerPlaceId ? { providerPlaceId: place.providerPlaceId } : {}),
     name: place.name,
     latitude: place.lat,

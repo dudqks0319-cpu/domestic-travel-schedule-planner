@@ -18,7 +18,7 @@ import SponsoredBadge from "../../components/monetization/SponsoredBadge";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
-import { placesApi, tripsApi, type NormalizedPlaceDto } from "../../services/api";
+import { placesApi, tripsApi, type NormalizedPlaceDto, type TripPlaceDto } from "../../services/api";
 import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
 
 type CategoryKey =
@@ -109,7 +109,7 @@ async function persistPlaceToRemoteTrip(
   place: NormalizedPlaceDto,
   nextSortOrder: number,
   dayNumber: number
-): Promise<string | null> {
+): Promise<TripPlaceDto | null> {
   const tripId = typeof currentTrip.id === "string" ? currentTrip.id : "";
   if (!tripId || tripId.startsWith("trip_")) {
     return null;
@@ -128,7 +128,7 @@ async function persistPlaceToRemoteTrip(
       isSponsored: place.isSponsored,
       ...(place.sponsorLabel ? { sponsorLabel: place.sponsorLabel } : {})
     });
-    return response.data.place.id;
+    return response.data.place;
   } catch {
     return null;
   }
@@ -157,19 +157,21 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     return value.id === place.id;
   });
 
-  const tripPlaceId = alreadyAdded
+  const remotePlace = alreadyAdded
     ? null
     : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length + 1, dayNumber);
 
   if (!alreadyAdded) {
     routePoints.push({
       id: place.id,
-      ...(tripPlaceId ? { tripPlaceId } : {}),
+      ...(remotePlace?.id ? { tripPlaceId: remotePlace.id } : {}),
+      ...(remotePlace?.dayId ? { dayId: remotePlace.dayId } : {}),
       providerPlaceId: place.providerPlaceId ?? place.id,
       name: place.name,
       latitude: place.lat,
       longitude: place.lng,
-      dayNumber
+      dayNumber: remotePlace?.dayNumber ?? dayNumber,
+      sortOrder: remotePlace?.sortOrder ?? routePoints.length + 1
     });
   }
 
@@ -182,7 +184,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     })
   );
 
-  return { count: routePoints.length, remoteSaved: !!tripPlaceId };
+  return { count: routePoints.length, remoteSaved: !!remotePlace };
 }
 
 export default function SearchScreen() {
