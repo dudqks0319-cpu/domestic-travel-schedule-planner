@@ -445,6 +445,9 @@ interface TripPlaceSyncInput {
   lng: number;
   dayNumber: number;
   sortOrder: number;
+  startTime?: string;
+  endTime?: string;
+  memo?: string;
   isSponsored?: boolean;
   sponsorLabel?: string;
 }
@@ -526,6 +529,9 @@ function parseTripPlaceSyncInput(raw: Record<string, unknown>): TripPlaceSyncInp
     const lng = numberValue(record.lng);
     const dayNumber = positiveIntegerValue(record.dayNumber);
     const sortOrder = positiveIntegerValue(record.sortOrder);
+    const startTime = stringValue(record.startTime);
+    const endTime = stringValue(record.endTime);
+    const memo = stringValue(record.memo);
     const isSponsored = booleanValue(record.isSponsored);
     const sponsorLabel = stringValue(record.sponsorLabel);
 
@@ -554,6 +560,9 @@ function parseTripPlaceSyncInput(raw: Record<string, unknown>): TripPlaceSyncInp
       lng,
       dayNumber,
       sortOrder,
+      ...(startTime ? { startTime } : {}),
+      ...(endTime ? { endTime } : {}),
+      ...(memo ? { memo } : {}),
       ...(isSponsored !== undefined ? { isSponsored } : {}),
       ...(sponsorLabel ? { sponsorLabel } : {})
     });
@@ -870,6 +879,9 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
       lng: item.lng,
       dayNumber: item.dayNumber,
       sortOrder: item.sortOrder,
+      ...(item.startTime ? { startTime: item.startTime } : {}),
+      ...(item.endTime ? { endTime: item.endTime } : {}),
+      ...(item.memo ? { memo: item.memo } : {}),
       isSponsored: item.isSponsored === true,
       ...(item.sponsorLabel ? { sponsorLabel: item.sponsorLabel } : {})
     });
@@ -910,7 +922,10 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
 
     const place = await updateTripPlace(c.env.DB, userId, tripId, syncedItem.tripPlaceId, {
       dayNumber: item.dayNumber,
-      sortOrder: item.sortOrder
+      sortOrder: item.sortOrder,
+      ...(item.startTime ? { startTime: item.startTime } : {}),
+      ...(item.endTime ? { endTime: item.endTime } : {}),
+      ...(item.memo ? { memo: item.memo } : {})
     });
     if (!place) {
       return errorResponse(c, 409, "TRIP_PLACE_SYNC_REORDER_FAILED", "장소 순서를 저장하지 못했습니다.");

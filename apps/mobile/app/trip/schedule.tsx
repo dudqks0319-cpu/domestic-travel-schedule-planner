@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Linking, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Platform, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { captureRef } from "react-native-view-shot";
@@ -57,6 +57,9 @@ interface EditableTripPoint extends RoutePoint {
   sortOrder?: number;
   category?: string;
   address?: string;
+  startTime?: string;
+  endTime?: string;
+  memo?: string;
   isSponsored?: boolean;
   sponsorLabel?: string;
   dayNumber: number;
@@ -167,6 +170,9 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
     typeof value.providerPlaceId === "string" ? value.providerPlaceId : undefined;
   const category = typeof value.category === "string" ? value.category : undefined;
   const address = typeof value.address === "string" ? value.address : undefined;
+  const startTime = typeof value.startTime === "string" ? value.startTime : undefined;
+  const endTime = typeof value.endTime === "string" ? value.endTime : undefined;
+  const memo = typeof value.memo === "string" ? value.memo : undefined;
   const isSponsored = typeof value.isSponsored === "boolean" ? value.isSponsored : undefined;
   const sponsorLabel = typeof value.sponsorLabel === "string" ? value.sponsorLabel : undefined;
   const dayNumber = rawDayNumber && rawDayNumber >= 1 ? Math.floor(rawDayNumber) : 1;
@@ -179,6 +185,9 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
     ...(sortOrder ? { sortOrder } : {}),
     ...(category ? { category } : {}),
     ...(address ? { address } : {}),
+    ...(startTime ? { startTime } : {}),
+    ...(endTime ? { endTime } : {}),
+    ...(memo ? { memo } : {}),
     ...(isSponsored !== undefined ? { isSponsored } : {}),
     ...(sponsorLabel ? { sponsorLabel } : {}),
     dayNumber
@@ -203,6 +212,9 @@ function serializeEditableTripPoint(point: EditableTripPoint): Record<string, un
     name: point.name,
     ...(point.category ? { category: point.category } : {}),
     ...(point.address ? { address: point.address } : {}),
+    ...(point.startTime ? { startTime: point.startTime } : {}),
+    ...(point.endTime ? { endTime: point.endTime } : {}),
+    ...(point.memo ? { memo: point.memo } : {}),
     ...(point.isSponsored !== undefined ? { isSponsored: point.isSponsored } : {}),
     ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {}),
     latitude: point.lat,
@@ -279,6 +291,9 @@ function replanResponseToEditablePoints(
         lng: source.lng,
         category: place.category ?? source.category,
         address: place.address ?? source.roadAddress ?? source.address,
+        ...(existing?.startTime ? { startTime: existing.startTime } : {}),
+        ...(existing?.endTime ? { endTime: existing.endTime } : {}),
+        ...(existing?.memo ? { memo: existing.memo } : {}),
         isSponsored: place.isSponsored ?? source.isSponsored,
         sponsorLabel: place.sponsorLabel ?? source.sponsorLabel,
         dayNumber: place.dayNumber && place.dayNumber >= 1 ? place.dayNumber : 1
@@ -467,6 +482,30 @@ function formatClock(totalMinutes: number): string {
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function isClockText(value: string | undefined): value is string {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [hourText, minuteText] = value.split(":");
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  return Number.isInteger(hour) && Number.isInteger(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
+function addMinutesToClock(value: string | undefined, deltaMinutes: number): string {
+  const base = isClockText(value) ? value : "09:00";
+  const [hourText, minuteText] = base.split(":");
+  const minutes = Number(hourText) * 60 + Number(minuteText) + deltaMinutes;
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  return formatClock(normalized);
+}
+
+function cleanOptionalText(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function formatDuration(durationMin: number): string {
@@ -814,7 +853,10 @@ export default function ScheduleScreen() {
         lat: point.lat,
         lng: point.lng,
         dayNumber: point.dayNumber,
-        sortOrder: index + 1,
+        sortOrder: point.sortOrder ?? index + 1,
+        ...(point.startTime ? { startTime: point.startTime } : {}),
+        ...(point.endTime ? { endTime: point.endTime } : {}),
+        ...(point.memo ? { memo: point.memo } : {}),
         isSponsored: point.isSponsored === true,
         ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {})
       }
@@ -839,7 +881,10 @@ export default function ScheduleScreen() {
             tripPlaceId,
             ...(syncedPlace?.dayId ? { dayId: syncedPlace.dayId } : {}),
             dayNumber: syncedPlace?.dayNumber ?? point.dayNumber,
-            sortOrder: syncedPlace?.sortOrder ?? index + 1
+            sortOrder: syncedPlace?.sortOrder ?? index + 1,
+            ...(syncedPlace?.startTime ? { startTime: syncedPlace.startTime } : {}),
+            ...(syncedPlace?.endTime ? { endTime: syncedPlace.endTime } : {}),
+            ...(syncedPlace?.memo ? { memo: syncedPlace.memo } : {})
           }
         : point;
     });
@@ -851,6 +896,27 @@ export default function ScheduleScreen() {
       pruned: response.data.sync.pruned,
       skipped: response.data.sync.skipped
     };
+  };
+
+  const syncRemotePlacePatch = async (
+    point: EditableTripPoint,
+    patch: Partial<Pick<EditableTripPoint, "startTime" | "endTime" | "memo" | "sortOrder" | "dayNumber">>
+  ) => {
+    const tripId = currentServerTripId();
+    if (!tripId || !point.tripPlaceId) {
+      return;
+    }
+
+    await tripsApi.updatePlaceById(tripId, point.tripPlaceId, {
+      name: point.name,
+      category: point.category ?? "장소",
+      dayNumber: patch.dayNumber ?? point.dayNumber,
+      sortOrder: patch.sortOrder ?? point.sortOrder,
+      ...(point.address ? { address: point.address } : {}),
+      ...(patch.startTime ? { startTime: patch.startTime } : {}),
+      ...(patch.endTime ? { endTime: patch.endTime } : {}),
+      ...(patch.memo ? { memo: patch.memo } : {})
+    });
   };
 
   const syncRemoteReplannedPlaces = async (nextPoints: EditableTripPoint[]) => {
@@ -1275,6 +1341,74 @@ export default function ScheduleScreen() {
     })();
   };
 
+  const updateSavedPlaceDetails = (
+    pointId: string | undefined,
+    patch: Partial<Pick<EditableTripPoint, "startTime" | "endTime" | "memo">>
+  ) => {
+    if (!pointId) {
+      return;
+    }
+
+    const target = editableTripPoints.find((point) => point.id === pointId);
+    if (!target) {
+      return;
+    }
+
+    const nextPoint = { ...target, ...patch };
+    const nextPoints = editableTripPoints.map((point) => (point.id === pointId ? nextPoint : point));
+    setSyncNotice(null);
+    void (async () => {
+      await persistEditableTripPoints(nextPoints);
+      try {
+        await syncRemotePlacePatch(nextPoint, patch);
+      } catch {
+        setSyncNotice("로컬 일정은 수정됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
+      }
+    })();
+  };
+
+  const shiftSavedPlaceTime = (point: EditableTripPoint, deltaMinutes: number) => {
+    const nextStartTime = addMinutesToClock(point.startTime, deltaMinutes);
+    const nextEndTime = point.endTime ? addMinutesToClock(point.endTime, deltaMinutes) : undefined;
+    updateSavedPlaceDetails(point.id, {
+      startTime: nextStartTime,
+      ...(nextEndTime ? { endTime: nextEndTime } : {})
+    });
+  };
+
+  const reorderSavedPlace = (point: EditableTripPoint, direction: -1 | 1) => {
+    const sameDay = editableTripPoints
+      .filter((item) => item.dayNumber === point.dayNumber)
+      .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
+    const currentIndex = sameDay.findIndex((item) => item.id === point.id);
+    const nextIndex = currentIndex + direction;
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= sameDay.length) {
+      return;
+    }
+
+    const reorderedSameDay = [...sameDay];
+    const [moved] = reorderedSameDay.splice(currentIndex, 1);
+    if (!moved) {
+      return;
+    }
+    reorderedSameDay.splice(nextIndex, 0, moved);
+    const otherDays = editableTripPoints.filter((item) => item.dayNumber !== point.dayNumber);
+    const nextPoints = normalizeEditablePointSortOrders([...otherDays, ...reorderedSameDay]);
+    setSyncNotice(null);
+    void (async () => {
+      await persistEditableTripPoints(nextPoints);
+      try {
+        const tripId = currentServerTripId();
+        if (tripId) {
+          const syncResult = await syncPlacesToTrip(tripId, nextPoints);
+          await persistEditableTripPoints(syncResult.points);
+        }
+      } catch {
+        setSyncNotice("로컬 순서는 수정됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
+      }
+    })();
+  };
+
   const savedPlaceSection = activeDay ? (
     <View style={styles.savedPlacesCard}>
       <View style={styles.savedPlacesHeader}>
@@ -1301,7 +1435,50 @@ export default function ScheduleScreen() {
             </View>
             <View style={styles.savedPlaceBody}>
               <Text style={styles.savedPlaceName}>{point.name ?? "저장된 장소"}</Text>
-              <Text style={styles.savedPlaceMeta}>방문 장소 · 좌표는 일정표에 표시하지 않아요</Text>
+              <Text style={styles.savedPlaceMeta}>
+                {[point.category ?? "방문 장소", point.address].filter(Boolean).join(" · ") || "방문 장소"}
+              </Text>
+              {point.isSponsored ? (
+                <Text style={styles.sponsoredDisclosure}>{point.sponsorLabel ?? "스폰서"}</Text>
+              ) : null}
+              <View style={styles.placeEditPanel}>
+                <View style={styles.timeEditRow}>
+                  <TextInput
+                    key={`${point.id ?? point.name}-time-${point.startTime ?? "empty"}`}
+                    style={styles.timeInput}
+                    defaultValue={point.startTime ?? ""}
+                    placeholder="09:00"
+                    placeholderTextColor={Theme.colors.textTertiary}
+                    onEndEditing={(event) => {
+                      const nextStartTime = cleanOptionalText(event.nativeEvent.text);
+                      if (nextStartTime && !isClockText(nextStartTime)) {
+                        setSyncNotice("방문 시간은 09:00처럼 HH:MM 형식으로 입력해 주세요.");
+                        return;
+                      }
+                      updateSavedPlaceDetails(point.id, {
+                        ...(nextStartTime ? { startTime: nextStartTime } : { startTime: undefined })
+                      });
+                    }}
+                  />
+                  <TouchableOpacity style={styles.timeShiftButton} onPress={() => shiftSavedPlaceTime(point, -30)}>
+                    <Text style={styles.timeShiftButtonText}>-30분</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.timeShiftButton} onPress={() => shiftSavedPlaceTime(point, 30)}>
+                    <Text style={styles.timeShiftButtonText}>+30분</Text>
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  key={`${point.id ?? point.name}-memo-${point.memo ?? "empty"}`}
+                  style={styles.memoInput}
+                  defaultValue={point.memo ?? ""}
+                  placeholder="메모 추가"
+                  placeholderTextColor={Theme.colors.textTertiary}
+                  multiline
+                  onEndEditing={(event) => {
+                    updateSavedPlaceDetails(point.id, { memo: cleanOptionalText(event.nativeEvent.text) });
+                  }}
+                />
+              </View>
               <View style={styles.dayMoveChips}>
                 {visibleDayTabs.map((dayTab) => {
                   const selected = dayTab.dayNumber === point.dayNumber;
@@ -1328,6 +1505,37 @@ export default function ScheduleScreen() {
                 })}
               </View>
               <View style={styles.savedPlaceActions}>
+                <TouchableOpacity
+                  style={[styles.placeActionButton, index <= 0 ? styles.placeActionDisabled : null]}
+                  disabled={index <= 0}
+                  onPress={() => reorderSavedPlace(point, -1)}
+                >
+                  <Text
+                    style={[
+                      styles.placeActionText,
+                      index <= 0 ? styles.placeActionTextDisabled : null
+                    ]}
+                  >
+                    위로
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.placeActionButton,
+                    index >= savedPlacesForActiveDay.length - 1 ? styles.placeActionDisabled : null
+                  ]}
+                  disabled={index >= savedPlacesForActiveDay.length - 1}
+                  onPress={() => reorderSavedPlace(point, 1)}
+                >
+                  <Text
+                    style={[
+                      styles.placeActionText,
+                      index >= savedPlacesForActiveDay.length - 1 ? styles.placeActionTextDisabled : null
+                    ]}
+                  >
+                    아래로
+                  </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.placeActionButton, activeDay.dayNumber <= 1 ? styles.placeActionDisabled : null]}
                   disabled={activeDay.dayNumber <= 1}
@@ -1942,6 +2150,59 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
     marginTop: 4
+  },
+  sponsoredDisclosure: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    fontWeight: "800",
+    marginTop: 6
+  },
+  placeEditPanel: {
+    gap: 8,
+    marginTop: 10
+  },
+  timeEditRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  timeInput: {
+    width: 78,
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Colors.common.white,
+    paddingHorizontal: 10,
+    ...Typography.normal.caption,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  timeShiftButton: {
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Colors.common.white,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  timeShiftButtonText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  memoInput: {
+    minHeight: 42,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Colors.common.white,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    ...Typography.normal.caption,
+    color: Theme.colors.textPrimary
   },
   dayMoveChips: {
     flexDirection: "row",

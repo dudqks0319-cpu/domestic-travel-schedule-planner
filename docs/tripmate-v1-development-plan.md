@@ -297,6 +297,7 @@ Completed:
 Verification completed:
 - `npm test`
 - `npm run check:health`
+- `npm run check:dev`
 - `git diff --check`
 - Worker local smoke for login, me, refresh, authenticated trip write, logout revoke, and account deletion.
 
@@ -617,6 +618,31 @@ Verification completed:
 Remaining risks:
 - Profile trip management is still compact; a dedicated full-screen trip manager would handle bulk operations and filters better.
 - Delete/share flows require an authenticated saved trip, which is expected but should be covered by device-level smoke tests before release.
+
+## Schedule Inline Editing Result Record
+
+Plan:
+- Preserve schedule edit fields when saved trips are hydrated back into the local draft.
+- Let users adjust saved place order, visit time, and memo from the schedule screen.
+- Keep raw latitude/longitude hidden from the schedule UI.
+- Sync order/time/memo edits to Worker trip place records when the current trip is server-backed.
+
+Completed:
+- Added local draft preservation for `startTime`, `endTime`, `memo`, category, address, and sponsored metadata.
+- Added inline schedule controls for moving a place up/down within a day, shifting visit time by 30 minutes, entering a custom `HH:MM` visit time, and adding a memo.
+- Extended mobile trip place sync payloads and Worker sync parsing so time and memo fields are retained during save/replan synchronization.
+- Updated saved-trip hydration to restore server `trip_places` metadata into `currentTrip.routePoints`.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Empty memo clearing is local-first because the current Worker patch parser ignores empty string values; a follow-up can add explicit nullable field clearing.
+- Device-level smoke is still needed to verify `TextInput` editing behavior across iOS/Android keyboards.
 
 ## Route Fallback Safety Result Record
 

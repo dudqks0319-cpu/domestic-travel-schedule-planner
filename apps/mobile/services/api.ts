@@ -241,6 +241,9 @@ export interface TripPlaceSyncItem {
   lng: number;
   dayNumber: number;
   sortOrder: number;
+  startTime?: string;
+  endTime?: string;
+  memo?: string;
   isSponsored?: boolean;
   sponsorLabel?: string;
 }

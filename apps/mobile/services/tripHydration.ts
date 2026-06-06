@@ -23,10 +23,17 @@ function toRoutePoint(place: TripPlaceDto) {
     ...(place.dayId ? { dayId: place.dayId } : {}),
     ...(place.providerPlaceId ? { providerPlaceId: place.providerPlaceId } : {}),
     name: place.name,
+    category: place.category,
+    ...(place.address ? { address: place.address } : {}),
     latitude: place.lat,
     longitude: place.lng,
     dayNumber: place.dayNumber ?? 1,
-    ...(place.sortOrder ? { sortOrder: place.sortOrder } : {})
+    ...(place.sortOrder ? { sortOrder: place.sortOrder } : {}),
+    ...(place.startTime ? { startTime: place.startTime } : {}),
+    ...(place.endTime ? { endTime: place.endTime } : {}),
+    ...(place.memo ? { memo: place.memo } : {}),
+    isSponsored: place.isSponsored,
+    ...(place.sponsorLabel ? { sponsorLabel: place.sponsorLabel } : {})
   };
 }
 
