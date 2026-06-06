@@ -65,7 +65,7 @@ wrangler secret put OPS_ADMIN_TOKEN
 
 `OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token without leading/trailing whitespace. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
-`NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` remain required fallback secrets for compatibility. For production, also set split Naver secrets: `NAVER_SEARCH_CLIENT_ID`/`NAVER_SEARCH_CLIENT_SECRET` for Naver Local Search, and `NAVER_MAPS_CLIENT_ID`/`NAVER_MAPS_CLIENT_SECRET` for Naver Cloud Maps geocoding, reverse geocoding, and directions.
+`NAVER_CLIENT_ID` and `NAVER_CLIENT_SECRET` remain required fallback secrets for compatibility. Preview may run with the fallback pair while provider setup is still being prepared. Production must also set split Naver secrets: `NAVER_SEARCH_CLIENT_ID`/`NAVER_SEARCH_CLIENT_SECRET` for Naver Local Search, and `NAVER_MAPS_CLIENT_ID`/`NAVER_MAPS_CLIENT_SECRET` for Naver Cloud Maps geocoding, reverse geocoding, and directions. `npm run check:secrets:production` fails when any split Naver production secret is missing.
 
 Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[vars]` or `[env.*.vars]`. Those blocks are for non-secret configuration such as `ENVIRONMENT`, `API_VERSION`, and `ALLOWED_ORIGINS`. Use `wrangler secret put` for every provider key, JWT secret, admin token, and purchase verification secret.
 

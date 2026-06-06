@@ -98,10 +98,17 @@ if (missing.length > 0) {
 
 const missingRecommended = recommendedSecrets.filter((secretName) => !configuredNames.has(secretName));
 if (missingRecommended.length > 0) {
-  console.warn(
-    `[check:secrets] WARN: Optional Naver split credential secrets are not fully configured: ${missingRecommended.join(", ")}. ` +
-    "Worker will reuse NAVER_CLIENT_ID/NAVER_CLIENT_SECRET as fallback for Naver Search and Naver Cloud Maps."
-  );
+  if (target === "production") {
+    for (const secretName of missingRecommended) {
+      console.error(`[check:secrets] ERROR: Missing Cloudflare production split Naver secret: ${secretName}`);
+    }
+    process.exit(1);
+  } else {
+    console.warn(
+      `[check:secrets] WARN: Optional Naver split credential secrets are not fully configured: ${missingRecommended.join(", ")}. ` +
+      "Worker will reuse NAVER_CLIENT_ID/NAVER_CLIENT_SECRET as fallback for Naver Search and Naver Cloud Maps in non-production environments."
+    );
+  }
 }
 
 console.log(`[check:secrets] Cloudflare ${target} required secrets are configured.`);

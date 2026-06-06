@@ -1790,6 +1790,8 @@ for (const text of [
   "--print-required",
   "--print-recommended",
   "recommendedSecrets",
+  "Missing Cloudflare production split Naver secret",
+  "target === \"production\"",
   "NAVER_SEARCH_CLIENT_ID",
   "NAVER_SEARCH_CLIENT_SECRET",
   "NAVER_MAPS_CLIENT_ID",

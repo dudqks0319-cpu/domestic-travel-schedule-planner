@@ -3143,3 +3143,31 @@ Verification completed:
 Remaining risks:
 - `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET` remain required for backward compatibility; production should configure split Naver secrets before live provider smoke.
 - Secret presence still does not prove provider product activation; preview smoke must verify real Naver Search and Naver Cloud Maps responses.
+
+## Production Naver Secret Gate Result Record
+
+Plan:
+- Make split Naver credentials a production deployment gate instead of a soft recommendation.
+- Keep preview flexible by warning when split credentials are missing.
+- Preserve the existing required fallback secret list for compatibility.
+- Update deployment/env docs and release contract coverage.
+
+Completed:
+- Updated `scripts/check-cloudflare-secrets.mjs` so production fails when any split Naver provider secret is missing.
+- Kept preview behavior as a warning with fallback to `NAVER_CLIENT_ID`/`NAVER_CLIENT_SECRET`.
+- Updated env and Cloudflare deployment docs with the production split-secret requirement.
+- Added release contract coverage for the production-only failure path.
+
+Verification completed:
+- `node --check scripts/check-cloudflare-secrets.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `node scripts/check-cloudflare-secrets.mjs --print-recommended`
+- `npm run check:env`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This validates secret names only. Provider product activation and key correctness still require preview/production smoke calls.

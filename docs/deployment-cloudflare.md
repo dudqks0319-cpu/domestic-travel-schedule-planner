@@ -56,7 +56,7 @@ Production gates:
 - `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
 - `npm run check:health`
 - `npm run check:env:production`
-- `npm run check:secrets:production` from a Cloudflare-authenticated shell
+- `npm run check:secrets:production` from a Cloudflare-authenticated shell. Production fails this check unless the required base secrets and split Naver provider secrets are configured.
 - `npm run check:release-contract`
 - `npm test`
 - local or preview Worker smoke for `/health`
