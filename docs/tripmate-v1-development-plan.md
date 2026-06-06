@@ -3742,3 +3742,35 @@ Verification completed:
 Remaining risks:
 - Remote D1 execution is still not run locally because real Cloudflare binding IDs and auth are required.
 - If a database was manually migrated before the ledger existed, operators may need to backfill `schema_migrations` before running the automated runner against production.
+
+## Remote D1 Migration Plan Mode Result Record
+
+Plan:
+- Add a no-write plan mode before remote D1 migrations.
+- Let operators review applied and pending migration filenames before mutating preview or production.
+- Keep production plan execution explicit with `--confirm-production`.
+- Tolerate missing `schema_migrations` in plan mode without creating it.
+
+Completed:
+- Added `--plan` support to `scripts/d1-migrate.mjs`.
+- Added root scripts `d1:plan:preview` and `d1:plan:production`.
+- Plan mode reads the migration ledger, prints applied/pending counts, and exits without ledger creation, SQL file execution, or migration recording.
+- Plan mode treats a missing `schema_migrations` table as zero applied migrations.
+- Updated release contract checks for no-write plan mode, plan scripts, applied/pending summaries, and missing-ledger tolerance.
+- Updated README, API Worker README, and Cloudflare deployment docs to run D1 plan before D1 migrate.
+
+Verification completed:
+- `node --check scripts/d1-migrate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run d1:plan:preview -- --help`
+- `npm run d1:plan:production -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Plan mode still reads remote D1 and therefore requires real Cloudflare binding IDs and auth for live evidence.
+- Operators still need to backfill `schema_migrations` manually if a remote database was migrated before ledger adoption.

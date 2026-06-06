@@ -40,11 +40,14 @@ function printHelp() {
 Usage:
   npm run d1:migrate:preview
   npm run d1:migrate:production
+  npm run d1:migrate:preview -- --plan
+  npm run d1:migrate:production -- --plan
   node scripts/d1-migrate.mjs --target preview
   node scripts/d1-migrate.mjs --target production --confirm-production
 
 Options:
   --target                preview or production.
+  --plan                  Print applied and pending migrations without writing.
   --confirm-production    Required for production migrations.
 
 This command records applied SQL files in schema_migrations and executes only
@@ -60,6 +63,7 @@ if (hasFlag("--help") || hasFlag("-h")) {
 }
 
 const target = readArg("--target", "");
+const planOnly = hasFlag("--plan");
 
 if (!allowedTargets.has(target)) {
   console.error("[d1:migrate] ERROR: --target must be preview or production.");
@@ -143,6 +147,11 @@ function runWranglerD1(databaseName, args, options = {}) {
         return;
       }
 
+      if (options.allowFailure) {
+        resolve(output);
+        return;
+      }
+
       reject(new Error(`${options.label ?? "wrangler d1 execute"} failed with ${signal ?? `exit code ${code}`}`));
     });
   });
@@ -160,6 +169,10 @@ async function ensureMigrationLedger(databaseName) {
 
 function parseAppliedMigrations(output) {
   const applied = new Set();
+  if (/no such table:\s*schema_migrations/i.test(output)) {
+    return applied;
+  }
+
   const matches = output.matchAll(/"name"\s*:\s*"([^"]+)"/g);
   for (const match of matches) {
     applied.add(match[1]);
@@ -172,7 +185,7 @@ async function listAppliedMigrations(databaseName) {
   const output = await runWranglerD1(
     databaseName,
     [`--command=SELECT name FROM ${migrationLedgerTable} ORDER BY name;`],
-    { label: `${target}: read ${migrationLedgerTable}`, capture: true }
+    { label: `${target}: read ${migrationLedgerTable}`, capture: true, allowFailure: planOnly }
   );
 
   return parseAppliedMigrations(output);
@@ -207,8 +220,22 @@ async function main() {
   }
 
   console.log(`[d1:migrate] target=${target} database=${databaseName} migrations=${migrations.length}`);
-  await ensureMigrationLedger(databaseName);
+  if (!planOnly) {
+    await ensureMigrationLedger(databaseName);
+  }
+
   const appliedMigrations = await listAppliedMigrations(databaseName);
+  const pendingMigrations = migrations.filter((migrationFile) => !appliedMigrations.has(migrationFile));
+
+  if (planOnly) {
+    console.log(`[d1:migrate] plan mode: no remote writes will be executed`);
+    console.log(`[d1:migrate] applied=${appliedMigrations.size} pending=${pendingMigrations.length}`);
+    for (const migrationFile of migrations) {
+      const status = appliedMigrations.has(migrationFile) ? "applied" : "pending";
+      console.log(`[d1:migrate] ${target}: ${status} ${migrationFile}`);
+    }
+    return;
+  }
 
   for (const migrationFile of migrations) {
     if (appliedMigrations.has(migrationFile)) {

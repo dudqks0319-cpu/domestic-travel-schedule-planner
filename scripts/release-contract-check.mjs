@@ -56,6 +56,8 @@ const requiredRootScripts = [
   "check:dev",
   "check:secrets:preview",
   "check:secrets:production",
+  "d1:plan:preview",
+  "d1:plan:production",
   "d1:migrate:preview",
   "d1:migrate:production",
   "release:preview:gate",
@@ -156,6 +158,16 @@ const apiWorkerReadme = readText("services/api-worker/README.md");
 
 const d1MigrationRunnerContracts = [
   [
+    packageJson.scripts?.["d1:plan:preview"] ?? "",
+    "scripts/d1-migrate.mjs --target preview --plan",
+    "Root package must expose preview D1 migration plan"
+  ],
+  [
+    packageJson.scripts?.["d1:plan:production"] ?? "",
+    "scripts/d1-migrate.mjs --target production --confirm-production --plan",
+    "Root package must expose production D1 migration plan with explicit confirmation"
+  ],
+  [
     packageJson.scripts?.["d1:migrate:preview"] ?? "",
     "scripts/d1-migrate.mjs --target preview",
     "Root package must expose preview D1 migration runner"
@@ -204,6 +216,26 @@ const d1MigrationRunnerContracts = [
     d1MigrateScript,
     "INSERT OR IGNORE INTO",
     "D1 migration runner must record applied migrations idempotently"
+  ],
+  [
+    d1MigrateScript,
+    "plan mode: no remote writes will be executed",
+    "D1 migration runner must provide a no-write plan mode"
+  ],
+  [
+    d1MigrateScript,
+    "applied=",
+    "D1 migration runner plan mode must summarize applied migrations"
+  ],
+  [
+    d1MigrateScript,
+    "pending=",
+    "D1 migration runner plan mode must summarize pending migrations"
+  ],
+  [
+    d1MigrateScript,
+    "allowFailure: planOnly",
+    "D1 migration runner plan mode must tolerate a missing ledger table without writing"
   ]
 ];
 

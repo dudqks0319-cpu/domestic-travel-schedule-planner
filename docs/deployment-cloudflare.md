@@ -42,10 +42,11 @@ Before preview deploy:
 - Replace preview `ALLOWED_ORIGINS` with real HTTPS browser origins for the preview web/admin surfaces. Do not use localhost, loopback, placeholder, or example origins for deploy readiness.
 - Set all Cloudflare secrets with `wrangler secret put`.
 - Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
+- Review pending preview D1 migrations with `npm run d1:plan:preview`.
 - Apply preview D1 migrations with `npm run d1:migrate:preview`.
 - Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, release contract checks, tests, health checks, and strict Naver provider smoke by default.
 
-The D1 migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
+The D1 migration plan mode reads `schema_migrations` without writing and prints applied/pending filenames. The migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
 
 ## Production Deploy
 
@@ -54,6 +55,7 @@ Production deploy must use Cloudflare Workers Paid for monetized service operati
 Production gates:
 
 - `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
+- Review pending production D1 migrations with `npm run d1:plan:production`.
 - Apply production D1 migrations with `npm run d1:migrate:production` after reviewing the SQL files and confirming the target database.
 - `npm run release:production:gate -- --base-url https://<production-worker>` from a Cloudflare-authenticated shell. This includes `check:env:production`, `check:secrets:production`, release contract checks, tests, health checks, and read-only production Worker health checks. It never runs write smoke against production.
 - D1 migration reviewed
@@ -132,8 +134,10 @@ Worker v1 smoke:
 
 ```sh
 npm run worker:smoke:local
+npm run d1:plan:preview
 npm run d1:migrate:preview
 npm run release:preview:gate -- --base-url https://<preview-worker>
+npm run d1:plan:production
 npm run d1:migrate:production
 npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787

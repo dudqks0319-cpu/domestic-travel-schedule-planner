@@ -13,6 +13,8 @@
     "check:env:production": "node scripts/dev-readiness-check.mjs --target production",
     "check:secrets:preview": "node scripts/check-cloudflare-secrets.mjs --target preview",
     "check:secrets:production": "node scripts/check-cloudflare-secrets.mjs --target production",
+    "d1:plan:preview": "node scripts/d1-migrate.mjs --target preview --plan",
+    "d1:plan:production": "node scripts/d1-migrate.mjs --target production --confirm-production --plan",
     "d1:migrate:preview": "node scripts/d1-migrate.mjs --target preview",
     "d1:migrate:production": "node scripts/d1-migrate.mjs --target production --confirm-production",
     "check:release-contract": "node scripts/release-contract-check.mjs",
