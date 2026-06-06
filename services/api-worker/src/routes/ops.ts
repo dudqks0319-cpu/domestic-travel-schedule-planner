@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { createAuditLog } from "../db/audit";
 import { errorResponse } from "../http/errors";
 
 export const opsRoutes = new Hono<AppBindings>();
@@ -117,6 +118,15 @@ opsRoutes.get("/summary", async (c) => {
       )
       .all<EntitlementSummaryRow>()
   ]);
+
+  await createAuditLog(c.env.DB, {
+    action: "ops.summary.read",
+    entityType: "ops_summary",
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      windowHours: hours
+    }
+  });
 
   return c.json({
     ok: true,

@@ -53,7 +53,7 @@ wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
 wrangler secret put OPS_ADMIN_TOKEN
 ```
 
-`OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token. Do not put it in mobile env or client code.
+`OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
 ## Cloudflare Bindings
 

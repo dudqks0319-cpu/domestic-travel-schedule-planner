@@ -16,7 +16,8 @@ const ALLOWED_METADATA_KEYS = new Set([
   "reason",
   "dayNumber",
   "placeCount",
-  "hasSponsored"
+  "hasSponsored",
+  "windowHours"
 ]);
 
 function sanitizeMetadata(

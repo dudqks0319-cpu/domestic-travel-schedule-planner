@@ -986,3 +986,26 @@ Verification completed:
 Remaining risks:
 - This is an API-only admin surface, not a UI dashboard.
 - Token rotation and audit for ops summary access are not implemented yet.
+
+## Ops Summary Audit Result Record
+
+Plan:
+- Record admin summary reads as privacy-safe audit events.
+- Keep `OPS_ADMIN_TOKEN` out of logs and audit metadata.
+- Document token rotation expectations for release operations.
+
+Completed:
+- Added `windowHours` to the audit metadata allowlist.
+- Added `ops.summary.read` audit creation to `GET /api/v1/ops/summary`.
+- Documented `OPS_ADMIN_TOKEN` rotation and mobile-bundle exclusion expectations.
+- Added the ops summary audit requirement to the privacy and security checklist.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- This still depends on a manually managed operations token rather than per-operator admin accounts.
+- Ops summary audit records are API-level evidence only; there is still no admin UI.
