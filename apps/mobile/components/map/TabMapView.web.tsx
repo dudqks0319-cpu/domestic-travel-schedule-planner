@@ -135,6 +135,7 @@ function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
 
 export default function TabMapViewWeb() {
   const router = useRouter();
+  const [savedTrips, setSavedTrips] = useState<TripDto[]>([]);
   const [markers, setMarkers] = useState<PlaceMarker[]>([]);
   const [loadingMarkers, setLoadingMarkers] = useState(true);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
@@ -151,6 +152,7 @@ export default function TabMapViewWeb() {
       const res = await tripsApi.list();
       const trips = res.data.trips ?? [];
       const allMarkers: PlaceMarker[] = [];
+      setSavedTrips(trips);
 
       for (const trip of trips) {
         const placesResponse = await tripsApi.getPlacesByTrip(trip.id);
@@ -173,6 +175,7 @@ export default function TabMapViewWeb() {
       setMarkers(allMarkers);
       setSelectedMarkerId(allMarkers[0]?.id ?? null);
     } catch {
+      setSavedTrips([]);
       setMarkers([]);
       setSelectedMarkerId(null);
     } finally {
@@ -289,7 +292,9 @@ export default function TabMapViewWeb() {
             ? "장소 불러오는 중..."
             : markers.length > 0
               ? `${markers.length}개 장소가 지도에 표시됩니다`
-              : "생성된 여행 일정이 아직 없습니다"}
+              : savedTrips.length > 0
+                ? `${savedTrips.length}개 저장 여행이 있습니다`
+                : "생성된 여행 일정이 아직 없습니다"}
         </Text>
 
         <View style={styles.legendRow}>
@@ -343,6 +348,32 @@ export default function TabMapViewWeb() {
               {openingTripId === selectedMarker.trip.id ? "불러오는 중..." : "이 여행 일정표 열기"}
             </Text>
           </Pressable>
+        </View>
+      ) : null}
+
+      {savedTrips.length ? (
+        <View style={styles.savedTripsCard}>
+          <View style={styles.savedTripsHeader}>
+            <Text style={styles.savedTripsTitle}>저장 여행</Text>
+            <Text style={styles.savedTripsCount}>{`${savedTrips.length}개`}</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.savedTripScroll}>
+            {savedTrips.map((trip) => (
+              <Pressable
+                key={trip.id}
+                style={styles.savedTripChip}
+                onPress={() => { void openTripSchedule(trip); }}
+                disabled={openingTripId === trip.id}
+              >
+                <Text numberOfLines={1} style={styles.savedTripTitle}>{trip.title}</Text>
+                <Text numberOfLines={1} style={styles.savedTripMeta}>{trip.destination}</Text>
+                <Text style={styles.savedTripDate}>{`${trip.startDate} - ${trip.endDate}`}</Text>
+                <Text style={styles.savedTripAction}>
+                  {openingTripId === trip.id ? "불러오는 중..." : "일정표 열기"}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
       ) : null}
 
@@ -509,6 +540,71 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     color: "#FFFFFF",
+    fontWeight: "800"
+  },
+  savedTripsCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 12,
+    ...Theme.shadow.sm
+  },
+  savedTripsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10
+  },
+  savedTripsTitle: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  savedTripsCount: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  savedTripScroll: {
+    gap: 8,
+    paddingRight: 20
+  },
+  savedTripChip: {
+    width: 172,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    backgroundColor: "#FAFCFF",
+    padding: 12
+  },
+  savedTripTitle: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  savedTripMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700"
+  },
+  savedTripDate: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    color: Theme.colors.textTertiary,
+    fontWeight: "600"
+  },
+  savedTripAction: {
+    marginTop: 9,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primary,
     fontWeight: "800"
   },
   markerScroll: {

@@ -472,3 +472,26 @@ Verification completed:
 Remaining risks:
 - Marker loading currently fetches places sequentially per trip; batching or a Worker aggregate endpoint may be needed for large trip lists.
 - Hydration only starts from a selected marker, so saved trips with zero places still need a separate trip-list detail entry point.
+
+## Saved Trip List Entry Result Record
+
+Plan:
+- Keep saved trip markers on the map for place-rich trips.
+- Add a saved-trip list entry point that does not depend on marker availability.
+- Let saved trips with zero places hydrate into `currentTrip` and open the schedule empty state.
+
+Completed:
+- Added a "저장 여행" horizontal rail to both web and native map tabs.
+- Stored fetched trips separately from place markers so zero-place saved trips remain visible.
+- Reused `hydrateCurrentTripFromServerTrip()` from both marker cards and saved trip cards.
+- Updated empty map subtitle to distinguish "saved trips exist" from "no trips exist".
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- The saved trip rail still fetches places sequentially through the marker loader; a server aggregate endpoint remains the scalable path.
+- A dedicated trip list/detail screen would give more room for edit/delete/share actions than the map tab rail.
