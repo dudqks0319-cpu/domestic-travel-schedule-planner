@@ -65,6 +65,8 @@ Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[v
 
 The Worker only permits deterministic JWT fallback secrets when `ENVIRONMENT=local`. Preview and production must have `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` configured as Cloudflare secrets before any auth smoke or release validation.
 
+`ALLOWED_ORIGINS` is a non-secret allowlist. Empty allowlists are tolerated only in local development; preview and production must explicitly list the deployed mobile web/admin origins that may call the Worker from browsers.
+
 ## Cloudflare Bindings
 
 Configured in `services/api-worker/wrangler.toml`:

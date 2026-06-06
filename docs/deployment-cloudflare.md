@@ -61,6 +61,7 @@ Production gates:
 - provider keys set as Cloudflare secrets
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` set as Cloudflare secrets in preview and production
 - `OPS_ADMIN_TOKEN` set as a Cloudflare secret for `/api/v1/ops/*`
+- `ALLOWED_ORIGINS` explicitly lists browser origins for the target environment
 - no provider secrets in mobile env or bundle
 - gitleaks pre-push passes
 

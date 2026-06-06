@@ -25,8 +25,11 @@ app.use(
   cors({
     origin: (origin, c) => {
       const allowed = allowedOrigins(c.env.ALLOWED_ORIGINS);
-      if (!origin || allowed.length === 0) {
-        return origin;
+      if (!origin) {
+        return "";
+      }
+      if (allowed.length === 0) {
+        return c.env.ENVIRONMENT === "local" ? origin : "";
       }
       return allowed.includes(origin) ? origin : "";
     },

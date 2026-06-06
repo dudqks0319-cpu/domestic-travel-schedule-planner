@@ -165,6 +165,29 @@ for (const [content, routeText, label] of routeContracts) {
   }
 }
 
+const workerCorsContracts = [
+  [
+    indexRoutes,
+    'return c.env.ENVIRONMENT === "local" ? origin : "";',
+    "Worker CORS empty allowlist fallback must be local-only"
+  ],
+  [
+    indexRoutes,
+    "return allowed.includes(origin) ? origin : \"\";",
+    "Worker CORS must require explicit origin membership when allowlist is configured"
+  ]
+];
+
+for (const [content, expectedText, label] of workerCorsContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing Worker CORS contract: ${label}`);
+  }
+}
+
+if (indexRoutes.includes("if (!origin || allowed.length === 0)")) {
+  errors.push("Worker CORS must not allow every origin when ALLOWED_ORIGINS is empty.");
+}
+
 for (const text of [
   "Placeholder trip-day and trip-place mutation endpoints",
   "must be completed before app-store release"

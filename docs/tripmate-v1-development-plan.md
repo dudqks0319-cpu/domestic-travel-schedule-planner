@@ -2569,3 +2569,28 @@ Verification completed:
 Remaining risks:
 - Preview auth smoke now requires real Cloudflare JWT secrets before Kakao dev login can pass.
 - Secret rotation still requires an operational runbook and coordinated token invalidation policy before production handoff.
+
+## Worker CORS Allowlist Boundary Result Record
+
+Plan:
+- Prevent an empty `ALLOWED_ORIGINS` configuration from allowing every browser origin outside local development.
+- Keep local development tolerant while requiring explicit preview/production browser origins.
+- Add release contract checks and docs for the CORS allowlist boundary.
+
+Completed:
+- Updated Worker CORS handling so missing origins do not receive CORS headers and empty allowlists are permissive only when `ENVIRONMENT=local`.
+- Preserved explicit allowlist matching for configured origins.
+- Added release contract checks for local-only empty allowlist fallback and configured-origin membership checks.
+- Updated environment, deployment, and privacy/security docs with the explicit allowlist requirement.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Real preview/production web origins still need to replace placeholder/example deployment values before release.
+- Native mobile requests are not CORS-governed; API auth and rate limits remain the relevant controls there.

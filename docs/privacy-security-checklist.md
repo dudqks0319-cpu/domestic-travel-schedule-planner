@@ -51,7 +51,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 
 ## Operations
 
-- [ ] CORS allowlist is explicit.
+- [ ] CORS allowlist is explicit; empty-origin fallback is local-only.
 - [ ] Request correlation id is returned as `x-request-id`.
 - [ ] Error responses hide internal details.
 - [ ] Provider calls have timeout and cache behavior.
