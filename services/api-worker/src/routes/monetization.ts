@@ -65,7 +65,7 @@ function sanitizeMetadata(value: unknown): Record<string, unknown> {
   }
 
   const source = value as Record<string, unknown>;
-  const allowedKeys = ["tripId", "screen", "provider", "result", "reason", "styleKey"];
+  const allowedKeys = ["tripId", "screen", "provider", "result", "reason", "styleKey", "format"];
   return Object.fromEntries(
     allowedKeys
       .map((key) => [key, source[key]] as const)

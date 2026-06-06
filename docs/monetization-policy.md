@@ -14,6 +14,8 @@ Allowed ad placements:
 
 Ads must not interrupt itinerary generation. The app can log ad events with `/api/v1/monetization/ad-events`.
 
+Rewarded free export is prepared as a mobile service boundary. Until an AdMob rewarded-ad SDK is connected, free export requests must log `requested` and `failed` ad events with `reason=sdk_not_configured` and must not fake an earned reward or unlock premium export.
+
 ## Premium
 
 Premium unlocks:

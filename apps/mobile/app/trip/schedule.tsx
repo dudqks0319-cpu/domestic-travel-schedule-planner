@@ -18,6 +18,7 @@ import {
   logAffiliateClick,
   type PremiumEntitlementState
 } from "../../services/monetization";
+import { requestRewardedExportUnlock } from "../../services/rewardedAds";
 import { getAffiliateOffers, type AffiliateOffer } from "../../services/affiliateOffers";
 import {
   buildTripShareUrl,
@@ -996,18 +997,21 @@ export default function ScheduleScreen() {
     }
   };
 
-  const requestFreeExportGate = async () => {
-    setExportNotice("PDF/이미지 내보내기는 프리미엄 기능입니다. 무료 사용자는 보상형 광고 기반 1회 내보내기 정책을 연결할 수 있습니다.");
-    await logAdEvent({
-      placement: "free_export",
-      eventType: "requested",
-      metadata: { screen: "trip_schedule", result: "premium_gate" }
-    }).catch(() => undefined);
+  const requestFreeExportGate = async (format: "image" | "pdf") => {
+    const result = await requestRewardedExportUnlock({
+      screen: "trip_schedule",
+      format
+    });
+    setExportNotice(
+      result.status === "earned"
+        ? "보상형 광고 시청이 확인됐어요. 무료 내보내기를 준비합니다."
+        : "보상형 광고 기반 무료 내보내기는 AdMob SDK 연결 후 활성화됩니다. 지금은 프리미엄에서 이미지/PDF 내보내기를 사용할 수 있어요."
+    );
   };
 
   const exportScheduleImage = async () => {
     if (!entitlement.benefits.exportEnabled) {
-      await requestFreeExportGate();
+      await requestFreeExportGate("image");
       return;
     }
 
@@ -1039,7 +1043,7 @@ export default function ScheduleScreen() {
 
   const exportSchedulePdf = async () => {
     if (!entitlement.benefits.exportEnabled) {
-      await requestFreeExportGate();
+      await requestFreeExportGate("pdf");
       return;
     }
 
@@ -1364,7 +1368,7 @@ export default function ScheduleScreen() {
         </Text>
       </View>
       <Text style={styles.exportDescription}>
-        이미지/PDF 내보내기는 광고 제거와 함께 제공되는 프리미엄 기능입니다. 무료 사용자는 보상형 광고 정책으로 1회 내보내기를 열 수 있습니다.
+        이미지/PDF 내보내기는 광고 제거와 함께 제공되는 프리미엄 기능입니다. 무료 1회 내보내기는 보상형 광고 SDK 연결 후 활성화됩니다.
       </Text>
       {exportNotice ? <Text style={styles.exportNotice}>{exportNotice}</Text> : null}
       <View style={styles.exportActions}>

@@ -2009,3 +2009,33 @@ Remaining risks:
 - Device-level smoke is still needed to move and delete saved places across multiple days and verify the reopened schedule/order.
 - Bulk sync still runs sequential updates inside the Worker; a true D1 transaction remains a later hardening option.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Rewarded Free Export Boundary Result Record
+
+Plan:
+- Align the free export UI copy with actual code so the app does not imply a fake rewarded-ad unlock.
+- Add a mobile rewarded export service boundary that can later host AdMob rewarded ads without changing the schedule UI.
+- Log privacy-safe ad events for free export attempts while the SDK is not configured.
+- Keep export format in ad event metadata so operations can distinguish image and PDF free-export requests.
+
+Completed:
+- Added `apps/mobile/services/rewardedAds.ts` with `requestRewardedExportUnlock()`.
+- Changed free image/PDF export gates to call the rewarded export boundary with the requested format.
+- Logged `requested` and `failed` ad events with `reason=sdk_not_configured` until an actual rewarded-ad SDK is connected.
+- Updated schedule export copy to say free export activates after rewarded-ad SDK integration.
+- Added `format` to Worker ad metadata allowlist.
+- Updated monetization policy and release contracts for the rewarded free export boundary.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- A real AdMob rewarded-ad SDK integration is still required before free users can actually earn a one-time export.
+- Device-level smoke is still needed after SDK integration to verify ad load/show/earned/dismissed events.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

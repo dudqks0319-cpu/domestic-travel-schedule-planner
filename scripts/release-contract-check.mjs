@@ -102,6 +102,7 @@ const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
 const searchScreen = readText("apps/mobile/app/(tabs)/search.tsx");
 const mobileApi = readText("apps/mobile/services/api.ts");
 const tripHydration = readText("apps/mobile/services/tripHydration.ts");
+const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
@@ -522,6 +523,40 @@ const premiumStorageContracts = [
 for (const [content, expectedText, label] of premiumStorageContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing premium storage contract: ${label}`);
+  }
+}
+
+const rewardedExportContracts = [
+  [
+    rewardedAds,
+    "requestRewardedExportUnlock",
+    "Mobile must expose a rewarded export unlock boundary"
+  ],
+  [
+    rewardedAds,
+    'reason: "sdk_not_configured"',
+    "Rewarded export boundary must not fake an earned reward before SDK integration"
+  ],
+  [
+    scheduleScreen,
+    'requestFreeExportGate("image")',
+    "Schedule image export must use rewarded free-export gate for free users"
+  ],
+  [
+    scheduleScreen,
+    'requestFreeExportGate("pdf")',
+    "Schedule PDF export must use rewarded free-export gate for free users"
+  ],
+  [
+    monetizationRoutes,
+    '"format"',
+    "Ad event metadata allowlist must include export format"
+  ]
+];
+
+for (const [content, expectedText, label] of rewardedExportContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing rewarded export contract: ${label}`);
   }
 }
 
