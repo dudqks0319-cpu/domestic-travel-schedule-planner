@@ -409,6 +409,21 @@ const mobileDayLinkContracts = [
     "Schedule remote sync must refresh canonical sort order from Worker places"
   ],
   [
+    scheduleScreen,
+    "normalizeEditablePointSortOrders",
+    "Schedule local move/delete flows must normalize per-day sort order"
+  ],
+  [
+    scheduleScreen,
+    "const syncResult = await syncPlacesToTrip(tripId, nextPoints);",
+    "Schedule move/delete flows must bulk sync normalized day/order state"
+  ],
+  [
+    scheduleScreen,
+    "delete targetWithoutDayId.dayId;",
+    "Schedule move flow must not keep stale dayId when moving to another day"
+  ],
+  [
     tripHydration,
     "place.dayId ? { dayId: place.dayId } : {}",
     "Saved trip hydration must preserve canonical dayId"

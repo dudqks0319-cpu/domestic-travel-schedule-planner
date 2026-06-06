@@ -1981,3 +1981,31 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to add multiple search results across different days and verify each day's order after reopening the schedule.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Schedule Move Delete Sort Sync Result Record
+
+Plan:
+- Normalize local per-day `sortOrder` after schedule move/delete actions.
+- Move a place to another day without carrying the old day's canonical `dayId`.
+- Use the existing bulk sync endpoint to persist normalized day/order state for remaining saved places.
+- Keep the final-place delete path compatible with the Worker sync endpoint's non-empty payload requirement.
+
+Completed:
+- Sorted saved places in the active-day editor by canonical `sortOrder`.
+- Added `normalizeEditablePointSortOrders()` for local move/delete flows.
+- Changed move actions to append the moved place to the target day, clear stale `dayId`, normalize per-day order, and bulk sync the result.
+- Changed delete actions to normalize remaining local order and bulk sync/prune when places remain, while preserving single-delete behavior for the last place.
+- Added release contract checks for move/delete sort normalization, bulk sync, and stale `dayId` removal.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to move and delete saved places across multiple days and verify the reopened schedule/order.
+- Bulk sync still runs sequential updates inside the Worker; a true D1 transaction remains a later hardening option.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

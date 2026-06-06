@@ -718,7 +718,9 @@ export default function ScheduleScreen() {
       return [];
     }
 
-    return editableTripPoints.filter((point) => point.dayNumber === activeDay.dayNumber);
+    return editableTripPoints
+      .filter((point) => point.dayNumber === activeDay.dayNumber)
+      .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
   }, [activeDay, editableTripPoints]);
 
   const isFallbackTimeline = !route && !!fallbackRoute;
@@ -759,15 +761,6 @@ export default function ScheduleScreen() {
     return tripId && !tripId.startsWith("trip_") ? tripId : null;
   };
 
-  const syncRemotePlaceMove = async (point: EditableTripPoint, nextDayNumber: number) => {
-    const tripId = currentServerTripId();
-    if (!tripId || !point.tripPlaceId) {
-      return;
-    }
-
-    await tripsApi.updatePlaceById(tripId, point.tripPlaceId, { dayNumber: nextDayNumber });
-  };
-
   const syncRemotePlaceDelete = async (point: EditableTripPoint) => {
     const tripId = currentServerTripId();
     if (!tripId || !point.tripPlaceId) {
@@ -775,6 +768,18 @@ export default function ScheduleScreen() {
     }
 
     await tripsApi.deletePlaceById(tripId, point.tripPlaceId);
+  };
+
+  const normalizeEditablePointSortOrders = (points: EditableTripPoint[]) => {
+    const countersByDay = new Map<number, number>();
+    return points
+      .map((point) => {
+        const dayNumber = point.dayNumber && point.dayNumber >= 1 ? point.dayNumber : 1;
+        const nextSortOrder = (countersByDay.get(dayNumber) ?? 0) + 1;
+        countersByDay.set(dayNumber, nextSortOrder);
+        return { ...point, dayNumber, sortOrder: nextSortOrder };
+      })
+      .sort((a, b) => a.dayNumber - b.dayNumber || (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   };
 
   const syncPlacesToTrip = async (tripId: string, nextPoints: EditableTripPoint[]) => {
@@ -1168,14 +1173,21 @@ export default function ScheduleScreen() {
       return;
     }
 
-    const nextPoints = editableTripPoints.map((point) =>
-      point.id === pointId ? { ...point, dayNumber: nextDayNumber } : point
-    );
+    const targetWithoutDayId = { ...target };
+    delete targetWithoutDayId.dayId;
+    const nextPoints = normalizeEditablePointSortOrders([
+      ...editableTripPoints.filter((point) => point.id !== pointId),
+      { ...targetWithoutDayId, dayNumber: nextDayNumber }
+    ]);
     setSyncNotice(null);
     void (async () => {
       await persistEditableTripPoints(nextPoints);
       try {
-        await syncRemotePlaceMove(target, nextDayNumber);
+        const tripId = currentServerTripId();
+        if (tripId) {
+          const syncResult = await syncPlacesToTrip(tripId, nextPoints);
+          await persistEditableTripPoints(syncResult.points);
+        }
       } catch {
         setSyncNotice("로컬 일정은 수정됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
       }
@@ -1192,12 +1204,20 @@ export default function ScheduleScreen() {
       return;
     }
 
-    const nextPoints = editableTripPoints.filter((point) => point.id !== pointId);
+    const nextPoints = normalizeEditablePointSortOrders(editableTripPoints.filter((point) => point.id !== pointId));
     setSyncNotice(null);
     void (async () => {
       await persistEditableTripPoints(nextPoints);
       try {
-        await syncRemotePlaceDelete(target);
+        if (nextPoints.length > 0) {
+          const tripId = currentServerTripId();
+          if (tripId) {
+            const syncResult = await syncPlacesToTrip(tripId, nextPoints);
+            await persistEditableTripPoints(syncResult.points);
+          }
+        } else {
+          await syncRemotePlaceDelete(target);
+        }
       } catch {
         setSyncNotice("로컬 일정에서는 삭제됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
       }
