@@ -2257,3 +2257,29 @@ Remaining risks:
 - Actual Kakao web map rendering still needs a domain-restricted Kakao JavaScript key configured in the deployed environment.
 - Native Naver/Kakao SDK integration remains a separate device/EAS validation item.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Worker Wrangler Secret Vars Gate Result Record
+
+Plan:
+- Prevent provider/JWT/IAP/admin secrets from being committed into `wrangler.toml` vars.
+- Keep `wrangler.toml` vars limited to non-secret runtime configuration.
+- Extend release contract checks so the secret-in-vars guard cannot be removed silently.
+- Update env documentation with the Worker vars vs Cloudflare secrets boundary.
+
+Completed:
+- Added `extractTomlVarsBlocks()` to `scripts/dev-readiness-check.mjs`.
+- Added a server-only Worker secret key list and made `check:env` fail when those keys appear in `[vars]` or `[env.*.vars]`.
+- Extended release contract checks for the Worker secret-in-vars guard.
+- Updated `docs/env.md` to require `wrangler secret put` for provider keys, JWT secrets, admin token, and purchase verification secrets.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- `check:env` cannot verify that Cloudflare secrets actually exist remotely; preview/production deploy still needs `wrangler secret list` or deployment smoke with configured secrets.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

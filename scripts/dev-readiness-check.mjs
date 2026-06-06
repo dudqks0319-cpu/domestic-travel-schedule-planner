@@ -182,6 +182,49 @@ function requireNoPlaceholder(content, label, keyPattern) {
   }
 }
 
+const serverOnlyWorkerSecretKeys = [
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "NAVER_CLIENT_ID",
+  "NAVER_CLIENT_SECRET",
+  "KAKAO_REST_API_KEY",
+  "DATA_GO_KR_API_KEY",
+  "ODSAY_API_KEY",
+  "APPLE_SHARED_SECRET",
+  "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
+  "OPS_ADMIN_TOKEN"
+];
+
+function extractTomlVarsBlocks(content) {
+  const lines = content.split(/\r?\n/);
+  const blocks = [];
+  let current = null;
+
+  for (const line of lines) {
+    const heading = line.trim().match(/^\[(.+)]$/);
+    if (heading) {
+      if (current) {
+        blocks.push(current);
+      }
+      const sectionName = heading[1] ?? "";
+      current = sectionName === "vars" || sectionName.endsWith(".vars")
+        ? { sectionName, content: "" }
+        : null;
+      continue;
+    }
+
+    if (current) {
+      current.content += `${line}\n`;
+    }
+  }
+
+  if (current) {
+    blocks.push(current);
+  }
+
+  return blocks;
+}
+
 const wranglerPath = fromRoot("services", "api-worker", "wrangler.toml");
 if (!fs.existsSync(wranglerPath)) {
   errors.push("Missing services/api-worker/wrangler.toml.");
@@ -189,6 +232,14 @@ if (!fs.existsSync(wranglerPath)) {
   const wrangler = fs.readFileSync(wranglerPath, "utf8");
   const previewBlock = cloudflareEnvBlock(wrangler, "preview");
   const productionBlock = cloudflareEnvBlock(wrangler, "production");
+
+  for (const block of extractTomlVarsBlocks(wrangler)) {
+    for (const key of serverOnlyWorkerSecretKeys) {
+      if (new RegExp(`^\\s*${key}\\s*=`, "m").test(block.content)) {
+        errors.push(`Server-only secret ${key} must not be stored in services/api-worker/wrangler.toml [${block.sectionName}]. Use wrangler secret put instead.`);
+      }
+    }
+  }
 
   if (checkTarget === "local") {
     if (/REPLACE_WITH_[A-Z0-9_]+/.test(previewBlock) || /REPLACE_WITH_[A-Z0-9_]+/.test(productionBlock)) {

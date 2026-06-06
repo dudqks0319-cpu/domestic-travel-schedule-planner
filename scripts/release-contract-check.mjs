@@ -749,6 +749,16 @@ if (!devReadinessCheck.includes("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY")) {
   errors.push("dev-readiness-check must warn when Kakao web map rendering key is missing.");
 }
 
+for (const text of [
+  "extractTomlVarsBlocks",
+  "serverOnlyWorkerSecretKeys",
+  "must not be stored in services/api-worker/wrangler.toml"
+]) {
+  if (!devReadinessCheck.includes(text)) {
+    errors.push(`dev-readiness-check must reject Worker secrets in wrangler vars: ${text}`);
+  }
+}
+
 const serverOnlyKeys = [
   "NAVER_CLIENT_ID",
   "NAVER_CLIENT_SECRET",

@@ -59,6 +59,8 @@ wrangler secret put OPS_ADMIN_TOKEN
 
 `OPS_ADMIN_TOKEN` protects `/api/v1/ops/*` and must be a server-only random token. Do not put it in mobile env or client code. Rotate it per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
+Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[vars]` or `[env.*.vars]`. Those blocks are for non-secret configuration such as `ENVIRONMENT`, `API_VERSION`, and `ALLOWED_ORIGINS`. Use `wrangler secret put` for every provider key, JWT secret, admin token, and purchase verification secret.
+
 ## Cloudflare Bindings
 
 Configured in `services/api-worker/wrangler.toml`:
@@ -81,3 +83,4 @@ Configured in `services/api-worker/wrangler.toml`:
 - `OPS_ADMIN_TOKEN`
 
 `npm run check:env` fails when any non-`EXPO_PUBLIC_` key or known server-only key appears in `apps/mobile/.env`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe production origins.
+The same check fails if server-only Worker secrets are added to `wrangler.toml` vars instead of Cloudflare secrets.
