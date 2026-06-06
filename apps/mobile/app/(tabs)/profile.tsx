@@ -216,9 +216,20 @@ export default function ProfileScreen() {
           setTripNotice(null);
           try {
             await tripsApi.delete(trip.id);
-            const clearedLocalDraft = await clearLocalTripDraftDataForTrip(trip.id);
+            let localCleanupStatus: "cleared" | "failed" | "skipped" = "skipped";
+            try {
+              localCleanupStatus = await clearLocalTripDraftDataForTrip(trip.id) ? "cleared" : "skipped";
+            } catch {
+              localCleanupStatus = "failed";
+            }
             setSavedTrips((current) => current.filter((item) => item.id !== trip.id));
-            setTripNotice(clearedLocalDraft ? "여행을 삭제했고 이 기기의 열린 일정도 정리했어요." : "여행을 삭제했어요.");
+            if (localCleanupStatus === "cleared") {
+              setTripNotice("여행을 삭제했고 이 기기의 열린 일정도 정리했어요.");
+            } else if (localCleanupStatus === "failed") {
+              setTripNotice("여행은 삭제됐지만 이 기기의 열린 일정 정리는 실패했어요. 로그아웃하면 로컬 임시 데이터가 정리됩니다.");
+            } else {
+              setTripNotice("여행을 삭제했어요.");
+            }
           } catch {
             setTripNotice("여행을 삭제하지 못했어요. 잠시 후 다시 시도해주세요.");
           } finally {

@@ -2094,3 +2094,29 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to delete the currently open saved trip and confirm the schedule/search/route screens return to safe empty states.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Deleted Trip Cleanup Failure Boundary Result Record
+
+Plan:
+- Keep remote saved-trip deletion and same-device local draft cleanup as separate failure boundaries.
+- Ensure a local AsyncStorage/cache cleanup failure does not make the UI report that the remote trip deletion failed.
+- Show a recovery-oriented message when only local cleanup fails.
+- Add release contract coverage for the separated cleanup status.
+
+Completed:
+- Added a `localCleanupStatus` branch in the profile trip deletion flow after the Worker delete succeeds.
+- Kept the saved trip removed from the local profile list even if same-device draft cleanup fails.
+- Added user copy that distinguishes "remote trip deleted, local open itinerary cleanup failed" from a true delete failure.
+- Extended release contract checks for the separated local cleanup failure boundary.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to force AsyncStorage cleanup failure or simulate it in development and verify the exact user-facing notice.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

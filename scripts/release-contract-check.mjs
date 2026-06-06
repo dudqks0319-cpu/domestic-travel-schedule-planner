@@ -605,6 +605,16 @@ const mobileTripDeletionPrivacyContracts = [
   ],
   [
     profileScreen,
+    'localCleanupStatus: "cleared" | "failed" | "skipped"',
+    "Mobile trip deletion must separate remote delete success from local cleanup status"
+  ],
+  [
+    profileScreen,
+    "여행은 삭제됐지만 이 기기의 열린 일정 정리는 실패했어요",
+    "Mobile trip deletion must not report remote delete failure when only local cleanup fails"
+  ],
+  [
+    profileScreen,
     "이 기기의 열린 일정",
     "Mobile trip deletion copy must explain local open-itinerary cleanup"
   ]
