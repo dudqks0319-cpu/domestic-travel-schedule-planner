@@ -335,6 +335,34 @@ if (sharePageRoutes.includes("공유 토큰:") || sharePageRoutes.includes("shar
   errors.push("Public share page must not render share token fragments.");
 }
 
+const mobileShareUrlPrivacyContracts = [
+  [
+    scheduleScreen,
+    "브라우저 클립보드 권한이 없어 복사하지 못했어요",
+    "Schedule share fallback must not render bearer share URLs"
+  ],
+  [
+    profileScreen,
+    "브라우저 클립보드 권한이 없어 복사하지 못했어요",
+    "Profile share fallback must not render bearer share URLs"
+  ]
+];
+
+for (const [content, expectedText, label] of mobileShareUrlPrivacyContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing mobile share URL privacy contract: ${label}`);
+  }
+}
+
+for (const [content, label] of [
+  [scheduleScreen, "Schedule share notice"],
+  [profileScreen, "Profile share notice"]
+]) {
+  if (content.includes("공유 링크가 생성됐어요:")) {
+    errors.push(`${label} must not render bearer share URLs in user-visible fallback copy.`);
+  }
+}
+
 const publicShareApiPrivacyContracts = [
   [
     tripRoutes,

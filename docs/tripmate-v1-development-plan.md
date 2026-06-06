@@ -2439,3 +2439,29 @@ Verification completed:
 Remaining risks:
 - Live Apple App Store Server API and Google Play Developer API validation still need real SDK/server integration before production premium purchases can be enabled.
 - Worker smoke remains intentionally limited to local/preview because it creates and deletes smoke-owned data.
+
+## Mobile Share URL Privacy Fallback Result Record
+
+Plan:
+- Remove web fallback copy that rendered full bearer-style public share URLs when Clipboard API was unavailable.
+- Keep the successful clipboard/native share paths unchanged.
+- Add release contract checks so schedule/profile share notices cannot regress to rendering share URLs.
+- Update the privacy/security checklist with mobile share fallback coverage.
+
+Completed:
+- Updated schedule share fallback copy to avoid displaying the generated public share URL when clipboard access is unavailable.
+- Updated profile saved-trip share fallback copy with the same non-token user notice.
+- Added release contract checks for schedule/profile fallback copy and the removed URL-rendering phrase.
+- Added checklist coverage for mobile share fallback copy.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Web users without Clipboard API support must retry after enabling clipboard permission or use a supported browser; this avoids exposing bearer links in persistent UI notices.
+- Device/browser smoke is still needed for native share sheet and web clipboard permission-denied behavior.

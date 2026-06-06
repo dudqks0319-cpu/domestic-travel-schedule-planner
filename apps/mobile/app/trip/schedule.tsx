@@ -964,7 +964,7 @@ export default function ScheduleScreen() {
           await clipboard.writeText(shareUrl);
           setShareNotice("공유 링크를 클립보드에 복사했어요.");
         } else {
-          setShareNotice(`공유 링크가 생성됐어요: ${shareUrl}`);
+          setShareNotice("공유 링크는 생성됐지만 브라우저 클립보드 권한이 없어 복사하지 못했어요. 클립보드 권한을 허용한 뒤 다시 시도해 주세요.");
         }
       } else {
         await Share.share({ message, url: shareUrl, title: `${tripMeta.destination} 여행 일정표` });
