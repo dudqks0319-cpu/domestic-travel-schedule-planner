@@ -729,6 +729,7 @@ const mobileEnvExample = readText("apps/mobile/.env.example");
 for (const key of [
   "EXPO_PUBLIC_API_BASE_URL",
   "EXPO_PUBLIC_MAP_PROVIDER",
+  "EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY",
   "EXPO_PUBLIC_AFFILIATE_HOTEL_URL",
   "EXPO_PUBLIC_AFFILIATE_RENTAL_CAR_URL",
   "EXPO_PUBLIC_AFFILIATE_TICKET_URL",
@@ -742,6 +743,10 @@ for (const key of [
 
 if (!devReadinessCheck.includes('!key.startsWith("EXPO_PUBLIC_")')) {
   errors.push("dev-readiness-check must reject non-EXPO_PUBLIC keys in apps/mobile/.env.");
+}
+
+if (!devReadinessCheck.includes("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY")) {
+  errors.push("dev-readiness-check must warn when Kakao web map rendering key is missing.");
 }
 
 const serverOnlyKeys = [

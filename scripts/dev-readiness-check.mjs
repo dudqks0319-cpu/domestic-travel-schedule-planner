@@ -136,6 +136,13 @@ if (!fs.existsSync(mobileEnvPath)) {
     warnings.push("apps/mobile/.env has empty EXPO_PUBLIC_API_BASE_URL.");
   }
 
+  if (
+    mobileEnv.get("EXPO_PUBLIC_MAP_PROVIDER") === "kakao" &&
+    !hasNonEmptyValue(mobileEnv.get("EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY"))
+  ) {
+    warnings.push("apps/mobile/.env selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.");
+  }
+
   for (const key of mobileEnv.keys()) {
     if (!key.startsWith("EXPO_PUBLIC_")) {
       errors.push(`Forbidden non-public key in apps/mobile/.env: ${key}. Mobile env keys must start with EXPO_PUBLIC_.`);

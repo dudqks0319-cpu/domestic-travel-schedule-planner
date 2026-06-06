@@ -2230,3 +2230,30 @@ Verification completed:
 Remaining risks:
 - Existing local untracked `apps/mobile/.env` files on developer machines must be corrected before `npm run check:env` can pass.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Kakao Web Map Public Key Boundary Result Record
+
+Plan:
+- Document the existing `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` usage for web Kakao map rendering.
+- Keep Kakao's public JavaScript key distinct from the server-only `KAKAO_REST_API_KEY`.
+- Warn when `EXPO_PUBLIC_MAP_PROVIDER=kakao` is selected without the public JavaScript map key.
+- Add release contract coverage for the public key example and readiness warning.
+
+Completed:
+- Added `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` to `apps/mobile/.env.example`.
+- Added a `check:env` warning when Kakao map provider is selected without the public web map key.
+- Extended release contract checks to require the public Kakao JavaScript key example and readiness warning.
+- Updated `docs/env.md` to describe the domain-restricted public JavaScript key and keep `KAKAO_REST_API_KEY` server-only.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Actual Kakao web map rendering still needs a domain-restricted Kakao JavaScript key configured in the deployed environment.
+- Native Naver/Kakao SDK integration remains a separate device/EAS validation item.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
