@@ -80,19 +80,19 @@ export interface TripPlaceRecord {
 
 export interface TripPlaceInput {
   dayId?: string;
-  providerPlaceId?: string;
+  providerPlaceId?: string | null;
   name: string;
   category: string;
-  address?: string;
+  address?: string | null;
   lat?: number;
   lng?: number;
   dayNumber?: number;
   sortOrder?: number;
-  startTime?: string;
-  endTime?: string;
-  memo?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  memo?: string | null;
   isSponsored?: boolean;
-  sponsorLabel?: string;
+  sponsorLabel?: string | null;
 }
 
 export function toPublicTrip(record: TripRecord) {
@@ -650,19 +650,19 @@ export async function updateTripPlace(
     )
     .bind(
       resolvedDayId,
-      input.providerPlaceId ?? existing.provider_place_id,
+      Object.prototype.hasOwnProperty.call(input, "providerPlaceId") ? input.providerPlaceId : existing.provider_place_id,
       input.name ?? existing.name,
       input.category ?? existing.category,
-      input.address ?? existing.address,
+      Object.prototype.hasOwnProperty.call(input, "address") ? input.address : existing.address,
       input.lat ?? existing.lat,
       input.lng ?? existing.lng,
       resolvedDayNumber,
       input.sortOrder ?? existing.sort_order,
-      input.startTime ?? existing.start_time,
-      input.endTime ?? existing.end_time,
-      input.memo ?? existing.memo,
+      Object.prototype.hasOwnProperty.call(input, "startTime") ? input.startTime : existing.start_time,
+      Object.prototype.hasOwnProperty.call(input, "endTime") ? input.endTime : existing.end_time,
+      Object.prototype.hasOwnProperty.call(input, "memo") ? input.memo : existing.memo,
       input.isSponsored === undefined ? existing.is_sponsored : input.isSponsored ? 1 : 0,
-      input.sponsorLabel ?? existing.sponsor_label,
+      Object.prototype.hasOwnProperty.call(input, "sponsorLabel") ? input.sponsorLabel : existing.sponsor_label,
       placeId,
       tripId,
       userId

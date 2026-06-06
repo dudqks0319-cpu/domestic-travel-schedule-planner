@@ -854,9 +854,9 @@ export default function ScheduleScreen() {
         lng: point.lng,
         dayNumber: point.dayNumber,
         sortOrder: point.sortOrder ?? index + 1,
-        ...(point.startTime ? { startTime: point.startTime } : {}),
-        ...(point.endTime ? { endTime: point.endTime } : {}),
-        ...(point.memo ? { memo: point.memo } : {}),
+        startTime: point.startTime ?? null,
+        endTime: point.endTime ?? null,
+        memo: point.memo ?? null,
         isSponsored: point.isSponsored === true,
         ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {})
       }
@@ -913,9 +913,15 @@ export default function ScheduleScreen() {
       dayNumber: patch.dayNumber ?? point.dayNumber,
       sortOrder: patch.sortOrder ?? point.sortOrder,
       ...(point.address ? { address: point.address } : {}),
-      ...(patch.startTime ? { startTime: patch.startTime } : {}),
-      ...(patch.endTime ? { endTime: patch.endTime } : {}),
-      ...(patch.memo ? { memo: patch.memo } : {})
+      ...(Object.prototype.hasOwnProperty.call(patch, "startTime")
+        ? { startTime: patch.startTime ?? null }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(patch, "endTime")
+        ? { endTime: patch.endTime ?? null }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(patch, "memo")
+        ? { memo: patch.memo ?? null }
+        : {})
     });
   };
 

@@ -641,8 +641,33 @@ Verification completed:
 - `git diff --check`
 
 Remaining risks:
-- Empty memo clearing is local-first because the current Worker patch parser ignores empty string values; a follow-up can add explicit nullable field clearing.
+- Empty memo clearing was closed in the follow-up Schedule Field Clearing phase.
 - Device-level smoke is still needed to verify `TextInput` editing behavior across iOS/Android keyboards.
+
+## Schedule Field Clearing Result Record
+
+Plan:
+- Treat `null` values from schedule edit requests as explicit field clearing.
+- Preserve existing values when edit fields are omitted.
+- Send `null` from mobile when a user clears memo or visit time fields.
+- Keep existing create-place payloads backward compatible.
+
+Completed:
+- Updated Worker trip place patch parsing so `memo`, `startTime`, `endTime`, and `sponsorLabel` can be cleared with `null` or an empty string.
+- Updated the D1 trip place update helper to distinguish omitted fields from explicit `null` values.
+- Updated mobile schedule edit patches and sync payloads to send `null` for cleared memo/time fields.
+- Kept local draft serialization free of empty strings while preserving server-backed clear semantics.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Device-level smoke is still needed to verify cleared fields survive a full edit/save/reopen loop on iOS and Android.
 
 ## Route Fallback Safety Result Record
 

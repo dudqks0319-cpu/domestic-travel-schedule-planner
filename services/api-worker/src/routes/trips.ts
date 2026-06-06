@@ -67,6 +67,24 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
 
+function nullableStringPatchValue(raw: Record<string, unknown>, key: string): string | null | undefined {
+  if (!Object.prototype.hasOwnProperty.call(raw, key)) {
+    return undefined;
+  }
+
+  const value = raw[key];
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return undefined;
+}
+
 function numberValue(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -404,11 +422,11 @@ function parseTripPlacePatch(
   const lng = numberValue(raw.lng);
   const dayNumber = numberValue(raw.dayNumber);
   const sortOrder = numberValue(raw.sortOrder);
-  const startTime = stringValue(raw.startTime);
-  const endTime = stringValue(raw.endTime);
-  const memo = stringValue(raw.memo);
+  const startTime = nullableStringPatchValue(raw, "startTime");
+  const endTime = nullableStringPatchValue(raw, "endTime");
+  const memo = nullableStringPatchValue(raw, "memo");
   const isSponsored = booleanValue(raw.isSponsored);
-  const sponsorLabel = stringValue(raw.sponsorLabel);
+  const sponsorLabel = nullableStringPatchValue(raw, "sponsorLabel");
 
   if (dayId) input.dayId = dayId;
   if (providerPlaceId) input.providerPlaceId = providerPlaceId;
@@ -419,11 +437,11 @@ function parseTripPlacePatch(
   if (lng !== null) input.lng = lng;
   if (dayNumber !== null) input.dayNumber = dayNumber;
   if (sortOrder !== null) input.sortOrder = sortOrder;
-  if (startTime) input.startTime = startTime;
-  if (endTime) input.endTime = endTime;
-  if (memo) input.memo = memo;
+  if (startTime !== undefined) input.startTime = startTime;
+  if (endTime !== undefined) input.endTime = endTime;
+  if (memo !== undefined) input.memo = memo;
   if (isSponsored !== undefined) input.isSponsored = isSponsored;
-  if (sponsorLabel) input.sponsorLabel = sponsorLabel;
+  if (sponsorLabel !== undefined) input.sponsorLabel = sponsorLabel;
 
   return Object.keys(input).length ? input : null;
 }
@@ -445,9 +463,9 @@ interface TripPlaceSyncInput {
   lng: number;
   dayNumber: number;
   sortOrder: number;
-  startTime?: string;
-  endTime?: string;
-  memo?: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  memo?: string | null;
   isSponsored?: boolean;
   sponsorLabel?: string;
 }
@@ -529,9 +547,9 @@ function parseTripPlaceSyncInput(raw: Record<string, unknown>): TripPlaceSyncInp
     const lng = numberValue(record.lng);
     const dayNumber = positiveIntegerValue(record.dayNumber);
     const sortOrder = positiveIntegerValue(record.sortOrder);
-    const startTime = stringValue(record.startTime);
-    const endTime = stringValue(record.endTime);
-    const memo = stringValue(record.memo);
+    const startTime = nullableStringPatchValue(record, "startTime");
+    const endTime = nullableStringPatchValue(record, "endTime");
+    const memo = nullableStringPatchValue(record, "memo");
     const isSponsored = booleanValue(record.isSponsored);
     const sponsorLabel = stringValue(record.sponsorLabel);
 
@@ -560,9 +578,9 @@ function parseTripPlaceSyncInput(raw: Record<string, unknown>): TripPlaceSyncInp
       lng,
       dayNumber,
       sortOrder,
-      ...(startTime ? { startTime } : {}),
-      ...(endTime ? { endTime } : {}),
-      ...(memo ? { memo } : {}),
+      ...(startTime !== undefined ? { startTime } : {}),
+      ...(endTime !== undefined ? { endTime } : {}),
+      ...(memo !== undefined ? { memo } : {}),
       ...(isSponsored !== undefined ? { isSponsored } : {}),
       ...(sponsorLabel ? { sponsorLabel } : {})
     });
@@ -923,9 +941,9 @@ tripRoutes.patch("/:tripId/places/sync", async (c) => {
     const place = await updateTripPlace(c.env.DB, userId, tripId, syncedItem.tripPlaceId, {
       dayNumber: item.dayNumber,
       sortOrder: item.sortOrder,
-      ...(item.startTime ? { startTime: item.startTime } : {}),
-      ...(item.endTime ? { endTime: item.endTime } : {}),
-      ...(item.memo ? { memo: item.memo } : {})
+      ...(item.startTime !== undefined ? { startTime: item.startTime } : {}),
+      ...(item.endTime !== undefined ? { endTime: item.endTime } : {}),
+      ...(item.memo !== undefined ? { memo: item.memo } : {})
     });
     if (!place) {
       return errorResponse(c, 409, "TRIP_PLACE_SYNC_REORDER_FAILED", "장소 순서를 저장하지 못했습니다.");
