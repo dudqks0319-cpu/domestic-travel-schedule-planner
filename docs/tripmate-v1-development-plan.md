@@ -3200,3 +3200,28 @@ Verification completed:
 
 Remaining risks:
 - Local static checks can verify the strict smoke contract, but actual provider product activation still requires running preview smoke against a deployed Worker with live Naver Search and Cloud Maps secrets.
+
+## Geocode Provider Metadata Cache Version Result Record
+
+Plan:
+- Prevent stale KV entries without provider metadata from causing strict provider smoke false failures.
+- Version geocode and reverse-geocode cache keys after adding provider metadata.
+- Add release contract coverage so the cache version bump does not regress.
+
+Completed:
+- Changed geocode cache keys from `geocode:v1` to `geocode:v2`.
+- Changed reverse-geocode cache keys from `reverse-geocode:v1` to `reverse-geocode:v2`.
+- Added release contract checks for both provider-metadata cache key versions.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Existing `geocode:v1` and `reverse-geocode:v1` KV entries can remain until TTL expiry, but the Worker no longer reads them for current provider metadata responses.

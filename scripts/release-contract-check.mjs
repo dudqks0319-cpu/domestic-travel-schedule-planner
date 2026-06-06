@@ -324,6 +324,16 @@ const geocodeContracts = [
   ],
   [
     providerIndex,
+    '"geocode:v2"',
+    "Geocode cache keys must be versioned after adding provider metadata"
+  ],
+  [
+    providerIndex,
+    '"reverse-geocode:v2"',
+    "Reverse geocode cache keys must be versioned after adding provider metadata"
+  ],
+  [
+    providerIndex,
     "geocodeAddress",
     "Provider index must expose cached geocode lookup"
   ],

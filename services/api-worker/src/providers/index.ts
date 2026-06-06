@@ -51,11 +51,11 @@ function directionsAdapters(env: Env): PlaceProviderAdapter[] {
 }
 
 function geocodeCacheKey(address: string): string {
-  return ["geocode:v1", address.trim().toLowerCase()].join(":");
+  return ["geocode:v2", address.trim().toLowerCase()].join(":");
 }
 
 function reverseGeocodeCacheKey(lat: number, lng: number): string {
-  return ["reverse-geocode:v1", lat.toFixed(6), lng.toFixed(6)].join(":");
+  return ["reverse-geocode:v2", lat.toFixed(6), lng.toFixed(6)].join(":");
 }
 
 async function searchAdapter(
