@@ -417,12 +417,29 @@ await step("trip, day, place, and share CRUD", async () => {
     autoLinkedPlace.body?.place?.dayId && autoLinkedPlace.body.place.dayNumber === 2,
     "dayNumber-only place create should auto-link a trip day"
   );
-  assertOk(
-    await request("PATCH", `/api/v1/trips/${tripId}/places/${placeId}`, {
-      json: { memo: "smoke memo", sortOrder: 2 }
-    }),
-    "PATCH /api/v1/trips/:tripId/places/:placeId"
-  );
+  const patchedPlace = await request("PATCH", `/api/v1/trips/${tripId}/places/${placeId}`, {
+    json: { memo: "smoke memo", startTime: "14:30", endTime: "15:30", sortOrder: 2 }
+  });
+  assertOk(patchedPlace, "PATCH /api/v1/trips/:tripId/places/:placeId");
+  assert(patchedPlace.body?.place?.memo === "smoke memo", "place patch should persist memo");
+  assert(patchedPlace.body?.place?.startTime === "14:30", "place patch should persist startTime");
+  assert(patchedPlace.body?.place?.endTime === "15:30", "place patch should persist endTime");
+
+  const clearedPlace = await request("PATCH", `/api/v1/trips/${tripId}/places/${placeId}`, {
+    json: { memo: null, startTime: null, endTime: "" }
+  });
+  assertOk(clearedPlace, "PATCH /api/v1/trips/:tripId/places/:placeId clear fields");
+  assert(clearedPlace.body?.place?.memo === null, "place patch should clear memo with null");
+  assert(clearedPlace.body?.place?.startTime === null, "place patch should clear startTime with null");
+  assert(clearedPlace.body?.place?.endTime === null, "place patch should clear endTime with empty string");
+
+  const placesAfterClear = await request("GET", `/api/v1/trips/${tripId}/places`);
+  assertOk(placesAfterClear, "GET /api/v1/trips/:tripId/places after clear");
+  const clearedPersistedPlace = placesAfterClear.body?.places?.find((item) => item?.id === placeId);
+  assert(clearedPersistedPlace?.memo === null, "place field clear should persist memo null");
+  assert(clearedPersistedPlace?.startTime === null, "place field clear should persist startTime null");
+  assert(clearedPersistedPlace?.endTime === null, "place field clear should persist endTime null");
+
   const reorder = await request("PATCH", `/api/v1/trips/${tripId}/places/reorder`, {
     json: { places: [{ placeId, dayNumber: 1, sortOrder: 1 }] }
   });

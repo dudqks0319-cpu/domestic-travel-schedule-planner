@@ -669,6 +669,29 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to verify cleared fields survive a full edit/save/reopen loop on iOS and Android.
 
+## Worker Smoke Schedule Field Clearing Result Record
+
+Plan:
+- Extend the Worker v1 smoke script to catch schedule field clearing regressions.
+- Verify place memo and visit time can be set and then cleared through public v1 trip place APIs.
+- Keep the smoke production guard unchanged.
+
+Completed:
+- Added smoke assertions for `memo`, `startTime`, and `endTime` patch persistence.
+- Added smoke assertions that `memo: null`, `startTime: null`, and empty `endTime` clear persisted D1 fields.
+- Re-read trip places after clearing so the smoke verifies persistence, not only response shaping.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run worker:smoke -- --help`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- The executable smoke still requires a running local/preview Worker with D1/KV/R2 bindings to validate against runtime storage.
+
 ## Route Fallback Safety Result Record
 
 Plan:
