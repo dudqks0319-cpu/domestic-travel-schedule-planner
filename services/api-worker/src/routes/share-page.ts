@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { listSharedTripExports, toPublicTripExport } from "../db/exports";
 import {
   getSharedTrip,
   listTripDays,
@@ -72,6 +73,7 @@ function renderSharePage(input: {
   trip: ReturnType<typeof toPublicTrip>;
   days: Array<ReturnType<typeof toPublicTripDay> & { places: Array<ReturnType<typeof toPublicTripPlace>> }>;
   unassignedPlaces: Array<ReturnType<typeof toPublicTripPlace>>;
+  exports: Array<ReturnType<typeof toPublicTripExport>>;
 }): string {
   const daySections = input.days
     .map((day) => {
@@ -133,6 +135,21 @@ function renderSharePage(input: {
           .join("")}</ol>
       </section>`
     : "";
+  const exportSection = input.exports.length
+    ? `<section class="exports">
+        <div>
+          <p class="eyebrow">내보내기</p>
+          <h2>공유된 일정 파일</h2>
+        </div>
+        <div class="export-links">
+          ${input.exports
+            .map((item) => `<a class="export-link" href="${escapeHtml(item.downloadUrl)}" rel="nofollow noopener">
+              ${item.format === "image" ? "이미지" : "PDF 저장용"} 파일 열기
+            </a>`)
+            .join("")}
+        </div>
+      </section>`
+    : "";
 
   return `<!doctype html>
 <html lang="ko">
@@ -150,6 +167,10 @@ function renderSharePage(input: {
     h1 { margin: 0; font-size: clamp(28px, 6vw, 44px); line-height: 1.14; letter-spacing: 0; }
     .summary { margin-top: 12px; color: #6b7280; line-height: 1.6; font-size: 15px; }
     .notice { margin-top: 16px; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 14px; padding: 12px 14px; color: #1e40af; font-weight: 700; font-size: 13px; }
+    .exports { margin-top: 16px; background: #fff; border: 1px solid #dbeafe; border-radius: 16px; padding: 16px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
+    .exports h2 { margin: 3px 0 0; font-size: 18px; line-height: 1.3; }
+    .export-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .export-link { display: inline-flex; align-items: center; min-height: 38px; border-radius: 10px; background: #1a1a2e; color: #fff; padding: 8px 12px; font-size: 13px; font-weight: 800; text-decoration: none; }
     .day { margin-top: 16px; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
     .day-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; padding: 16px 16px 13px; background: #f8fbff; border-bottom: 1px solid #eef2f7; }
     .day-header h2 { margin: 3px 0 0; font-size: 18px; line-height: 1.3; }
@@ -177,6 +198,7 @@ function renderSharePage(input: {
       <p class="summary">${escapeHtml(input.trip.destination)} · ${escapeHtml(formatDate(input.trip.startDate))} - ${escapeHtml(formatDate(input.trip.endDate))}</p>
       <p class="notice">이 페이지는 읽기 전용 공유 일정입니다. 장소 좌표 원문은 표시하지 않습니다.</p>
     </header>
+    ${exportSection}
     ${daySections || `<section class="day"><div class="empty-place">표시할 일정이 없습니다.</div></section>`}
     ${unassignedSection}
     <footer>TripMate 읽기 전용 공유 일정${input.shareExpiresAt ? ` · 만료: ${escapeHtml(input.shareExpiresAt)}` : ""}</footer>
@@ -188,14 +210,16 @@ function renderSharePage(input: {
 sharePageRoutes.get("/:shareId", async (c) => {
   setSharePageSecurityHeaders(c);
 
-  const sharedTrip = await getSharedTrip(c.env.DB, c.req.param("shareId"));
+  const shareId = c.req.param("shareId");
+  const sharedTrip = await getSharedTrip(c.env.DB, shareId);
   if (!sharedTrip) {
     return c.html(renderNotFoundPage(), 404);
   }
 
-  const [days, places] = await Promise.all([
+  const [days, places, exports] = await Promise.all([
     listTripDays(c.env.DB, sharedTrip.user_id, sharedTrip.id),
-    listTripPlaces(c.env.DB, sharedTrip.user_id, sharedTrip.id)
+    listTripPlaces(c.env.DB, sharedTrip.user_id, sharedTrip.id),
+    listSharedTripExports(c.env.DB, shareId)
   ]);
   const publicPlaces = (places ?? []).map(toPublicTripPlace);
   const publicDays = (days ?? []).map((day) => {
@@ -212,6 +236,10 @@ sharePageRoutes.get("/:shareId", async (c) => {
     shareExpiresAt: sharedTrip.share_expires_at,
     trip: toPublicTrip(sharedTrip),
     days: publicDays,
-    unassignedPlaces
+    unassignedPlaces,
+    exports: exports.map((record) => toPublicTripExport(
+      record,
+      `/api/v1/share/${encodeURIComponent(shareId)}/exports/${encodeURIComponent(record.id)}/download`
+    ))
   }));
 });

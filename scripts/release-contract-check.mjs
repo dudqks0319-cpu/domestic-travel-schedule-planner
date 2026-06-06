@@ -1066,6 +1066,31 @@ const exportDownloadContracts = [
     "Shared export download must enforce active share token access"
   ],
   [
+    tripRoutes,
+    "listSharedTripExports(c.env.DB, shareId)",
+    "Public share API must list ready shared exports for the active share token"
+  ],
+  [
+    tripRoutes,
+    "toPublicTripExport(record, null)",
+    "Public share API must not return bearer-token export download URLs in JSON"
+  ],
+  [
+    sharePageRoutes,
+    "listSharedTripExports(c.env.DB, shareId)",
+    "Public share page must list ready shared exports for the active share token"
+  ],
+  [
+    sharePageRoutes,
+    "공유된 일정 파일",
+    "Public share page must render a shared export section when exports exist"
+  ],
+  [
+    sharePageRoutes,
+    "/api/v1/share/${encodeURIComponent(shareId)}/exports/${encodeURIComponent(record.id)}/download",
+    "Public share page must link exports through the shared download endpoint"
+  ],
+  [
     tripExportsDb,
     "INNER JOIN share_links s",
     "Shared export lookup must join exports through share links"
@@ -1079,6 +1104,11 @@ const exportDownloadContracts = [
     tripExportsDb,
     "e.expires_at IS NULL OR e.expires_at > datetime('now')",
     "Shared export lookup must reject expired export assets"
+  ],
+  [
+    tripExportsDb,
+    "ORDER BY e.created_at DESC",
+    "Shared export listing must return newest ready exports first"
   ],
   [
     tripRoutes,
@@ -1144,6 +1174,21 @@ const exportDownloadContracts = [
     workerSmokeScript,
     "shared export download should prevent indexing",
     "Worker smoke must verify shared export noindex headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should list ready exports without echoing bearer token URLs",
+    "Worker smoke must verify shared exports are discoverable from the share API without token URLs"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should not echo bearer token through export metadata",
+    "Worker smoke must verify shared export metadata does not echo the share token"
+  ],
+  [
+    workerSmokeScript,
+    "public share page should render ready shared export links",
+    "Worker smoke must verify shared export links are rendered on the share page"
   ],
   [
     workerSmokeScript,

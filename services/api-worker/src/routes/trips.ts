@@ -6,6 +6,7 @@ import {
   createTripExport,
   getOwnedTripExport,
   getSharedTripExport,
+  listSharedTripExports,
   toPublicTripExport,
   type TripExportFormat
 } from "../db/exports";
@@ -1380,9 +1381,11 @@ shareRoutes.get("/:shareId", async (c) => {
     return errorResponse(c, 404, "SHARE_NOT_FOUND", "공유 링크를 찾을 수 없습니다.");
   }
 
-  const [days, places] = await Promise.all([
+  const shareId = c.req.param("shareId");
+  const [days, places, exports] = await Promise.all([
     listTripDays(c.env.DB, sharedTrip.user_id, sharedTrip.id),
-    listTripPlaces(c.env.DB, sharedTrip.user_id, sharedTrip.id)
+    listTripPlaces(c.env.DB, sharedTrip.user_id, sharedTrip.id),
+    listSharedTripExports(c.env.DB, shareId)
   ]);
   const publicPlaces = (places ?? []).map(toPublicTripPlace);
   const publicDays = (days ?? []).map((day) => {
@@ -1404,6 +1407,7 @@ shareRoutes.get("/:shareId", async (c) => {
       days: publicDays,
       places: publicPlaces
     },
+    exports: exports.map((record) => toPublicTripExport(record, null)),
     requestId: c.get("requestId")
   });
 });

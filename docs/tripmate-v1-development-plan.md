@@ -3445,3 +3445,32 @@ Verification completed:
 Remaining risks:
 - A real Apple/Google IAP SDK is still required to collect receipts or transaction ids automatically.
 - Live App Store Server API and Google Play Developer API validation are still required before production premium purchases can unlock benefits.
+
+## Shared Export Discovery Result Record
+
+Plan:
+- Make prepared exports discoverable from shared itineraries instead of requiring a hidden export id.
+- Keep R2 object keys private and expose only share-token scoped download URLs.
+- Add shared export metadata to the public share API and safe export links to the read-only HTML share page.
+- Extend Worker smoke and release contract checks so the shared export discovery path remains covered.
+
+Completed:
+- Added `listSharedTripExports()` to return ready, unexpired exports for an active share token.
+- Added shared export metadata to `GET /api/v1/share/:shareId` without echoing bearer-token download URLs.
+- Added a "공유된 일정 파일" section to `/share/:shareId` when ready exports exist.
+- Updated Worker smoke to verify shared export discovery through both JSON API and HTML page.
+- Updated API Worker docs and release contract checks for shared export discovery.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Shared export discovery still needs preview smoke with real D1/R2 bindings to verify live object availability and response headers.

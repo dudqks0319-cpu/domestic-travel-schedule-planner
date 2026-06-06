@@ -601,6 +601,29 @@ await step("premium trip export", async () => {
     "shared export download should return printable TripMate content"
   );
 
+  const publicShareWithExports = await request("GET", `/api/v1/share/${shareToken}`, { auth: false });
+  assertOk(publicShareWithExports, "GET /api/v1/share/:shareId after export");
+  assert(
+    publicShareWithExports.body?.exports?.some((item) =>
+      item?.id === exportId &&
+        item.downloadUrl === null
+    ),
+    "public share read should list ready exports without echoing bearer token URLs"
+  );
+  assert(
+    !JSON.stringify(publicShareWithExports.body).includes(shareToken),
+    "public share read should not echo bearer token through export metadata"
+  );
+
+  const publicSharePageWithExports = await request("GET", `/share/${shareToken}`, { auth: false });
+  assertOk(publicSharePageWithExports, "GET /share/:shareId after export");
+  assert(
+    typeof publicSharePageWithExports.body === "string" &&
+      publicSharePageWithExports.body.includes("공유된 일정 파일") &&
+      publicSharePageWithExports.body.includes(`/api/v1/share/${shareToken}/exports/${exportId}/download`),
+    "public share page should render ready shared export links"
+  );
+
   const createdImageExport = await request("POST", `/api/v1/trips/${tripId}/exports`, {
     json: { format: "image" }
   });
