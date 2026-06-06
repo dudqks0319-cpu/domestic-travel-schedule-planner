@@ -641,3 +641,27 @@ Verification completed:
 Remaining risks:
 - Real provider failure modes still need Cloudflare preview smoke with configured provider secrets.
 - The existing Worker route optimizer still returns fallback estimates when live routing is unavailable; this is acceptable only while UI clearly labels the result as estimated.
+
+## Affiliate CTA Result Record
+
+Plan:
+- Connect mobile affiliate UI to the existing Worker affiliate click logging endpoint.
+- Keep external bookings separate from digital premium purchases.
+- Avoid hardcoded partner links and require public HTTPS configuration.
+
+Completed:
+- Added `apps/mobile/services/affiliateOffers.ts` with hotel, rental car, ticket, insurance, and local tour offers.
+- Added schedule-screen "예약/제휴" CTA section after the itinerary.
+- Logged clicks through `logAffiliateClick()` before opening configured external booking URLs.
+- Added disabled/link-missing UI copy when affiliate URLs are not configured.
+- Documented optional public affiliate URL env vars and no-hardcoded-partner-link policy.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Real affiliate URLs must be configured through public env after partner contracts are finalized.
+- Device-level smoke is still needed to verify `Linking.openURL()` behavior for each partner URL.

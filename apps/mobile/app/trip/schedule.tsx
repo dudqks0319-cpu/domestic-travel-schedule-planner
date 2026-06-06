@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -13,8 +13,10 @@ import Typography from "../../constants/Typography";
 import {
   DEFAULT_FREE_ENTITLEMENT,
   loadEntitlementState,
+  logAffiliateClick,
   type PremiumEntitlementState
 } from "../../services/monetization";
+import { getAffiliateOffers, type AffiliateOffer } from "../../services/affiliateOffers";
 import { buildTripShareUrl, tripsApi } from "../../services/api";
 import {
   clearPersistedOptimizedRoute,
@@ -475,6 +477,8 @@ export default function ScheduleScreen() {
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
+  const affiliateOffers = useMemo(() => getAffiliateOffers(), []);
 
   useEffect(() => {
     let mounted = true;
@@ -672,6 +676,32 @@ export default function ScheduleScreen() {
     }
   };
 
+  const openAffiliateOffer = async (offer: AffiliateOffer) => {
+    if (!offer.targetUrl) {
+      setAffiliateNotice(`${offer.title} 제휴 링크가 아직 설정되지 않았어요. 환경변수 ${offer.envName}을 확인해 주세요.`);
+      return;
+    }
+
+    setAffiliateNotice(null);
+    try {
+      await logAffiliateClick({
+        provider: offer.provider,
+        placement: "schedule_bottom",
+        targetUrl: offer.targetUrl,
+        ...(currentServerTripId() ? { tripId: currentServerTripId() ?? undefined } : {})
+      });
+    } catch {
+      setAffiliateNotice("클릭 기록은 실패했지만 외부 예약 서비스는 열어드릴게요.");
+    }
+
+    const canOpen = await Linking.canOpenURL(offer.targetUrl);
+    if (canOpen) {
+      await Linking.openURL(offer.targetUrl);
+    } else {
+      setAffiliateNotice("외부 예약 링크를 열 수 없어요. 링크 설정을 확인해 주세요.");
+    }
+  };
+
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
     if (!pointId || nextDayNumber < 1 || nextDayNumber > visibleDayTabs.length) {
       return;
@@ -795,6 +825,35 @@ export default function ScheduleScreen() {
     </View>
   ) : null;
 
+  const affiliateSection = (
+    <View style={styles.affiliateCard}>
+      <View style={styles.affiliateHeader}>
+        <Text style={styles.affiliateTitle}>예약/제휴</Text>
+        <Text style={styles.affiliateBadge}>외부 서비스</Text>
+      </View>
+      <Text style={styles.affiliateDescription}>
+        숙소·렌터카·티켓·보험 예약은 앱 프리미엄 결제와 분리된 외부 서비스로 이동합니다.
+      </Text>
+      {affiliateNotice ? <Text style={styles.affiliateNotice}>{affiliateNotice}</Text> : null}
+      <View style={styles.affiliateGrid}>
+        {affiliateOffers.map((offer) => (
+          <TouchableOpacity
+            key={offer.provider}
+            style={[styles.affiliateOffer, !offer.targetUrl ? styles.affiliateOfferDisabled : null]}
+            onPress={() => { void openAffiliateOffer(offer); }}
+            activeOpacity={0.78}
+          >
+            <Text style={styles.affiliateOfferTitle}>{offer.title}</Text>
+            <Text style={styles.affiliateOfferDescription}>{offer.description}</Text>
+            <Text style={styles.affiliateOfferAction}>
+              {offer.targetUrl ? "외부에서 보기" : "링크 설정 필요"}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.frame}>
@@ -841,6 +900,7 @@ export default function ScheduleScreen() {
                 })}
               </ScrollView>
               {savedPlaceSection}
+              {affiliateSection}
               <View style={styles.bottomActions}>
                 <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
                 <Button
@@ -931,6 +991,7 @@ export default function ScheduleScreen() {
               </View>
 
               {savedPlaceSection}
+              {affiliateSection}
 
               <View style={styles.bottomActions}>
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
@@ -1285,6 +1346,79 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
     marginTop: 5
+  },
+  affiliateCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: Spacing.md,
+    gap: 10,
+    ...Theme.shadow.sm
+  },
+  affiliateHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  affiliateTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  affiliateBadge: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    fontWeight: "800",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.common.warning,
+    backgroundColor: "#FFF9DB",
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  affiliateDescription: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    lineHeight: 18
+  },
+  affiliateNotice: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    borderRadius: 10,
+    backgroundColor: "#FFF9DB",
+    padding: Spacing.sm
+  },
+  affiliateGrid: {
+    gap: 8
+  },
+  affiliateOffer: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: "#FAFCFF",
+    padding: 12
+  },
+  affiliateOfferDisabled: {
+    opacity: 0.72
+  },
+  affiliateOfferTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  affiliateOfferDescription: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    marginTop: 4,
+    lineHeight: 17
+  },
+  affiliateOfferAction: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
+    fontWeight: "800",
+    marginTop: 8
   },
   bottomActions: {
     gap: Spacing.sm,

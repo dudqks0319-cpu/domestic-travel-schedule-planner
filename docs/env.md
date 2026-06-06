@@ -9,9 +9,15 @@ Allowed in `apps/mobile/.env`:
 ```sh
 EXPO_PUBLIC_API_BASE_URL=http://localhost:8787/api/v1
 EXPO_PUBLIC_MAP_PROVIDER=mock
+EXPO_PUBLIC_AFFILIATE_HOTEL_URL=
+EXPO_PUBLIC_AFFILIATE_RENTAL_CAR_URL=
+EXPO_PUBLIC_AFFILIATE_TICKET_URL=
+EXPO_PUBLIC_AFFILIATE_INSURANCE_URL=
+EXPO_PUBLIC_AFFILIATE_LOCAL_TOUR_URL=
 ```
 
 Allowed map provider values are currently `mock`, `naver`, and `kakao`. The app must not read provider API secrets from public env.
+Affiliate URLs must be HTTPS external booking URLs. They are public routing targets, not secrets. Leave them empty until a real affiliate contract/link is ready.
 
 ## Reference Express API Env
 

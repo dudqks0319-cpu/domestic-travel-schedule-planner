@@ -39,6 +39,8 @@ Allowed affiliate categories:
 
 External bookings are physical or third-party services and must remain separate from app digital premium purchases. The API records affiliate clicks with a hashed target URL, not the raw target URL.
 
+Mobile affiliate buttons must use public HTTPS URL environment variables. Do not hardcode partner links in code. If a link is not configured, the UI may show the placement as "링크 설정 필요" but must not fake a booking destination.
+
 ## Sponsored Places
 
 Sponsored places must show "광고" or "스폰서" in the UI. Sponsored content must not be made to look like organic ranking.
