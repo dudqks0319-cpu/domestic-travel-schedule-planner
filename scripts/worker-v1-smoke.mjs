@@ -281,6 +281,22 @@ await step("trip, day, place, and share CRUD", async () => {
     await request("GET", `/api/v1/trips/${tripId}/days/${dayId}/places`),
     "GET /api/v1/trips/:tripId/days/:dayId/places"
   );
+  const autoLinkedPlace = await request("POST", `/api/v1/trips/${tripId}/places`, {
+    json: {
+      dayNumber: 2,
+      name: "오죽헌",
+      category: "관광지",
+      address: "강원 강릉시 율곡로3139번길",
+      lat: 37.7794,
+      lng: 128.8786,
+      sortOrder: 1
+    }
+  });
+  assertStatus(autoLinkedPlace, 201, "POST /api/v1/trips/:tripId/places dayNumber auto-link");
+  assert(
+    autoLinkedPlace.body?.place?.dayId && autoLinkedPlace.body.place.dayNumber === 2,
+    "dayNumber-only place create should auto-link a trip day"
+  );
   assertOk(
     await request("PATCH", `/api/v1/trips/${tripId}/places/${placeId}`, {
       json: { memo: "smoke memo", sortOrder: 2 }

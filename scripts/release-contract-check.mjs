@@ -100,6 +100,7 @@ const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.ts
 const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
+const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
@@ -294,6 +295,15 @@ for (const text of [
 ]) {
   if (!previewSmokeWorkflow.includes(text)) {
     errors.push(`Missing preview smoke workflow contract: ${text}`);
+  }
+}
+
+for (const text of [
+  "dayNumber auto-link",
+  "dayNumber-only place create should auto-link a trip day"
+]) {
+  if (!workerSmokeScript.includes(text)) {
+    errors.push(`Missing Worker smoke day auto-link assertion: ${text}`);
   }
 }
 

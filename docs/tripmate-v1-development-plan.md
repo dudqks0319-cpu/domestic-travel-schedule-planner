@@ -1385,3 +1385,26 @@ Verification completed:
 
 Remaining risks:
 - The workflow was added and statically verified locally, but it has not been run against a real preview Worker URL in this session.
+
+## Search Remote Day Auto-Link Smoke Result Record
+
+Plan:
+- Lock the Worker contract used by mobile search add-to-trip when the client sends `dayNumber` without an explicit `dayId`.
+- Make the smoke script prove that the Worker creates/reuses a matching `trip_days` row and returns the linked `dayId`.
+- Add a release contract assertion so this smoke coverage is not removed accidentally.
+
+Completed:
+- Added a Worker smoke step that creates a trip place with `dayNumber: 2` and no `dayId`.
+- Asserted that the response includes a linked `dayId` and `dayNumber === 2`.
+- Added release contract checks for the day auto-link smoke assertion.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This verifies the Worker contract statically and in smoke script syntax locally; live preview smoke still requires a configured preview Worker.
