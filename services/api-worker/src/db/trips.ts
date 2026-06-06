@@ -132,6 +132,8 @@ export function toPublicTripPlace(record: TripPlaceRecord) {
     name: record.name,
     category: record.category,
     address: record.address,
+    lat: record.lat,
+    lng: record.lng,
     dayNumber: record.day_number,
     sortOrder: record.sort_order,
     startTime: record.start_time,
@@ -354,6 +356,57 @@ export async function getOwnedTripDay(
   return record ?? null;
 }
 
+function addDays(dateText: string, days: number): string {
+  const parsed = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateText;
+  }
+
+  parsed.setDate(parsed.getDate() + days);
+  return parsed.toISOString().slice(0, 10);
+}
+
+async function getTripDayByNumber(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  dayNumber: number
+): Promise<TripDayRecord | null> {
+  const record = await db
+    .prepare(
+      `SELECT * FROM trip_days
+       WHERE trip_id = ? AND user_id = ? AND day_number = ? AND deleted_at IS NULL
+       ORDER BY created_at ASC
+       LIMIT 1`
+    )
+    .bind(tripId, userId, dayNumber)
+    .first<TripDayRecord>();
+
+  return record ?? null;
+}
+
+async function ensureTripDayForNumber(
+  db: D1Database,
+  userId: string,
+  trip: TripRecord,
+  dayNumber: number
+): Promise<TripDayRecord | null> {
+  if (!Number.isFinite(dayNumber) || dayNumber < 1) {
+    return null;
+  }
+
+  const existing = await getTripDayByNumber(db, userId, trip.id, dayNumber);
+  if (existing) {
+    return existing;
+  }
+
+  return createTripDay(db, userId, trip.id, {
+    dayNumber,
+    date: addDays(trip.start_date, dayNumber - 1),
+    title: `${dayNumber}일차`
+  });
+}
+
 export async function createTripDay(
   db: D1Database,
   userId: string,
@@ -463,11 +516,22 @@ export async function createTripPlace(
     return null;
   }
 
-  if (input.dayId) {
-    const day = await getOwnedTripDay(db, userId, tripId, input.dayId);
+  let resolvedDayId = input.dayId;
+  let resolvedDayNumber = input.dayNumber;
+
+  if (resolvedDayId) {
+    const day = await getOwnedTripDay(db, userId, tripId, resolvedDayId);
     if (!day) {
       return null;
     }
+    resolvedDayNumber = day.day_number;
+  } else if (resolvedDayNumber !== undefined) {
+    const day = await ensureTripDayForNumber(db, userId, trip, resolvedDayNumber);
+    if (!day) {
+      return null;
+    }
+    resolvedDayId = day.id;
+    resolvedDayNumber = day.day_number;
   }
 
   const id = crypto.randomUUID();
@@ -482,7 +546,7 @@ export async function createTripPlace(
     .bind(
       id,
       tripId,
-      input.dayId ?? null,
+      resolvedDayId ?? null,
       userId,
       input.providerPlaceId ?? null,
       input.name,
@@ -490,7 +554,7 @@ export async function createTripPlace(
       input.address ?? null,
       input.lat ?? null,
       input.lng ?? null,
-      input.dayNumber ?? null,
+      resolvedDayNumber ?? null,
       input.sortOrder ?? 0,
       input.startTime ?? null,
       input.endTime ?? null,
@@ -522,6 +586,30 @@ export async function updateTripPlace(
     }
   }
 
+  const trip = await getOwnedTrip(db, userId, tripId);
+  if (!trip) {
+    return null;
+  }
+
+  let resolvedDayId = input.dayId ?? existing.day_id;
+  let resolvedDayNumber = input.dayNumber ?? existing.day_number;
+
+  if (input.dayId) {
+    const day = await getOwnedTripDay(db, userId, tripId, input.dayId);
+    if (!day) {
+      return null;
+    }
+    resolvedDayId = day.id;
+    resolvedDayNumber = day.day_number;
+  } else if (input.dayNumber !== undefined) {
+    const day = await ensureTripDayForNumber(db, userId, trip, input.dayNumber);
+    if (!day) {
+      return null;
+    }
+    resolvedDayId = day.id;
+    resolvedDayNumber = day.day_number;
+  }
+
   await db
     .prepare(
       `UPDATE trip_places
@@ -532,14 +620,14 @@ export async function updateTripPlace(
        WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL`
     )
     .bind(
-      input.dayId ?? existing.day_id,
+      resolvedDayId,
       input.providerPlaceId ?? existing.provider_place_id,
       input.name ?? existing.name,
       input.category ?? existing.category,
       input.address ?? existing.address,
       input.lat ?? existing.lat,
       input.lng ?? existing.lng,
-      input.dayNumber ?? existing.day_number,
+      resolvedDayNumber,
       input.sortOrder ?? existing.sort_order,
       input.startTime ?? existing.start_time,
       input.endTime ?? existing.end_time,

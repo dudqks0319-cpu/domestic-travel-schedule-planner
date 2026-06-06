@@ -379,3 +379,21 @@ Verification completed:
 Remaining risks:
 - Search add-to-trip does not yet create missing remote `trip_days` rows automatically; it writes `dayNumber` directly to `trip_places`.
 - A fuller saved-trip editor should later expose moving a searched place between days after it is added.
+
+## Trip Day Auto-Link Result Record
+
+Completed:
+- Worker trip place creation now auto-creates or reuses the matching `trip_days` row when `dayNumber` is provided.
+- `trip_places.day_id` and `trip_places.day_number` are now linked for search-saved places.
+- Updating a trip place with a new `dayNumber` also re-links the place to the matching day row.
+- Public trip place responses now include `lat` and `lng` for map rendering while UI policy still avoids directly displaying coordinates to users.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Worker local smoke for login, trip create, place create with `dayNumber=2`, day auto-create, place `dayId` linkage, list, delete.
+
+Remaining risks:
+- The mobile saved-trip editor still needs a richer move-between-days UI for already-saved places.
+- Real provider/Cloudflare preview validation remains required before release.
