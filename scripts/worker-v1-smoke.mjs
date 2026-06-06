@@ -287,6 +287,14 @@ await step("trip, day, place, and share CRUD", async () => {
     }),
     "PATCH /api/v1/trips/:tripId/places/:placeId"
   );
+  const reorder = await request("PATCH", `/api/v1/trips/${tripId}/places/reorder`, {
+    json: { places: [{ placeId, dayNumber: 1, sortOrder: 1 }] }
+  });
+  assertOk(reorder, "PATCH /api/v1/trips/:tripId/places/reorder");
+  assert(
+    Array.isArray(reorder.body?.places) && reorder.body.places.length === 1,
+    "place reorder should return updated places"
+  );
 
   const share = await request("POST", `/api/v1/trips/${tripId}/share`);
   assertStatus(share, 201, "POST /api/v1/trips/:tripId/share");

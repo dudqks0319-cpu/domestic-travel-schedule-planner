@@ -21,6 +21,7 @@ npm --prefix services/api-worker run deploy:preview
 - shared error response schema
 - Kakao auth/session endpoints
 - authenticated trip, trip-day, and trip-place CRUD
+- authenticated bulk trip-place reorder for schedule regeneration sync
 - read-only share link API and public share page
 - place provider adapters and normalized place search
 - planner and route optimization endpoints

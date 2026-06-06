@@ -184,6 +184,12 @@ export interface TripExportDto {
   downloadUrl: string | null;
 }
 
+export interface TripPlaceReorderItem {
+  placeId: string;
+  dayNumber: number;
+  sortOrder: number;
+}
+
 export interface PlannerGenerateParams {
   destination: string;
   startDate: string;
@@ -267,6 +273,8 @@ export const tripsApi = {
     apiClient.post<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days/${dayId}/places`, data),
+  reorderPlaces: (tripId: string, places: TripPlaceReorderItem[]) =>
+    apiClient.patch<{ ok: true; places: TripPlaceDto[] }>(`/trips/${tripId}/places/reorder`, { places }),
   updatePlaceById: (tripId: string, placeId: string, data: Record<string, unknown>) =>
     apiClient.patch<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places/${placeId}`, data),
   updatePlace: (tripId: string, dayId: string, placeId: string, data: Record<string, unknown>) =>

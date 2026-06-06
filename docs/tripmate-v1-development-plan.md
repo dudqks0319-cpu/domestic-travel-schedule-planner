@@ -1210,3 +1210,29 @@ Verification completed:
 Remaining risks:
 - New provider suggestions created during replan are still local-only until the user explicitly saves/adds them.
 - Remote sync is sequential; large itineraries may need batching or a bulk endpoint later.
+
+## Trip Place Bulk Reorder Result Record
+
+Plan:
+- Replace mobile replan remote sync's multiple place PATCH requests with one owned bulk reorder request.
+- Reuse existing Worker trip ownership and day-number resolution logic.
+- Add smoke coverage for the new reorder endpoint.
+
+Completed:
+- Added `PATCH /api/v1/trips/:tripId/places/reorder`.
+- Validated non-empty reorder payloads, positive integer day/order values, duplicate place ids, and owned trip places before mutation.
+- Reused `updateTripPlace()` so `dayNumber` still creates or resolves the correct `trip_days` row.
+- Added one audit log record for the reorder operation.
+- Added typed mobile `tripsApi.reorderPlaces()`.
+- Updated schedule replan remote sync to send saved places in one bulk request while skipping unsaved provider suggestions.
+- Added Worker smoke script coverage for the reorder endpoint.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `git diff --check`
+
+Remaining risks:
+- Reorder updates are still sequential inside the Worker; this avoids many mobile network calls but is not a D1 transaction.
+- New provider suggestions created during replan remain local-only until the user explicitly saves/adds them.

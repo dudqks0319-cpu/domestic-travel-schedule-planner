@@ -316,6 +316,49 @@ function parseTripPlacePatch(
   return Object.keys(input).length ? input : null;
 }
 
+interface TripPlaceReorderInput {
+  placeId: string;
+  dayNumber: number;
+  sortOrder: number;
+}
+
+function positiveIntegerValue(value: unknown): number | null {
+  const parsed = numberValue(value);
+  if (parsed === null || !Number.isInteger(parsed) || parsed < 1) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseTripPlaceReorderInput(raw: Record<string, unknown>): TripPlaceReorderInput[] | null {
+  const places = raw.places;
+  if (!Array.isArray(places) || places.length === 0 || places.length > 200) {
+    return null;
+  }
+
+  const seenPlaceIds = new Set<string>();
+  const parsed: TripPlaceReorderInput[] = [];
+  for (const item of places) {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+
+    const record = item as Record<string, unknown>;
+    const placeId = stringValue(record.placeId);
+    const dayNumber = positiveIntegerValue(record.dayNumber);
+    const sortOrder = positiveIntegerValue(record.sortOrder);
+    if (!placeId || dayNumber === null || sortOrder === null || seenPlaceIds.has(placeId)) {
+      return null;
+    }
+
+    seenPlaceIds.add(placeId);
+    parsed.push({ placeId, dayNumber, sortOrder });
+  }
+
+  return parsed;
+}
+
 tripRoutes.use("*", requireAuth);
 tripRoutes.use("/:tripId/exports", rateLimit({
   keyPrefix: "trip_exports",
@@ -523,6 +566,58 @@ tripRoutes.post("/:tripId/days/:dayId/places", async (c) => {
     metadata: { dayNumber: place.day_number, hasSponsored: place.is_sponsored === 1 }
   });
   return c.json({ ok: true, place: toPublicTripPlace(place), requestId: c.get("requestId") }, 201);
+});
+
+tripRoutes.patch("/:tripId/places/reorder", async (c) => {
+  const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (!raw) {
+    return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
+  }
+
+  const reorderItems = parseTripPlaceReorderInput(raw);
+  if (!reorderItems) {
+    return errorResponse(c, 400, "INVALID_TRIP_PLACE_REORDER_INPUT", "장소 순서 변경 값을 확인해주세요.");
+  }
+
+  const userId = currentUserId(c);
+  const tripId = c.req.param("tripId");
+  const existingPlaces = await listTripPlaces(c.env.DB, userId, tripId);
+  if (!existingPlaces) {
+    return errorResponse(c, 404, "TRIP_NOT_FOUND", "여행을 찾을 수 없습니다.");
+  }
+
+  const existingPlaceIds = new Set(existingPlaces.map((place) => place.id));
+  const missingPlace = reorderItems.find((item) => !existingPlaceIds.has(item.placeId));
+  if (missingPlace) {
+    return errorResponse(c, 404, "TRIP_PLACE_NOT_FOUND", "장소를 찾을 수 없습니다.");
+  }
+
+  const updatedPlaces = [];
+  for (const item of reorderItems) {
+    const place = await updateTripPlace(c.env.DB, userId, tripId, item.placeId, {
+      dayNumber: item.dayNumber,
+      sortOrder: item.sortOrder
+    });
+    if (!place) {
+      return errorResponse(c, 409, "TRIP_PLACE_REORDER_FAILED", "장소 순서를 저장하지 못했습니다.");
+    }
+    updatedPlaces.push(place);
+  }
+
+  await createAuditLog(c.env.DB, {
+    userId,
+    action: "trip_place.reorder",
+    entityType: "trip",
+    entityId: tripId,
+    requestId: requestId(c),
+    metadata: { placeCount: updatedPlaces.length }
+  });
+
+  return c.json({
+    ok: true,
+    places: updatedPlaces.map(toPublicTripPlace),
+    requestId: c.get("requestId")
+  });
 });
 
 tripRoutes.patch("/:tripId/places/:placeId", async (c) => {

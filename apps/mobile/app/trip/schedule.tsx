@@ -760,23 +760,26 @@ export default function ScheduleScreen() {
       return { updated: 0, skipped: nextPoints.length };
     }
 
-    let updated = 0;
-    let skipped = 0;
-    for (let index = 0; index < nextPoints.length; index += 1) {
-      const point = nextPoints[index];
+    const places = nextPoints.flatMap((point, index) => {
       if (!point.tripPlaceId) {
-        skipped += 1;
-        continue;
+        return [];
       }
 
-      await tripsApi.updatePlaceById(tripId, point.tripPlaceId, {
+      return [{
+        placeId: point.tripPlaceId,
         dayNumber: point.dayNumber,
         sortOrder: index + 1
-      });
-      updated += 1;
+      }];
+    });
+    if (!places.length) {
+      return { updated: 0, skipped: nextPoints.length };
     }
 
-    return { updated, skipped };
+    const response = await tripsApi.reorderPlaces(tripId, places);
+    return {
+      updated: response.data.places.length,
+      skipped: nextPoints.length - places.length
+    };
   };
 
   const shareCurrentTrip = async () => {
