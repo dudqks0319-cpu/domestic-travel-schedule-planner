@@ -23,6 +23,8 @@ Apply local D1 migrations before endpoint smoke tests:
 ```sh
 cd services/api-worker
 npx wrangler d1 execute tripmate-local --local --file=./migrations/0001_initial.sql
+npx wrangler d1 execute tripmate-local --local --file=./migrations/0002_trip_exports.sql
+npx wrangler d1 execute tripmate-local --local --file=./migrations/0003_operational_events.sql
 ```
 
 ## Preview Deploy
@@ -56,3 +58,7 @@ Production gates:
 ## Required Endpoints
 
 The Worker exposes the v1 release contract under `/api/v1`, including health, places, planner, routes, trips, share links, and monetization endpoints. Placeholder trip-day and trip-place mutation endpoints must be completed before app-store release if the mobile edit UI depends on remote persistence.
+
+## Operational Events
+
+The Worker persists privacy-safe operational events in D1 for place search, planner generation, and route optimization. These records store endpoint target, status, duration, request id, counts, mode/style/cache status, and warning count. They must not store raw request bodies, provider payloads, tokens, receipts, or precise coordinates.

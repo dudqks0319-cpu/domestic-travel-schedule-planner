@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { generateTripPlan, type TravelMode, type TravelStyleKey } from "@tripmate/planner";
 
 import type { AppBindings } from "../bindings";
+import { recordOperationalEvent } from "../db/operations";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import { searchPlaces } from "../providers";
@@ -41,6 +42,7 @@ function mode(value: unknown): TravelMode {
 }
 
 plannerRoutes.post("/generate", async (c) => {
+  const startedAt = Date.now();
   const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
   if (!raw) {
     return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
@@ -71,6 +73,21 @@ plannerRoutes.post("/generate", async (c) => {
     mode: selectedMode,
     ...(companions ? { companions } : {}),
     places: providerResult.places
+  });
+  const warningCount = plan.providerWarnings.length + providerResult.warnings.length;
+  await recordOperationalEvent(c.env.DB, {
+    eventType: "planner_generate",
+    target: "planner.generate",
+    status: warningCount ? "warning" : "success",
+    durationMs: Date.now() - startedAt,
+    requestId: c.get("requestId"),
+    metadata: {
+      cacheStatus: providerResult.cacheStatus,
+      mode: selectedMode,
+      placeCount: providerResult.places.length,
+      styleKey: selectedStyleKey,
+      warningCount
+    }
   });
 
   return c.json({

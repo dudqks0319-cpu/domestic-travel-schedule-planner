@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { recordOperationalEvent } from "../db/operations";
 import { getProviderPlace, upsertProviderPlaces } from "../db/places";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
@@ -22,6 +23,7 @@ function numberParam(value: string | undefined): number | undefined {
 }
 
 placeRoutes.get("/search", async (c) => {
+  const startedAt = Date.now();
   const query = c.req.query("query")?.trim();
   if (!query) {
     return errorResponse(c, 400, "QUERY_REQUIRED", "검색어가 필요합니다.");
@@ -42,6 +44,19 @@ placeRoutes.get("/search", async (c) => {
   const savedPlaces = result.places.length
     ? await upsertProviderPlaces(c.env.DB, result.places)
     : [];
+  await recordOperationalEvent(c.env.DB, {
+    eventType: "provider_search",
+    target: "places.search",
+    status: result.warnings.length ? "warning" : "success",
+    durationMs: Date.now() - startedAt,
+    requestId: c.get("requestId"),
+    metadata: {
+      cacheStatus: result.cacheStatus,
+      category: category ?? null,
+      placeCount: result.places.length,
+      warningCount: result.warnings.length
+    }
+  });
 
   return c.json({
     ok: true,

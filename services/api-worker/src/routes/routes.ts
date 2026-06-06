@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { recordOperationalEvent } from "../db/operations";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
 import type { TravelMode } from "../providers";
@@ -64,6 +65,7 @@ function parsePoints(value: unknown): RoutePointInput[] {
 }
 
 routeRoutes.post("/optimize", async (c) => {
+  const startedAt = Date.now();
   const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
   if (!raw) {
     return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
@@ -85,6 +87,19 @@ routeRoutes.post("/optimize", async (c) => {
       durationMin: Math.max(1, Math.round((segmentDistanceKm / speed(selectedMode)) * 60)),
       provider: "fallback" as const
     };
+  });
+  await recordOperationalEvent(c.env.DB, {
+    eventType: "route_optimize",
+    target: "routes.optimize",
+    status: "warning",
+    durationMs: Date.now() - startedAt,
+    requestId: c.get("requestId"),
+    metadata: {
+      mode: selectedMode,
+      pointCount: points.length,
+      segmentCount: segments.length,
+      warningCount: 1
+    }
   });
 
   return c.json({

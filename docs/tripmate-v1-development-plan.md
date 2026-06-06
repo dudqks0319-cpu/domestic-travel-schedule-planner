@@ -911,3 +911,29 @@ Verification completed:
 Remaining risks:
 - If R2 deletion succeeds but later D1 cleanup fails, DB records may reference missing export objects; this is preferable to retaining deleted-account export data but should be monitored.
 - A bucket lifecycle policy is still recommended for orphaned objects and defense in depth.
+
+## Operational Events Result Record
+
+Plan:
+- Add privacy-safe D1 operational events for release observability.
+- Record latency and success/warning status for provider-heavy and route-heavy endpoints.
+- Keep metadata allowlisted and avoid raw request bodies, provider payloads, tokens, receipts, or precise coordinates.
+- Document the new migration and operational event policy.
+
+Completed:
+- Added `operational_events` to the Worker schema and `0003_operational_events.sql` migration.
+- Added `recordOperationalEvent()` with allowlisted metadata and non-blocking write failure handling.
+- Recorded place search cache status, place count, warning count, and latency.
+- Recorded planner generation style, mode, cache status, place count, warning count, and latency.
+- Recorded route optimization mode, point/segment count, fallback warning count, and latency.
+- Updated Cloudflare deployment docs with all migrations and operational event privacy rules.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Operational events are append-only; retention/aggregation jobs are still needed for long-term production operations.
+- Provider-specific latency is still aggregated at endpoint level rather than split per provider adapter.
