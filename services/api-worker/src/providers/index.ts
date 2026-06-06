@@ -1,4 +1,5 @@
 import type { Env } from "../bindings";
+import { recordOperationalEvent } from "../db/operations";
 import { dedupePlaces } from "./normalization";
 import { KakaoPlaceAdapter } from "./kakao";
 import { NaverPlaceAdapter } from "./naver";
@@ -27,6 +28,45 @@ function adapters(env: Env): PlaceProviderAdapter[] {
   ];
 }
 
+async function searchAdapter(
+  env: Env,
+  adapter: PlaceProviderAdapter,
+  input: PlaceProviderSearchInput
+) {
+  const startedAt = Date.now();
+  try {
+    const places = await adapter.searchPlaces(input);
+    await recordOperationalEvent(env.DB, {
+      eventType: "provider_adapter_search",
+      target: `provider.${adapter.provider}`,
+      status: places.length ? "success" : "warning",
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        provider: adapter.provider,
+        placeCount: places.length,
+        warningCount: places.length ? 0 : 1
+      }
+    });
+    return {
+      provider: adapter.provider,
+      places
+    };
+  } catch (error) {
+    await recordOperationalEvent(env.DB, {
+      eventType: "provider_adapter_search",
+      target: `provider.${adapter.provider}`,
+      status: "failure",
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        provider: adapter.provider,
+        placeCount: 0,
+        warningCount: 1
+      }
+    });
+    throw error;
+  }
+}
+
 export async function searchPlaces(env: Env, input: PlaceProviderSearchInput): Promise<ProviderSearchResult> {
   const key = cacheKey(input);
   const cached = await env.PLACE_CACHE.get(key, "json");
@@ -36,10 +76,7 @@ export async function searchPlaces(env: Env, input: PlaceProviderSearchInput): P
 
   const warnings: string[] = [];
   const results = await Promise.allSettled(
-    adapters(env).map(async (adapter) => ({
-      provider: adapter.provider,
-      places: await adapter.searchPlaces(input)
-    }))
+    adapters(env).map((adapter) => searchAdapter(env, adapter, input))
   );
 
   const places = dedupePlaces(

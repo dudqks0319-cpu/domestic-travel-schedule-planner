@@ -61,4 +61,4 @@ The Worker exposes the v1 release contract under `/api/v1`, including health, pl
 
 ## Operational Events
 
-The Worker persists privacy-safe operational events in D1 for place search, planner generation, and route optimization. These records store endpoint target, status, duration, request id, counts, mode/style/cache status, and warning count. They must not store raw request bodies, provider payloads, tokens, receipts, or precise coordinates.
+The Worker persists privacy-safe operational events in D1 for place search, provider adapter search, planner generation, and route optimization. These records store endpoint/provider target, status, duration, request id where available, counts, mode/style/cache status, and warning count. They must not store raw request bodies, provider payloads, tokens, receipts, or precise coordinates.

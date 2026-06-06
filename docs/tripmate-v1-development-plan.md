@@ -937,3 +937,26 @@ Verification completed:
 Remaining risks:
 - Operational events are append-only; retention/aggregation jobs are still needed for long-term production operations.
 - Provider-specific latency is still aggregated at endpoint level rather than split per provider adapter.
+
+## Provider Adapter Operational Events Result Record
+
+Plan:
+- Split provider observability from endpoint-level place search metrics.
+- Record Naver, Kakao, and Tour adapter search success/warning/failure separately.
+- Keep provider metrics privacy-safe with counts and latency only.
+
+Completed:
+- Added `provider` to the operational event metadata allowlist.
+- Wrapped each place provider adapter search with operational event recording.
+- Recorded adapter target, status, duration, provider name, place count, and warning count on cache misses.
+- Updated Cloudflare deployment docs to describe provider adapter operational events.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Adapter events are not emitted on cache hits because no external provider call occurs.
+- Provider-specific aggregation dashboards are still not implemented; the raw events are available in D1.

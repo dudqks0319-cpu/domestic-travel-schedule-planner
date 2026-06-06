@@ -14,6 +14,7 @@ const ALLOWED_METADATA_KEYS = new Set([
   "mode",
   "placeCount",
   "pointCount",
+  "provider",
   "segmentCount",
   "styleKey",
   "warningCount"
