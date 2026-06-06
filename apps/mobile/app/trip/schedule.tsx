@@ -15,6 +15,7 @@ import {
   loadEntitlementState,
   type PremiumEntitlementState
 } from "../../services/monetization";
+import { tripsApi } from "../../services/api";
 import {
   clearPersistedOptimizedRoute,
   loadPersistedOptimizedRoute,
@@ -37,6 +38,8 @@ interface DayTab {
 }
 
 interface EditableTripPoint extends RoutePoint {
+  tripPlaceId?: string;
+  providerPlaceId?: string;
   dayNumber: number;
 }
 
@@ -116,9 +119,18 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
     return point ? { ...point, dayNumber: 1 } : null;
   }
 
-  const rawDayNumber = toFiniteNumber((raw as Record<string, unknown>).dayNumber);
+  const value = raw as Record<string, unknown>;
+  const rawDayNumber = toFiniteNumber(value.dayNumber);
+  const tripPlaceId = typeof value.tripPlaceId === "string" ? value.tripPlaceId : undefined;
+  const providerPlaceId =
+    typeof value.providerPlaceId === "string" ? value.providerPlaceId : undefined;
   const dayNumber = rawDayNumber && rawDayNumber >= 1 ? Math.floor(rawDayNumber) : 1;
-  return { ...point, dayNumber };
+  return {
+    ...point,
+    ...(tripPlaceId ? { tripPlaceId } : {}),
+    ...(providerPlaceId ? { providerPlaceId } : {}),
+    dayNumber
+  };
 }
 
 function editableToRoutePoint(point: EditableTripPoint): RoutePoint {
@@ -133,6 +145,8 @@ function editableToRoutePoint(point: EditableTripPoint): RoutePoint {
 function serializeEditableTripPoint(point: EditableTripPoint): Record<string, unknown> {
   return {
     id: point.id,
+    ...(point.tripPlaceId ? { tripPlaceId: point.tripPlaceId } : {}),
+    ...(point.providerPlaceId ? { providerPlaceId: point.providerPlaceId } : {}),
     name: point.name,
     latitude: point.lat,
     longitude: point.lng,
@@ -458,6 +472,7 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -593,15 +608,51 @@ export default function ScheduleScreen() {
     ]);
   };
 
+  const currentServerTripId = () => {
+    const tripId = typeof currentTripDraft?.id === "string" ? currentTripDraft.id : "";
+    return tripId && !tripId.startsWith("trip_") ? tripId : null;
+  };
+
+  const syncRemotePlaceMove = async (point: EditableTripPoint, nextDayNumber: number) => {
+    const tripId = currentServerTripId();
+    if (!tripId || !point.tripPlaceId) {
+      return;
+    }
+
+    await tripsApi.updatePlaceById(tripId, point.tripPlaceId, { dayNumber: nextDayNumber });
+  };
+
+  const syncRemotePlaceDelete = async (point: EditableTripPoint) => {
+    const tripId = currentServerTripId();
+    if (!tripId || !point.tripPlaceId) {
+      return;
+    }
+
+    await tripsApi.deletePlaceById(tripId, point.tripPlaceId);
+  };
+
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
     if (!pointId || nextDayNumber < 1 || nextDayNumber > visibleDayTabs.length) {
+      return;
+    }
+
+    const target = editableTripPoints.find((point) => point.id === pointId);
+    if (!target) {
       return;
     }
 
     const nextPoints = editableTripPoints.map((point) =>
       point.id === pointId ? { ...point, dayNumber: nextDayNumber } : point
     );
-    void persistEditableTripPoints(nextPoints);
+    setSyncNotice(null);
+    void (async () => {
+      await persistEditableTripPoints(nextPoints);
+      try {
+        await syncRemotePlaceMove(target, nextDayNumber);
+      } catch {
+        setSyncNotice("로컬 일정은 수정됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
+      }
+    })();
   };
 
   const removeSavedPlace = (pointId: string | undefined) => {
@@ -609,8 +660,21 @@ export default function ScheduleScreen() {
       return;
     }
 
+    const target = editableTripPoints.find((point) => point.id === pointId);
+    if (!target) {
+      return;
+    }
+
     const nextPoints = editableTripPoints.filter((point) => point.id !== pointId);
-    void persistEditableTripPoints(nextPoints);
+    setSyncNotice(null);
+    void (async () => {
+      await persistEditableTripPoints(nextPoints);
+      try {
+        await syncRemotePlaceDelete(target);
+      } catch {
+        setSyncNotice("로컬 일정에서는 삭제됐지만 서버 동기화는 완료하지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.");
+      }
+    })();
   };
 
   const savedPlaceSection = activeDay ? (
@@ -624,6 +688,12 @@ export default function ScheduleScreen() {
           <Text style={styles.addPlaceButtonText}>장소 추가</Text>
         </TouchableOpacity>
       </View>
+
+      {syncNotice ? (
+        <View style={styles.syncNotice}>
+          <Text style={styles.syncNoticeText}>{syncNotice}</Text>
+        </View>
+      ) : null}
 
       {savedPlacesForActiveDay.length ? (
         savedPlacesForActiveDay.map((point, index) => (
@@ -1062,6 +1132,17 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.primary,
     fontWeight: "700"
+  },
+  syncNotice: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.common.warning,
+    backgroundColor: "#FFF9DB",
+    padding: Spacing.sm
+  },
+  syncNoticeText: {
+    ...Typography.normal.caption,
+    color: "#8A5D00"
   },
   savedPlaceRow: {
     flexDirection: "row",

@@ -110,14 +110,14 @@ async function persistPlaceToRemoteTrip(
   place: NormalizedPlaceDto,
   nextSortOrder: number,
   dayNumber: number
-): Promise<boolean> {
+): Promise<string | null> {
   const tripId = typeof currentTrip.id === "string" ? currentTrip.id : "";
   if (!tripId || tripId.startsWith("trip_")) {
-    return false;
+    return null;
   }
 
   try {
-    await tripsApi.addPlace(tripId, {
+    const response = await tripsApi.addPlace(tripId, {
       providerPlaceId: place.providerPlaceId ?? place.id,
       name: place.name,
       category: place.category,
@@ -129,9 +129,9 @@ async function persistPlaceToRemoteTrip(
       isSponsored: place.isSponsored,
       ...(place.sponsorLabel ? { sponsorLabel: place.sponsorLabel } : {})
     });
-    return true;
+    return response.data.place.id;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -158,19 +158,21 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     return value.id === place.id;
   });
 
+  const tripPlaceId = alreadyAdded
+    ? null
+    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length + 1, dayNumber);
+
   if (!alreadyAdded) {
     routePoints.push({
       id: place.id,
+      ...(tripPlaceId ? { tripPlaceId } : {}),
+      providerPlaceId: place.providerPlaceId ?? place.id,
       name: place.name,
       latitude: place.lat,
       longitude: place.lng,
       dayNumber
     });
   }
-
-  const remoteSaved = alreadyAdded
-    ? false
-    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length, dayNumber);
 
   await AsyncStorage.setItem(
     CURRENT_TRIP_STORAGE_KEY,
@@ -181,7 +183,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     })
   );
 
-  return { count: routePoints.length, remoteSaved };
+  return { count: routePoints.length, remoteSaved: !!tripPlaceId };
 }
 
 export default function SearchScreen() {

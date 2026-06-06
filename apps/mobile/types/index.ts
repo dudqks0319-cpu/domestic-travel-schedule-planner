@@ -67,6 +67,8 @@ export interface TripCreateDraft {
 
 export interface TripRouteMapPoint {
   id: string;
+  tripPlaceId?: string;
+  providerPlaceId?: string;
   name: string;
   latitude: number;
   longitude: number;

@@ -422,3 +422,28 @@ Remaining risks:
 - Expo web smoke could not complete in this session because `expo start --web` launched but did not open a listening port before timeout.
 - Place move/delete is currently local-first for the active draft; syncing edits to remote `trip_places` should be added after saved trip detail hydration is connected.
 - Drag-and-drop ordering and memo/time editing remain separate schedule editor work.
+
+## Schedule Remote Place Sync Result Record
+
+Plan:
+- Preserve the Worker `trip_places.id` returned after search add-to-trip calls.
+- Store that server id as `tripPlaceId` in local `currentTrip.routePoints`.
+- Use direct Worker place mutation endpoints from the schedule editor when `tripPlaceId` is available.
+- Keep local edits usable when remote sync fails, with an explicit sync notice.
+
+Completed:
+- Extended `TripRouteMapPoint` with `tripPlaceId` and `providerPlaceId`.
+- Typed mobile trip place API responses and added direct `updatePlaceById()` / `deletePlaceById()` helpers.
+- Updated search add-to-trip persistence to save the returned server `trip_places.id` locally.
+- Updated schedule place move/delete actions to call Worker `PATCH /trips/:tripId/places/:placeId` and `DELETE /trips/:tripId/places/:placeId`.
+- Added a user-visible sync notice when local edits succeed but remote sync cannot complete.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Existing local route points created before this change do not have `tripPlaceId`, so they remain local-only until trip detail hydration backfills server places.
+- Remote sync still depends on authenticated saved trips; guest/local drafts intentionally skip server mutation.

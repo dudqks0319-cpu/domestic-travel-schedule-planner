@@ -128,6 +128,25 @@ export interface NormalizedPlaceDto {
   sponsorLabel?: string;
 }
 
+export interface TripPlaceDto {
+  id: string;
+  tripId: string;
+  dayId?: string | null;
+  providerPlaceId?: string | null;
+  name: string;
+  category: string;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  dayNumber?: number | null;
+  sortOrder?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  memo?: string | null;
+  isSponsored: boolean;
+  sponsorLabel?: string | null;
+}
+
 export const placesApi = {
   search: (params: {
     query: string;
@@ -182,11 +201,15 @@ export const tripsApi = {
   getPlaces: (tripId: string, dayId: string) =>
     apiClient.get(`/trips/${tripId}/days/${dayId}/places`),
   addPlace: (tripId: string, data: Record<string, unknown>) =>
-    apiClient.post(`/trips/${tripId}/places`, data),
+    apiClient.post<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days/${dayId}/places`, data),
+  updatePlaceById: (tripId: string, placeId: string, data: Record<string, unknown>) =>
+    apiClient.patch<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places/${placeId}`, data),
   updatePlace: (tripId: string, dayId: string, placeId: string, data: Record<string, unknown>) =>
     apiClient.patch(`/trips/${tripId}/days/${dayId}/places/${placeId}`, data),
+  deletePlaceById: (tripId: string, placeId: string) =>
+    apiClient.delete<{ ok: true; deleted: true }>(`/trips/${tripId}/places/${placeId}`),
   deletePlace: (tripId: string, dayId: string, placeId: string) =>
     apiClient.delete(`/trips/${tripId}/days/${dayId}/places/${placeId}`),
 };
