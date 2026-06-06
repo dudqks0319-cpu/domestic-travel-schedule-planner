@@ -13,6 +13,8 @@
     "check:env:production": "node scripts/dev-readiness-check.mjs --target production",
     "check:secrets:preview": "node scripts/check-cloudflare-secrets.mjs --target preview",
     "check:secrets:production": "node scripts/check-cloudflare-secrets.mjs --target production",
+    "d1:migrate:preview": "node scripts/d1-migrate.mjs --target preview",
+    "d1:migrate:production": "node scripts/d1-migrate.mjs --target production --confirm-production",
     "check:release-contract": "node scripts/release-contract-check.mjs",
     "check:health": "npm run mobile:typecheck && npm run api:build && npm run planner:build && npm run worker:typecheck",
     "check:dev": "npm run check:env && npm run check:release-contract && npm run check:health",

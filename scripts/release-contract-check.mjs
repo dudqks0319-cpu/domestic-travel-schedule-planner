@@ -56,6 +56,8 @@ const requiredRootScripts = [
   "check:dev",
   "check:secrets:preview",
   "check:secrets:production",
+  "d1:migrate:preview",
+  "d1:migrate:production",
   "release:preview:gate",
   "release:production:gate",
   "mobile:typecheck",
@@ -92,6 +94,7 @@ for (const file of [
   "services/api-worker/migrations/0003_operational_events.sql",
   "services/api-worker/migrations/0004_user_profile_image.sql",
   "scripts/check-cloudflare-secrets.mjs",
+  "scripts/d1-migrate.mjs",
   "scripts/preview-release-gate.mjs",
   "scripts/production-release-gate.mjs",
   "scripts/worker-local-smoke.mjs"
@@ -143,12 +146,57 @@ const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
+const d1MigrateScript = readText("scripts/d1-migrate.mjs");
 const previewReleaseGateScript = readText("scripts/preview-release-gate.mjs");
 const productionReleaseGateScript = readText("scripts/production-release-gate.mjs");
 const workerLocalSmokeScript = readText("scripts/worker-local-smoke.mjs");
 const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 const apiWorkerReadme = readText("services/api-worker/README.md");
+
+const d1MigrationRunnerContracts = [
+  [
+    packageJson.scripts?.["d1:migrate:preview"] ?? "",
+    "scripts/d1-migrate.mjs --target preview",
+    "Root package must expose preview D1 migration runner"
+  ],
+  [
+    packageJson.scripts?.["d1:migrate:production"] ?? "",
+    "scripts/d1-migrate.mjs --target production --confirm-production",
+    "Root package must expose production D1 migration runner with explicit confirmation"
+  ],
+  [
+    d1MigrateScript,
+    "production migrations require --confirm-production",
+    "D1 migration runner must require explicit production confirmation"
+  ],
+  [
+    d1MigrateScript,
+    "services/api-worker/migrations",
+    "D1 migration runner must read the Worker migrations directory"
+  ],
+  [
+    d1MigrateScript,
+    '"--remote"',
+    "D1 migration runner must target remote Cloudflare D1 databases"
+  ],
+  [
+    d1MigrateScript,
+    '"--env"',
+    "D1 migration runner must pass the target Wrangler environment"
+  ],
+  [
+    d1MigrateScript,
+    "database_name",
+    "D1 migration runner must read the configured target D1 database name"
+  ]
+];
+
+for (const [content, expectedText, label] of d1MigrationRunnerContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing D1 migration runner contract: ${label}`);
+  }
+}
 
 const productionReleaseGateContracts = [
   [

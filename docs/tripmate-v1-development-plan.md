@@ -3678,3 +3678,35 @@ Verification completed:
 
 Remaining risks:
 - The full production gate cannot pass until real production Worker URL, EAS production API URL, Cloudflare D1/KV/R2 IDs, production secrets, HTTPS origins, Kakao web key, and live provider products are configured.
+
+## Remote D1 Migration Runner Result Record
+
+Plan:
+- Add a repeatable remote D1 migration runner for preview and production.
+- Read the target D1 database name from `services/api-worker/wrangler.toml`.
+- Execute all SQL files in `services/api-worker/migrations` in sorted order against remote D1.
+- Require explicit production confirmation so production migrations are not run accidentally.
+
+Completed:
+- Added `scripts/d1-migrate.mjs`.
+- Added root scripts `d1:migrate:preview` and `d1:migrate:production`.
+- The production script includes `--confirm-production`.
+- The runner uses `wrangler d1 execute <database> --env <target> --remote --file=...`.
+- Updated release contract checks so the migration runner, remote targeting, target env, database name parsing, and production confirmation cannot be dropped silently.
+- Updated README, API Worker README, and Cloudflare deployment docs to run D1 migrations before preview/production release gates.
+
+Verification completed:
+- `node --check scripts/d1-migrate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run d1:migrate:preview -- --help`
+- `npm run d1:migrate:production -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The runner is not executed against remote Cloudflare D1 in local verification because real preview/production D1 IDs and Cloudflare auth are required.
+- Existing migration SQL must still be reviewed before production execution, especially non-idempotent `ALTER TABLE` statements.
