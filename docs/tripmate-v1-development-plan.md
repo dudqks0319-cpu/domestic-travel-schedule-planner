@@ -2831,3 +2831,34 @@ Verification completed:
 Remaining risks:
 - Live route cache behavior still needs a Worker smoke run against local/preview D1.
 - Future real Naver/Kakao directions should use the same cache layer and may need provider-specific invalidation or TTL tuning.
+
+## Kakao Directions Provider Result Record
+
+Plan:
+- Replace the Kakao directions no-op with real server-side Kakao Mobility driving route lookup.
+- Route `/api/v1/routes/optimize` through provider directions before the existing fallback estimator.
+- Separate Kakao route cache keys from fallback route cache keys so synthetic fallback does not mask real provider recovery.
+- Keep graceful degradation: provider failure returns explicit fallback warnings instead of crashing or hiding the failure.
+
+Completed:
+- Implemented Kakao Mobility driving directions normalization in `KakaoPlaceAdapter.getDirections()`.
+- Added provider directions orchestration with `provider_directions` operational events.
+- Updated route optimization to try Kakao for driving routes and fall back to expected movement-time routes with warnings.
+- Added provider-scoped route cache keys and fallback cache separation.
+- Updated Worker smoke, release contract checks, and provider policy documentation for Kakao directions.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run worker:typecheck`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Kakao directions success still requires a preview Worker with `KAKAO_REST_API_KEY` and Kakao Mobility API access enabled.
+- Transit/walking remain fallback estimates until a suitable provider is connected.
+- Naver Directions parity remains future provider work.

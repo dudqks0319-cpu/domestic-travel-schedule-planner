@@ -33,10 +33,12 @@ async function sha256Hex(value: string): Promise<string> {
 
 export async function createRouteCacheKey(
   mode: TravelMode,
-  points: Array<{ lat: number; lng: number }>
+  points: Array<{ lat: number; lng: number }>,
+  providerScope = "fallback"
 ): Promise<string> {
   return `route:v1:${await sha256Hex(JSON.stringify({
     mode,
+    providerScope,
     points: points.map(normalizePoint)
   }))}`;
 }

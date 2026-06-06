@@ -401,6 +401,70 @@ for (const [content, expectedText, label] of providerTimeoutContracts) {
   }
 }
 
+const directionsProviderContracts = [
+  [
+    kakaoProvider,
+    "https://apis-navi.kakaomobility.com/v1/directions",
+    "Kakao provider must call the Kakao Mobility directions API"
+  ],
+  [
+    kakaoProvider,
+    'input.mode !== "driving"',
+    "Kakao directions provider must only claim supported driving routes"
+  ],
+  [
+    kakaoProvider,
+    'url.searchParams.set("waypoints"',
+    "Kakao directions provider must pass intermediate waypoints"
+  ],
+  [
+    kakaoProvider,
+    'url.searchParams.set("summary", "false")',
+    "Kakao directions provider must request section details"
+  ],
+  [
+    kakaoProvider,
+    'provider: "kakao"',
+    "Kakao directions provider must return normalized Kakao routes"
+  ],
+  [
+    providerIndex,
+    "getProviderDirections",
+    "Provider index must expose directions orchestration"
+  ],
+  [
+    providerIndex,
+    'eventType: "provider_directions"',
+    "Directions provider calls must record operational events"
+  ],
+  [
+    routeRoutes,
+    "getProviderDirections(c.env",
+    "Route optimize must attempt provider directions before fallback"
+  ],
+  [
+    routeRoutes,
+    'canUseKakaoDirections ? "kakao" : "fallback"',
+    "Route optimize must separate provider and fallback cache scopes"
+  ],
+  [
+    routeCacheDb,
+    "providerScope",
+    "Route cache keys must include provider scope"
+  ],
+  [
+    workerSmokeScript,
+    "route optimize should return explicit fallback or Kakao provider route",
+    "Worker smoke must accept real Kakao directions or explicit fallback"
+  ]
+];
+
+for (const [content, expectedText, label] of directionsProviderContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing directions provider contract: ${label}`);
+  }
+}
+
 const rateLimitContracts = [
   [
     placeRoutes,
@@ -543,7 +607,7 @@ const routeCacheContracts = [
   ],
   [
     routeRoutes,
-    'cacheStatus: "miss"',
+    'cacheStatus: cachedFallbackRoute ? "hit" : "miss"',
     "Route optimize must expose cache misses"
   ],
   [

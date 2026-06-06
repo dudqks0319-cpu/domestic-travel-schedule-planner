@@ -5,6 +5,7 @@ import { recordOperationalEvent } from "../db/operations";
 import { createRouteCacheKey, getCachedRoute, upsertRouteCache } from "../db/route-cache";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
+import { getProviderDirections } from "../providers";
 import type { NormalizedRoute, TravelMode } from "../providers/types";
 
 export const routeRoutes = new Hono<AppBindings>();
@@ -65,6 +66,37 @@ function parsePoints(value: unknown): RoutePointInput[] {
   });
 }
 
+function buildFallbackRoute(
+  points: RoutePointInput[],
+  selectedMode: TravelMode,
+  warnings: string[] = []
+): NormalizedRoute {
+  const segments = points.slice(0, -1).map((from, index) => {
+    const to = points[index + 1] as RoutePointInput;
+    const segmentDistanceKm = Math.round(distanceKm(from, to) * 1.2 * 10) / 10;
+    return {
+      from: from.id ?? from.name ?? `point-${index + 1}`,
+      to: to.id ?? to.name ?? `point-${index + 2}`,
+      distanceKm: segmentDistanceKm,
+      durationMin: Math.max(1, Math.round((segmentDistanceKm / speed(selectedMode)) * 60)),
+      provider: "fallback" as const
+    };
+  });
+
+  return {
+    provider: "fallback",
+    mode: selectedMode,
+    orderedPoints: points,
+    segments,
+    totalDistanceKm: Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10,
+    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
+    warnings: [
+      ...warnings,
+      "실제 길찾기 provider를 사용할 수 없어 직선 거리 기반 예상 이동시간을 반환합니다."
+    ]
+  };
+}
+
 routeRoutes.post("/optimize", async (c) => {
   const startedAt = Date.now();
   const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
@@ -78,7 +110,12 @@ routeRoutes.post("/optimize", async (c) => {
   }
 
   const selectedMode = mode(raw.mode);
-  const routeCacheKey = await createRouteCacheKey(selectedMode, points);
+  const canUseKakaoDirections = selectedMode === "driving" && Boolean(c.env.KAKAO_REST_API_KEY);
+  const routeCacheKey = await createRouteCacheKey(
+    selectedMode,
+    points,
+    canUseKakaoDirections ? "kakao" : "fallback"
+  );
   const cachedRoute = await getCachedRoute(c.env.DB, routeCacheKey);
   if (cachedRoute) {
     await recordOperationalEvent(c.env.DB, {
@@ -104,49 +141,44 @@ routeRoutes.post("/optimize", async (c) => {
     });
   }
 
-  const segments = points.slice(0, -1).map((from, index) => {
-    const to = points[index + 1] as RoutePointInput;
-    const segmentDistanceKm = Math.round(distanceKm(from, to) * 1.2 * 10) / 10;
-    return {
-      from: from.id ?? from.name ?? `point-${index + 1}`,
-      to: to.id ?? to.name ?? `point-${index + 2}`,
-      distanceKm: segmentDistanceKm,
-      durationMin: Math.max(1, Math.round((segmentDistanceKm / speed(selectedMode)) * 60)),
-      provider: "fallback" as const
-    };
-  });
-  const route: NormalizedRoute = {
-    provider: "fallback",
-    mode: selectedMode,
-    orderedPoints: points,
-    segments,
-    totalDistanceKm: Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10,
-    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
-    warnings: ["실제 길찾기 provider 연결 전까지 직선 거리 기반 예상 이동시간을 반환합니다."]
-  };
-  await upsertRouteCache(c.env.DB, {
-    cacheKey: routeCacheKey,
-    route
-  });
+  const providerResult = canUseKakaoDirections
+    ? await getProviderDirections(c.env, { points, mode: selectedMode })
+    : { route: null, warnings: [] };
+  const fallbackCacheKey = await createRouteCacheKey(selectedMode, points, "fallback");
+  const cachedFallbackRoute = providerResult.route ? null : await getCachedRoute(c.env.DB, fallbackCacheKey);
+  const route = providerResult.route ?? cachedFallbackRoute ?? buildFallbackRoute(points, selectedMode, providerResult.warnings);
+
+  if (providerResult.route) {
+    await upsertRouteCache(c.env.DB, {
+      cacheKey: routeCacheKey,
+      route
+    });
+  } else if (!cachedFallbackRoute) {
+    await upsertRouteCache(c.env.DB, {
+      cacheKey: fallbackCacheKey,
+      route
+    });
+  }
+
   await recordOperationalEvent(c.env.DB, {
     eventType: "route_optimize",
     target: "routes.optimize",
-    status: "warning",
+    status: route.warnings.length ? "warning" : "success",
     durationMs: Date.now() - startedAt,
     requestId: c.get("requestId"),
     metadata: {
-      cacheStatus: "miss",
+      cacheStatus: cachedFallbackRoute ? "hit" : "miss",
       mode: selectedMode,
       pointCount: points.length,
-      segmentCount: segments.length,
-      warningCount: 1
+      segmentCount: route.segments.length,
+      warningCount: route.warnings.length
     }
   });
 
   return c.json({
     ok: true,
     route,
-    cacheStatus: "miss",
+    cacheStatus: cachedFallbackRoute ? "hit" : "miss",
     requestId: c.get("requestId")
   });
 });

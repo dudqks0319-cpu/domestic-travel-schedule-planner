@@ -1,7 +1,13 @@
 import type { Env } from "../bindings";
 import { fetchProvider } from "./http";
 import { safeTags, toNumber } from "./normalization";
-import type { NormalizedPlace, PlaceProviderAdapter, PlaceProviderSearchInput, TravelMode } from "./types";
+import type {
+  NormalizedPlace,
+  NormalizedRoute,
+  PlaceProviderAdapter,
+  PlaceProviderSearchInput,
+  TravelMode
+} from "./types";
 
 interface KakaoDocument {
   id?: string;
@@ -40,6 +46,43 @@ interface KakaoReverseAddressDocument {
 
 interface KakaoReverseAddressResponse {
   documents?: KakaoReverseAddressDocument[];
+}
+
+interface KakaoDirectionsSection {
+  distance?: number;
+  duration?: number;
+}
+
+interface KakaoDirectionsRoute {
+  result_code?: number;
+  result_msg?: string;
+  summary?: {
+    distance?: number;
+    duration?: number;
+  };
+  sections?: KakaoDirectionsSection[];
+}
+
+interface KakaoDirectionsResponse {
+  routes?: KakaoDirectionsRoute[];
+}
+
+function coordinate(point: { lat: number; lng: number }): string {
+  return `${point.lng},${point.lat}`;
+}
+
+function pointLabel(point: { id?: string; name?: string }, index: number): string {
+  return point.id ?? point.name ?? `point-${index + 1}`;
+}
+
+function metersToKm(value: number | undefined): number {
+  if (!value || value < 0) return 0;
+  return Math.round((value / 1000) * 10) / 10;
+}
+
+function secondsToMin(value: number | undefined): number {
+  if (!value || value < 0) return 0;
+  return Math.max(1, Math.round(value / 60));
 }
 
 export class KakaoPlaceAdapter implements PlaceProviderAdapter {
@@ -134,7 +177,75 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     return address ? { address } : null;
   }
 
-  async getDirections(_input: { points: Array<{ lat: number; lng: number; name?: string }>; mode: TravelMode }) {
-    return null;
+  async getDirections(input: {
+    points: Array<{ id?: string; lat: number; lng: number; name?: string }>;
+    mode: TravelMode;
+  }): Promise<NormalizedRoute | null> {
+    if (!this.env.KAKAO_REST_API_KEY || input.mode !== "driving" || input.points.length < 2) {
+      return null;
+    }
+    if (input.points.length > 7) {
+      return null;
+    }
+
+    const origin = input.points[0];
+    const destination = input.points[input.points.length - 1];
+    const waypoints = input.points.slice(1, -1);
+    if (!origin || !destination) {
+      return null;
+    }
+
+    const url = new URL("https://apis-navi.kakaomobility.com/v1/directions");
+    url.searchParams.set("origin", coordinate(origin));
+    url.searchParams.set("destination", coordinate(destination));
+    if (waypoints.length) {
+      url.searchParams.set("waypoints", waypoints.map(coordinate).join("|"));
+    }
+    url.searchParams.set("summary", "false");
+
+    const response = await fetchProvider(url, {
+      headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json<KakaoDirectionsResponse>();
+    const route = data.routes?.[0];
+    if (!route || (route.result_code !== undefined && route.result_code !== 0)) {
+      return null;
+    }
+
+    const sections = route.sections ?? [];
+    if (sections.length !== input.points.length - 1) {
+      return null;
+    }
+
+    const segments = sections.map((section, index) => {
+      const from = input.points[index]!;
+      const to = input.points[index + 1]!;
+      return {
+        from: pointLabel(from, index),
+        to: pointLabel(to, index + 1),
+        distanceKm: metersToKm(section.distance),
+        durationMin: secondsToMin(section.duration),
+        provider: "kakao" as const
+      };
+    });
+
+    const totalDistanceKm = route.summary?.distance
+      ? metersToKm(route.summary.distance)
+      : Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10;
+    const totalDurationMin = route.summary?.duration
+      ? secondsToMin(route.summary.duration)
+      : segments.reduce((sum, segment) => sum + segment.durationMin, 0);
+
+    return {
+      provider: "kakao",
+      mode: "driving",
+      orderedPoints: input.points,
+      segments,
+      totalDistanceKm,
+      totalDurationMin,
+      warnings: []
+    };
   }
 }

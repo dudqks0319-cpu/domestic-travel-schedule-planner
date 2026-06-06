@@ -4,7 +4,13 @@ import { dedupePlaces } from "./normalization";
 import { KakaoPlaceAdapter } from "./kakao";
 import { NaverPlaceAdapter } from "./naver";
 import { TourPlaceAdapter } from "./tour";
-import type { PlaceProviderAdapter, PlaceProviderSearchInput, ProviderSearchResult } from "./types";
+import type {
+  NormalizedRoute,
+  PlaceProviderAdapter,
+  PlaceProviderSearchInput,
+  ProviderSearchResult,
+  TravelMode
+} from "./types";
 
 const PLACE_SEARCH_TTL_SECONDS = 60 * 60 * 24;
 const GEOCODE_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -30,6 +36,12 @@ function adapters(env: Env): PlaceProviderAdapter[] {
 }
 
 function geocodeAdapters(env: Env): PlaceProviderAdapter[] {
+  return [
+    new KakaoPlaceAdapter(env)
+  ];
+}
+
+function directionsAdapters(env: Env): PlaceProviderAdapter[] {
   return [
     new KakaoPlaceAdapter(env)
   ];
@@ -146,6 +158,49 @@ async function reverseGeocodeAdapter(
   }
 }
 
+async function directionsAdapter(
+  env: Env,
+  adapter: PlaceProviderAdapter,
+  input: {
+    points: Array<{ id?: string; lat: number; lng: number; name?: string }>;
+    mode: TravelMode;
+  }
+) {
+  const startedAt = Date.now();
+  try {
+    const route = await adapter.getDirections(input);
+    await recordOperationalEvent(env.DB, {
+      eventType: "provider_directions",
+      target: `provider.${adapter.provider}`,
+      status: route ? "success" : "warning",
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        provider: adapter.provider,
+        mode: input.mode,
+        pointCount: input.points.length,
+        segmentCount: route?.segments.length ?? 0,
+        warningCount: route ? route.warnings.length : 1
+      }
+    });
+    return route;
+  } catch (error) {
+    await recordOperationalEvent(env.DB, {
+      eventType: "provider_directions",
+      target: `provider.${adapter.provider}`,
+      status: "failure",
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        provider: adapter.provider,
+        mode: input.mode,
+        pointCount: input.points.length,
+        segmentCount: 0,
+        warningCount: 1
+      }
+    });
+    throw error;
+  }
+}
+
 export async function searchPlaces(env: Env, input: PlaceProviderSearchInput): Promise<ProviderSearchResult> {
   const key = cacheKey(input);
   const cached = await env.PLACE_CACHE.get(key, "json");
@@ -252,8 +307,33 @@ export async function reverseGeocodeCoordinate(env: Env, input: { lat: number; l
   return payload;
 }
 
+export async function getProviderDirections(env: Env, input: {
+  points: Array<{ id?: string; lat: number; lng: number; name?: string }>;
+  mode: TravelMode;
+}): Promise<{
+  route: NormalizedRoute | null;
+  warnings: string[];
+}> {
+  const warnings: string[] = [];
+
+  for (const adapter of directionsAdapters(env)) {
+    try {
+      const route = await directionsAdapter(env, adapter, input);
+      if (route) {
+        return { route, warnings };
+      }
+      warnings.push(`${adapter.provider} directions returned no route`);
+    } catch {
+      warnings.push(`${adapter.provider} directions failed`);
+    }
+  }
+
+  return { route: null, warnings };
+}
+
 export type {
   NormalizedPlace,
+  NormalizedRoute,
   PlaceProviderAdapter,
   PlaceProviderSearchInput,
   ProviderSearchResult,

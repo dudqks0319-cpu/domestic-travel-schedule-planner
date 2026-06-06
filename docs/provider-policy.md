@@ -31,6 +31,8 @@ Address geocoding and reverse geocoding are server-side provider calls. The Work
 
 All external provider HTTP calls must use the shared Worker provider fetch helper with a bounded timeout. Slow or failed providers should produce warnings and fallback/empty results rather than blocking the full search or itinerary flow.
 
+Driving route optimization is server-side. When `KAKAO_REST_API_KEY` is configured and the request mode is `driving`, the Worker calls Kakao Mobility directions first and normalizes the result as a `kakao` route. If Kakao directions fail, the response falls back to a clearly labeled expected movement-time route. Kakao route cache keys and fallback route cache keys are separated so an old fallback cache entry cannot hide a recovered provider route.
+
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability
