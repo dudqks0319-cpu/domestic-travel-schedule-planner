@@ -1359,3 +1359,29 @@ Verification completed:
 
 Remaining risks:
 - This does not run live Worker smoke because CI has no D1/KV/R2 bindings or provider secrets by default.
+
+## Preview Worker Smoke Workflow Result Record
+
+Plan:
+- Add a manual GitHub Actions path for live preview Worker smoke without requiring production secrets in the regular PR gate.
+- Reuse the existing write-smoke script and its `/health` environment guard.
+- Make release contract checks assert that the manual preview smoke workflow remains available.
+
+Completed:
+- Added `.github/workflows/tripmate-worker-preview-smoke.yml`.
+- The workflow is `workflow_dispatch` only and requires a `base_url` input.
+- The workflow installs dependencies with `npm ci`, checks Worker smoke script syntax, and runs `npm run worker:smoke` against the provided base URL.
+- The workflow passes `OPS_ADMIN_TOKEN` from repository secrets when available.
+- Updated release contract checks to require the preview smoke workflow and its safety-critical commands.
+- Updated README and Cloudflare deployment docs with manual preview smoke guidance.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The workflow was added and statically verified locally, but it has not been run against a real preview Worker URL in this session.

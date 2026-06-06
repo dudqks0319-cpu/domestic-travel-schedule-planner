@@ -69,6 +69,7 @@ for (const scriptName of requiredRootScripts) {
 
 for (const file of [
   ".github/workflows/tripmate-v1-gate.yml",
+  ".github/workflows/tripmate-worker-preview-smoke.yml",
   "docs/deployment-cloudflare.md",
   "docs/env.md",
   "docs/provider-policy.md",
@@ -98,6 +99,7 @@ const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.nat
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
 const routeApi = readText("apps/mobile/services/routeApi.ts");
 const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
+const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
@@ -279,6 +281,19 @@ for (const text of [
 ]) {
   if (!ciWorkflow.includes(text)) {
     errors.push(`Missing CI release gate step: ${text}`);
+  }
+}
+
+for (const text of [
+  "workflow_dispatch",
+  "base_url",
+  "TRIPMATE_WORKER_BASE_URL",
+  "OPS_ADMIN_TOKEN",
+  "node --check scripts/worker-v1-smoke.mjs",
+  "npm run worker:smoke -- --base-url"
+]) {
+  if (!previewSmokeWorkflow.includes(text)) {
+    errors.push(`Missing preview smoke workflow contract: ${text}`);
   }
 }
 

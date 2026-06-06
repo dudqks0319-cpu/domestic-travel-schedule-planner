@@ -28,6 +28,8 @@ npm run check:env
 
 GitHub Actions runs `.github/workflows/tripmate-v1-gate.yml` on pull requests and protected release branches. The workflow installs dependencies with `npm ci`, then runs the release contract check, planner tests, health gate, and Worker smoke script syntax check.
 
+For preview environments, run `.github/workflows/tripmate-worker-preview-smoke.yml` manually with the preview Worker base URL. It runs the write smoke script only after the Worker reports `ENVIRONMENT=local` or `ENVIRONMENT=preview`.
+
 ## Environment
 
 Copy `services/api/.env.example` to `services/api/.env` only for the reference Express API. For the production Worker API, use Cloudflare secrets and bindings.

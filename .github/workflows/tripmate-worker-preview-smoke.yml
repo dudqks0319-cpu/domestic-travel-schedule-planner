@@ -1,0 +1,54 @@
+name: TripMate Worker Preview Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Preview Worker base URL, for example https://tripmate-api-preview.<account>.workers.dev"
+        required: true
+        type: string
+
+concurrency:
+  group: tripmate-worker-preview-smoke-${{ inputs.base_url }}
+  cancel-in-progress: false
+
+jobs:
+  preview-smoke:
+    name: Preview Worker Write Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate smoke script syntax
+        run: node --check scripts/worker-v1-smoke.mjs
+
+      - name: Run preview Worker smoke
+        env:
+          OPS_ADMIN_TOKEN: ${{ secrets.OPS_ADMIN_TOKEN }}
+          TRIPMATE_WORKER_BASE_URL: ${{ inputs.base_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TRIPMATE_WORKER_BASE_URL" =~ ^https?:// ]]; then
+            echo "TRIPMATE_WORKER_BASE_URL must start with http:// or https://"
+            exit 1
+          fi
+
+          if [[ -n "${OPS_ADMIN_TOKEN:-}" ]]; then
+            npm run worker:smoke -- --base-url "$TRIPMATE_WORKER_BASE_URL" --ops-token "$OPS_ADMIN_TOKEN"
+          else
+            npm run worker:smoke -- --base-url "$TRIPMATE_WORKER_BASE_URL"
+          fi

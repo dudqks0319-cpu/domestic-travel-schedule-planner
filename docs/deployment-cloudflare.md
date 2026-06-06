@@ -87,3 +87,5 @@ npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_AD
 ```
 
 The smoke script checks health, planner generate/replan, route optimization, provider search contract, Kakao dev login, authenticated trip/day/place/share CRUD, monetization event logging, entitlement state, optional ops summary, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
+
+Preview smoke can also be triggered manually from GitHub Actions with `TripMate Worker Preview Smoke`. Provide the preview Worker base URL as `base_url`; the workflow uses `OPS_ADMIN_TOKEN` from repository secrets when available and still relies on the smoke script's `/health` environment guard before write requests.
