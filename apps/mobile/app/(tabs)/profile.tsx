@@ -11,6 +11,7 @@ import {
   loadEntitlementState,
   type PremiumEntitlementState
 } from "../../services/monetization";
+import { restorePremiumPurchase, startPremiumPurchase } from "../../services/iap";
 import { useAuth } from "../providers/auth-provider";
 
 const EARN_ITEMS = [
@@ -41,7 +42,7 @@ export default function ProfileScreen() {
   const { deleteAccount, logout, user } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
-  const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "checking">("idle");
+  const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "purchasing" | "restoring">("idle");
   const [premiumNotice, setPremiumNotice] = useState<string | null>(null);
   const [savedTrips, setSavedTrips] = useState<TripWithPlacesDto[]>([]);
   const [tripsStatus, setTripsStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -129,24 +130,33 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleStartPremium = async () => {
+    setPremiumNotice(null);
+    setPremiumActionStatus("purchasing");
+    try {
+      const result = await startPremiumPurchase();
+      if ("entitlementState" in result && result.entitlementState) {
+        setEntitlement(result.entitlementState);
+        setEntitlementStatus("ready");
+      }
+      setPremiumNotice(result.message);
+    } catch {
+      setPremiumNotice("프리미엄 구매를 시작하지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
+    } finally {
+      setPremiumActionStatus("idle");
+    }
+  };
+
   const handleRestorePremium = async () => {
     setPremiumNotice(null);
-
-    if (Platform.OS === "web") {
-      setPremiumNotice("웹에서는 앱스토어/플레이 결제 복원을 실행할 수 없어요. 모바일 빌드에서 스토어 SDK 연결 후 사용할 수 있습니다.");
-      return;
-    }
-
-    setPremiumActionStatus("checking");
+    setPremiumActionStatus("restoring");
     try {
-      const nextEntitlement = await loadEntitlementState();
-      setEntitlement(nextEntitlement);
-      setEntitlementStatus("ready");
-      setPremiumNotice(
-        nextEntitlement.premium
-          ? "프리미엄 권한이 활성화됐어요."
-          : "구매 복원은 스토어 SDK 연결 후 실제 영수증으로 검증됩니다. 현재 빌드는 권한 상태만 새로 확인했어요."
-      );
+      const result = await restorePremiumPurchase();
+      if ("entitlementState" in result && result.entitlementState) {
+        setEntitlement(result.entitlementState);
+        setEntitlementStatus("ready");
+      }
+      setPremiumNotice(result.message);
     } catch {
       setPremiumNotice("프리미엄 권한 상태를 확인하지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
     } finally {
@@ -289,16 +299,30 @@ export default function ProfileScreen() {
             </Text>
           </View>
           {premiumNotice ? <Text style={styles.premiumNotice}>{premiumNotice}</Text> : null}
-          <TouchableOpacity
-            style={styles.premiumActionButton}
-            onPress={() => { void handleRestorePremium(); }}
-            disabled={premiumActionStatus === "checking"}
-            activeOpacity={0.78}
-          >
-            <Text style={styles.premiumActionText}>
-              {premiumActionStatus === "checking" ? "권한 확인 중..." : "구매 복원/권한 확인"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.premiumActionRow}>
+            {!entitlement.premium ? (
+              <TouchableOpacity
+                style={styles.premiumActionButton}
+                onPress={() => { void handleStartPremium(); }}
+                disabled={premiumActionStatus !== "idle"}
+                activeOpacity={0.78}
+              >
+                <Text style={styles.premiumActionText}>
+                  {premiumActionStatus === "purchasing" ? "결제 준비 중..." : "프리미엄 시작"}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.premiumActionButton, styles.premiumSecondaryButton]}
+              onPress={() => { void handleRestorePremium(); }}
+              disabled={premiumActionStatus !== "idle"}
+              activeOpacity={0.78}
+            >
+              <Text style={[styles.premiumActionText, styles.premiumSecondaryText]}>
+                {premiumActionStatus === "restoring" ? "권한 확인 중..." : "구매 복원"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>포인트 적립</Text>
@@ -604,8 +628,13 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: "700"
   },
-  premiumActionButton: {
+  premiumActionRow: {
     marginTop: 12,
+    flexDirection: "row",
+    gap: 8
+  },
+  premiumActionButton: {
+    flex: 1,
     borderRadius: 12,
     backgroundColor: Theme.colors.primary,
     minHeight: 42,
@@ -613,12 +642,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 12
   },
+  premiumSecondaryButton: {
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.surface
+  },
   premiumActionText: {
     fontSize: 13,
     lineHeight: 17,
     color: Theme.colors.textOnPrimary,
     fontWeight: "900",
     textAlign: "center"
+  },
+  premiumSecondaryText: {
+    color: Theme.colors.primary
   },
   sectionTitle: {
     marginTop: 20,

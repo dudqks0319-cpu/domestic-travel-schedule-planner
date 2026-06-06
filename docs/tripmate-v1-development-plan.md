@@ -1649,3 +1649,28 @@ Verification completed:
 Remaining risks:
 - This is weather-style replanning, not a live weather forecast integration; live forecast triggers can be added after a weather provider policy is finalized.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Premium IAP Entry Point Result Record
+
+Plan:
+- Separate mobile premium purchase/restore orchestration from the profile screen.
+- Add a store-platform bridge boundary that can later host Apple/Google IAP SDK calls without changing premium UI.
+- Keep the current build honest by returning a clear unavailable state until a native store SDK is connected.
+
+Completed:
+- Added `apps/mobile/services/iap.ts` with store platform resolution, premium product id, purchase, restore, and server verification helpers.
+- Split profile premium actions into "프리미엄 시작" and "구매 복원".
+- Connected restore to the existing authenticated entitlement state API through the new IAP service boundary.
+- Preserved the policy that mobile cannot grant itself premium; store verification still goes through the Worker entitlement endpoint.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Apple/Google IAP SDK integration is still required before real store purchase and restore flows can submit receipts.
+- The current purchase action intentionally reports SDK-unavailable state instead of starting a fake purchase.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
