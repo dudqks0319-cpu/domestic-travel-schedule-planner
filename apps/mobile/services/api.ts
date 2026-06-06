@@ -181,6 +181,8 @@ export const tripsApi = {
     apiClient.post(`/trips/${tripId}/days`, data),
   getPlaces: (tripId: string, dayId: string) =>
     apiClient.get(`/trips/${tripId}/days/${dayId}/places`),
+  addPlace: (tripId: string, data: Record<string, unknown>) =>
+    apiClient.post(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days/${dayId}/places`, data),
   updatePlace: (tripId: string, dayId: string, placeId: string, data: Record<string, unknown>) =>

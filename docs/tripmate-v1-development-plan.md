@@ -342,3 +342,22 @@ Verification completed:
 Remaining risks:
 - The add-to-trip action currently stores places locally in `currentTrip`; remote trip day selection/persistence should be connected after the mobile saved-trip flow is finalized.
 - Real provider search quality still requires configured provider secrets and Cloudflare preview validation.
+
+## Search Remote Persistence Result Record
+
+Completed:
+- Added mobile `tripsApi.addPlace()` for `/api/v1/trips/:tripId/places`.
+- Updated search "일정에 담기" to store route points with the canonical `latitude` and `longitude` keys.
+- Search add-to-trip now attempts remote `trip_places` persistence when `currentTrip.id` is a server trip id.
+- If auth or remote persistence fails, the app falls back to local `currentTrip.routePoints` without breaking the user flow.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Worker local smoke for login, trip create, `/trips/:tripId/places` create/list/delete.
+- Expo web smoke at `/search` with 390px viewport and zero console errors.
+
+Remaining risks:
+- Search still defaults new places to day 1 until a date-picker/day-selection UI is added to the add-to-trip action.
+- Local-only fallback trips cannot be remotely persisted until the user logs in and saves the draft as a server trip.

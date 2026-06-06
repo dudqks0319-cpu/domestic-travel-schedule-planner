@@ -18,7 +18,7 @@ import SponsoredBadge from "../../components/monetization/SponsoredBadge";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
-import { placesApi, type NormalizedPlaceDto } from "../../services/api";
+import { placesApi, tripsApi, type NormalizedPlaceDto } from "../../services/api";
 
 type CategoryKey =
   | "all"
@@ -62,7 +62,49 @@ function categoryQuery(key: CategoryKey): string | undefined {
   return CATEGORIES.find((category) => category.key === key)?.query;
 }
 
-async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<number> {
+function dayNumberForCurrentTrip(currentTrip: Record<string, unknown>): number {
+  const startDate = typeof currentTrip.startDate === "string" ? currentTrip.startDate : "";
+  const endDate = typeof currentTrip.endDate === "string" ? currentTrip.endDate : "";
+  if (!startDate || !endDate) {
+    return 1;
+  }
+
+  return 1;
+}
+
+async function persistPlaceToRemoteTrip(
+  currentTrip: Record<string, unknown>,
+  place: NormalizedPlaceDto,
+  nextSortOrder: number
+): Promise<boolean> {
+  const tripId = typeof currentTrip.id === "string" ? currentTrip.id : "";
+  if (!tripId || tripId.startsWith("trip_")) {
+    return false;
+  }
+
+  try {
+    await tripsApi.addPlace(tripId, {
+      providerPlaceId: place.providerPlaceId ?? place.id,
+      name: place.name,
+      category: place.category,
+      address: place.roadAddress || place.address,
+      lat: place.lat,
+      lng: place.lng,
+      dayNumber: dayNumberForCurrentTrip(currentTrip),
+      sortOrder: nextSortOrder,
+      isSponsored: place.isSponsored,
+      ...(place.sponsorLabel ? { sponsorLabel: place.sponsorLabel } : {})
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<{
+  count: number;
+  remoteSaved: boolean;
+}> {
   const rawTrip = await AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY);
   const currentTrip =
     rawTrip && rawTrip.trim()
@@ -86,11 +128,14 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<number>
     routePoints.push({
       id: place.id,
       name: place.name,
-      lat: place.lat,
-      lng: place.lng,
-      category: place.category
+      latitude: place.lat,
+      longitude: place.lng
     });
   }
+
+  const remoteSaved = alreadyAdded
+    ? false
+    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length);
 
   await AsyncStorage.setItem(
     CURRENT_TRIP_STORAGE_KEY,
@@ -101,7 +146,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<number>
     })
   );
 
-  return routePoints.length;
+  return { count: routePoints.length, remoteSaved };
 }
 
 export default function SearchScreen() {
@@ -141,8 +186,13 @@ export default function SearchScreen() {
 
   const handleAddPlace = useCallback(async (place: NormalizedPlaceDto) => {
     try {
-      const count = await addPlaceToCurrentTrip(place);
-      Alert.alert("일정에 담았어요", `${place.name}까지 ${count}개 장소가 담겼습니다.`);
+      const result = await addPlaceToCurrentTrip(place);
+      Alert.alert(
+        "일정에 담았어요",
+        result.remoteSaved
+          ? `${place.name}까지 ${result.count}개 장소가 담기고 서버에 저장됐습니다.`
+          : `${place.name}까지 ${result.count}개 장소가 이 기기에 담겼습니다.`
+      );
     } catch {
       Alert.alert("담기 실패", "장소를 일정에 담지 못했어요. 다시 시도해주세요.");
     }
