@@ -37,6 +37,64 @@ export interface SharedTripRecord extends TripRecord {
   share_expires_at: string | null;
 }
 
+export interface TripDayRecord {
+  id: string;
+  trip_id: string;
+  user_id: string;
+  day_number: number;
+  date: string;
+  title: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripDayInput {
+  dayNumber: number;
+  date: string;
+  title: string;
+}
+
+export interface TripPlaceRecord {
+  id: string;
+  trip_id: string;
+  day_id: string | null;
+  user_id: string;
+  provider_place_id: string | null;
+  name: string;
+  category: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  day_number: number | null;
+  sort_order: number;
+  start_time: string | null;
+  end_time: string | null;
+  memo: string | null;
+  is_sponsored: number;
+  sponsor_label: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TripPlaceInput {
+  dayId?: string;
+  providerPlaceId?: string;
+  name: string;
+  category: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  dayNumber?: number;
+  sortOrder?: number;
+  startTime?: string;
+  endTime?: string;
+  memo?: string;
+  isSponsored?: boolean;
+  sponsorLabel?: string;
+}
+
 export function toPublicTrip(record: TripRecord) {
   return {
     id: record.id,
@@ -46,6 +104,41 @@ export function toPublicTrip(record: TripRecord) {
     endDate: record.end_date,
     styleKey: record.style_key,
     transportMode: record.transport_mode,
+    status: record.status,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+}
+
+export function toPublicTripDay(record: TripDayRecord) {
+  return {
+    id: record.id,
+    tripId: record.trip_id,
+    dayNumber: record.day_number,
+    date: record.date,
+    title: record.title,
+    status: record.status,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+}
+
+export function toPublicTripPlace(record: TripPlaceRecord) {
+  return {
+    id: record.id,
+    tripId: record.trip_id,
+    dayId: record.day_id,
+    providerPlaceId: record.provider_place_id,
+    name: record.name,
+    category: record.category,
+    address: record.address,
+    dayNumber: record.day_number,
+    sortOrder: record.sort_order,
+    startTime: record.start_time,
+    endTime: record.end_time,
+    memo: record.memo,
+    isSponsored: record.is_sponsored === 1,
+    sponsorLabel: record.sponsor_label,
     status: record.status,
     createdAt: record.created_at,
     updatedAt: record.updated_at
@@ -219,4 +312,268 @@ export async function getSharedTrip(
     .first<SharedTripRecord>();
 
   return record ?? null;
+}
+
+export async function listTripDays(
+  db: D1Database,
+  userId: string,
+  tripId: string
+): Promise<TripDayRecord[] | null> {
+  const trip = await getOwnedTrip(db, userId, tripId);
+  if (!trip) {
+    return null;
+  }
+
+  const result = await db
+    .prepare(
+      `SELECT * FROM trip_days
+       WHERE trip_id = ? AND user_id = ? AND deleted_at IS NULL
+       ORDER BY day_number ASC`
+    )
+    .bind(tripId, userId)
+    .all<TripDayRecord>();
+
+  return result.results ?? [];
+}
+
+export async function getOwnedTripDay(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  dayId: string
+): Promise<TripDayRecord | null> {
+  const record = await db
+    .prepare(
+      `SELECT * FROM trip_days
+       WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL
+       LIMIT 1`
+    )
+    .bind(dayId, tripId, userId)
+    .first<TripDayRecord>();
+
+  return record ?? null;
+}
+
+export async function createTripDay(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  input: TripDayInput
+): Promise<TripDayRecord | null> {
+  const trip = await getOwnedTrip(db, userId, tripId);
+  if (!trip) {
+    return null;
+  }
+
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO trip_days (id, trip_id, user_id, day_number, date, title)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .bind(id, tripId, userId, input.dayNumber, input.date, input.title)
+    .run();
+
+  return getOwnedTripDay(db, userId, tripId, id);
+}
+
+export async function updateTripDay(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  dayId: string,
+  input: Partial<TripDayInput>
+): Promise<TripDayRecord | null> {
+  const existing = await getOwnedTripDay(db, userId, tripId, dayId);
+  if (!existing) {
+    return null;
+  }
+
+  await db
+    .prepare(
+      `UPDATE trip_days
+       SET day_number = ?, date = ?, title = ?, updated_at = datetime('now')
+       WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL`
+    )
+    .bind(
+      input.dayNumber ?? existing.day_number,
+      input.date ?? existing.date,
+      input.title ?? existing.title,
+      dayId,
+      tripId,
+      userId
+    )
+    .run();
+
+  return getOwnedTripDay(db, userId, tripId, dayId);
+}
+
+export async function listTripPlaces(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  dayId?: string
+): Promise<TripPlaceRecord[] | null> {
+  const trip = await getOwnedTrip(db, userId, tripId);
+  if (!trip) {
+    return null;
+  }
+
+  const sql = dayId
+    ? `SELECT * FROM trip_places
+       WHERE trip_id = ? AND day_id = ? AND user_id = ? AND deleted_at IS NULL
+       ORDER BY day_number ASC, sort_order ASC`
+    : `SELECT * FROM trip_places
+       WHERE trip_id = ? AND user_id = ? AND deleted_at IS NULL
+       ORDER BY day_number ASC, sort_order ASC`;
+  const statement = db.prepare(sql);
+  const result = dayId
+    ? await statement.bind(tripId, dayId, userId).all<TripPlaceRecord>()
+    : await statement.bind(tripId, userId).all<TripPlaceRecord>();
+
+  return result.results ?? [];
+}
+
+export async function getOwnedTripPlace(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  placeId: string
+): Promise<TripPlaceRecord | null> {
+  const record = await db
+    .prepare(
+      `SELECT * FROM trip_places
+       WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL
+       LIMIT 1`
+    )
+    .bind(placeId, tripId, userId)
+    .first<TripPlaceRecord>();
+
+  return record ?? null;
+}
+
+export async function createTripPlace(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  input: TripPlaceInput
+): Promise<TripPlaceRecord | null> {
+  const trip = await getOwnedTrip(db, userId, tripId);
+  if (!trip) {
+    return null;
+  }
+
+  if (input.dayId) {
+    const day = await getOwnedTripDay(db, userId, tripId, input.dayId);
+    if (!day) {
+      return null;
+    }
+  }
+
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO trip_places (
+        id, trip_id, day_id, user_id, provider_place_id, name, category, address,
+        lat, lng, day_number, sort_order, start_time, end_time, memo,
+        is_sponsored, sponsor_label
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(
+      id,
+      tripId,
+      input.dayId ?? null,
+      userId,
+      input.providerPlaceId ?? null,
+      input.name,
+      input.category,
+      input.address ?? null,
+      input.lat ?? null,
+      input.lng ?? null,
+      input.dayNumber ?? null,
+      input.sortOrder ?? 0,
+      input.startTime ?? null,
+      input.endTime ?? null,
+      input.memo ?? null,
+      input.isSponsored ? 1 : 0,
+      input.sponsorLabel ?? null
+    )
+    .run();
+
+  return getOwnedTripPlace(db, userId, tripId, id);
+}
+
+export async function updateTripPlace(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  placeId: string,
+  input: Partial<TripPlaceInput>
+): Promise<TripPlaceRecord | null> {
+  const existing = await getOwnedTripPlace(db, userId, tripId, placeId);
+  if (!existing) {
+    return null;
+  }
+
+  if (input.dayId) {
+    const day = await getOwnedTripDay(db, userId, tripId, input.dayId);
+    if (!day) {
+      return null;
+    }
+  }
+
+  await db
+    .prepare(
+      `UPDATE trip_places
+       SET day_id = ?, provider_place_id = ?, name = ?, category = ?, address = ?,
+           lat = ?, lng = ?, day_number = ?, sort_order = ?, start_time = ?,
+           end_time = ?, memo = ?, is_sponsored = ?, sponsor_label = ?,
+           updated_at = datetime('now')
+       WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL`
+    )
+    .bind(
+      input.dayId ?? existing.day_id,
+      input.providerPlaceId ?? existing.provider_place_id,
+      input.name ?? existing.name,
+      input.category ?? existing.category,
+      input.address ?? existing.address,
+      input.lat ?? existing.lat,
+      input.lng ?? existing.lng,
+      input.dayNumber ?? existing.day_number,
+      input.sortOrder ?? existing.sort_order,
+      input.startTime ?? existing.start_time,
+      input.endTime ?? existing.end_time,
+      input.memo ?? existing.memo,
+      input.isSponsored === undefined ? existing.is_sponsored : input.isSponsored ? 1 : 0,
+      input.sponsorLabel ?? existing.sponsor_label,
+      placeId,
+      tripId,
+      userId
+    )
+    .run();
+
+  return getOwnedTripPlace(db, userId, tripId, placeId);
+}
+
+export async function deleteTripPlace(
+  db: D1Database,
+  userId: string,
+  tripId: string,
+  placeId: string
+): Promise<boolean> {
+  const existing = await getOwnedTripPlace(db, userId, tripId, placeId);
+  if (!existing) {
+    return false;
+  }
+
+  await db
+    .prepare(
+      `UPDATE trip_places
+       SET status = 'deleted', deleted_at = datetime('now'), updated_at = datetime('now')
+       WHERE id = ? AND trip_id = ? AND user_id = ? AND deleted_at IS NULL`
+    )
+    .bind(placeId, tripId, userId)
+    .run();
+
+  return true;
 }
