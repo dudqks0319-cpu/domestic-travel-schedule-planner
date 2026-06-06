@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Image, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -38,7 +38,7 @@ function ActionCard({ icon, label, point }: { icon: keyof typeof Ionicons.glyphM
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { deleteAccount, logout } = useAuth();
+  const { deleteAccount, logout, user } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
   const [premiumActionStatus, setPremiumActionStatus] = useState<"idle" | "checking">("idle");
@@ -51,6 +51,9 @@ export default function ProfileScreen() {
   const point = 1850;
   const nextTierPoint = 2000;
   const progress = Math.min(1, point / nextTierPoint);
+  const profileName = user?.nickname?.trim() || "여행자";
+  const profileEmail = user?.email?.trim() || null;
+  const profileInitial = profileName.slice(0, 1).toUpperCase() || "T";
 
   useEffect(() => {
     let mounted = true;
@@ -217,17 +220,17 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.profileTop}>
-          <Image
-            source={{ uri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80" }}
-            style={styles.avatar}
-          />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarInitial}>{profileInitial}</Text>
+          </View>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>지현</Text>
+            <Text style={styles.name} numberOfLines={1}>{profileName}</Text>
             <View style={styles.badge}>
               <Ionicons name="checkmark-circle" size={13} color="#111827" />
-              <Text style={styles.badgeText}>Star Reviewer</Text>
+              <Text style={styles.badgeText}>{entitlement.premium ? "Premium" : "Free"}</Text>
             </View>
           </View>
+          {profileEmail ? <Text style={styles.emailText} numberOfLines={1}>{profileEmail}</Text> : null}
         </View>
 
         <View style={styles.pointCard}>
@@ -400,17 +403,32 @@ const styles = StyleSheet.create({
   avatar: {
     width: 84,
     height: 84,
-    borderRadius: 42
+    borderRadius: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Theme.colors.primaryLight,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight
+  },
+  avatarInitial: {
+    fontSize: 34,
+    lineHeight: 40,
+    color: Theme.colors.primary,
+    fontWeight: "800"
   },
   nameRow: {
     marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    justifyContent: "center",
+    gap: 8,
+    width: "100%"
   },
   name: {
-    fontSize: 52,
-    lineHeight: 56,
+    flexShrink: 1,
+    maxWidth: "72%",
+    fontSize: 34,
+    lineHeight: 40,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
@@ -428,6 +446,13 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: Theme.colors.textPrimary,
     fontWeight: "700"
+  },
+  emailText: {
+    marginTop: 4,
+    maxWidth: "88%",
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textSecondary
   },
   pointCard: {
     backgroundColor: Theme.colors.surface,

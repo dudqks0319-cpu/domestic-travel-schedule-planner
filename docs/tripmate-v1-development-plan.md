@@ -1544,3 +1544,27 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to verify the touch target density and horizontal wrapping on small phones.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Authenticated Profile Display Result Record
+
+Plan:
+- Remove launch-inappropriate hardcoded profile identity from the profile screen.
+- Reuse the existing authenticated user profile from `AuthProvider`.
+- Avoid external sample avatar URLs in the profile header.
+
+Completed:
+- Updated the profile screen to display the authenticated user's nickname and email when available.
+- Replaced the hardcoded external avatar image with a local initial avatar.
+- Updated the profile badge to reflect free/premium entitlement state.
+- Reduced profile name sizing and constrained the row so long nicknames do not crowd the badge.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- A real profile image field is still not part of `UserSignupProfile`; Kakao profile image persistence can be added later if product wants user photos.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
