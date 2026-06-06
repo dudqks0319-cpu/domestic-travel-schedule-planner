@@ -576,6 +576,10 @@ function toUserFriendlyRouteMessage(rawMessage: string): string {
 function formatWarning(warning: string): string {
   const normalized = warning.toLowerCase();
 
+  if (normalized.includes("naver")) {
+    return "네이버 실시간 경로 계산이 불안정해 대체 경로로 표시했어요.";
+  }
+
   if (normalized.includes("kakao")) {
     return "카카오 실시간 경로 계산이 불안정해 대체 경로로 표시했어요.";
   }

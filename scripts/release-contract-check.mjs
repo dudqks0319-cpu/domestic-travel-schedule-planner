@@ -793,6 +793,11 @@ const mobileRouteProviderContracts = [
   ],
   [
     routeMapScreen,
+    "네이버 실시간 경로 계산이 불안정해 대체 경로로 표시했어요.",
+    "Route map warning copy must identify Naver provider failures"
+  ],
+  [
+    routeMapScreen,
     "카카오 길찾기",
     "Route map source labels must include Kakao provider copy"
   ],

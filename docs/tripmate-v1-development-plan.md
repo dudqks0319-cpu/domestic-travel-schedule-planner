@@ -3250,3 +3250,27 @@ Verification completed:
 
 Remaining risks:
 - This is a type contract alignment pass; visual/mobile runtime smoke is still needed wherever geocode provider metadata is later surfaced in UI.
+
+## Mobile Naver Route Warning Copy Result Record
+
+Plan:
+- Make Naver route provider failures visible as provider-specific user-facing copy on the route map screen.
+- Preserve existing Kakao, transit, fallback, network, and timeout warning handling.
+- Add release contract coverage so Naver warning copy does not regress.
+
+Completed:
+- Added a Naver-specific branch to `formatWarning()` in `apps/mobile/app/trip/route-map.tsx`.
+- Added release contract coverage for the Naver route warning copy.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is a static/typechecked copy pass; device-level route-map smoke is still needed with live Naver route warnings from a preview Worker.
