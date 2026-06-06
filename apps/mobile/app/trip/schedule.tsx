@@ -53,6 +53,7 @@ interface EditableTripPoint extends RoutePoint {
   tripPlaceId?: string;
   dayId?: string;
   providerPlaceId?: string;
+  sortOrder?: number;
   category?: string;
   address?: string;
   isSponsored?: boolean;
@@ -158,6 +159,7 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
 
   const value = raw as Record<string, unknown>;
   const rawDayNumber = toFiniteNumber(value.dayNumber);
+  const rawSortOrder = toFiniteNumber(value.sortOrder);
   const tripPlaceId = typeof value.tripPlaceId === "string" ? value.tripPlaceId : undefined;
   const dayId = typeof value.dayId === "string" ? value.dayId : undefined;
   const providerPlaceId =
@@ -167,11 +169,13 @@ function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | n
   const isSponsored = typeof value.isSponsored === "boolean" ? value.isSponsored : undefined;
   const sponsorLabel = typeof value.sponsorLabel === "string" ? value.sponsorLabel : undefined;
   const dayNumber = rawDayNumber && rawDayNumber >= 1 ? Math.floor(rawDayNumber) : 1;
+  const sortOrder = rawSortOrder && rawSortOrder >= 1 ? Math.floor(rawSortOrder) : undefined;
   return {
     ...point,
     ...(tripPlaceId ? { tripPlaceId } : {}),
     ...(dayId ? { dayId } : {}),
     ...(providerPlaceId ? { providerPlaceId } : {}),
+    ...(sortOrder ? { sortOrder } : {}),
     ...(category ? { category } : {}),
     ...(address ? { address } : {}),
     ...(isSponsored !== undefined ? { isSponsored } : {}),
@@ -202,7 +206,8 @@ function serializeEditableTripPoint(point: EditableTripPoint): Record<string, un
     ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {}),
     latitude: point.lat,
     longitude: point.lng,
-    dayNumber: point.dayNumber
+    dayNumber: point.dayNumber,
+    ...(point.sortOrder ? { sortOrder: point.sortOrder } : {})
   };
 }
 
@@ -266,6 +271,7 @@ function replanResponseToEditablePoints(
         id: source.id,
         ...(existing?.tripPlaceId ? { tripPlaceId: existing.tripPlaceId } : {}),
         ...(existing?.dayId ? { dayId: existing.dayId } : {}),
+        ...(existing?.sortOrder ? { sortOrder: existing.sortOrder } : {}),
         providerPlaceId: source.providerPlaceId ?? source.id,
         name: place.title ?? source.name,
         lat: source.lat,
@@ -801,7 +807,7 @@ export default function ScheduleScreen() {
       response.data.sync.items.map((item) => [item.clientId, item.tripPlaceId])
     );
     const syncedPlacesById = new Map(response.data.places.map((place) => [place.id, place]));
-    const syncedPoints = syncPlaces.map(({ clientId, point }) => {
+    const syncedPoints = syncPlaces.map(({ clientId, point }, index) => {
       const tripPlaceId = tripPlaceIdsByClientId.get(clientId) ?? point.tripPlaceId;
       const syncedPlace = tripPlaceId ? syncedPlacesById.get(tripPlaceId) : undefined;
       return tripPlaceId
@@ -809,7 +815,8 @@ export default function ScheduleScreen() {
             ...point,
             tripPlaceId,
             ...(syncedPlace?.dayId ? { dayId: syncedPlace.dayId } : {}),
-            dayNumber: syncedPlace?.dayNumber ?? point.dayNumber
+            dayNumber: syncedPlace?.dayNumber ?? point.dayNumber,
+            sortOrder: syncedPlace?.sortOrder ?? index + 1
           }
         : point;
     });

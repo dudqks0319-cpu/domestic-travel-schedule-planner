@@ -1909,14 +1909,14 @@ Remaining risks:
 Plan:
 - Preserve the Worker-created `trip_days` link when search results are added to an already-saved trip.
 - Store returned `dayId`, normalized `dayNumber`, and canonical `sortOrder` in local `currentTrip.routePoints`.
-- Keep schedule parsing, serialization, replan, and saved-trip hydration aligned with the new local route point shape.
+- Keep schedule parsing, serialization, replan, remote sync refresh, and saved-trip hydration aligned with the new local route point shape.
 - Add release contract checks to prevent losing canonical `dayId` in mobile flows.
 
 Completed:
 - Changed search add-to-trip persistence to keep the full returned `TripPlaceDto` instead of only `tripPlaceId`.
 - Stored `dayId`, server `dayNumber`, and server `sortOrder` in local route points after a remote add succeeds.
-- Added `dayId` to schedule editable trip points, currentTrip serialization, replan preservation, and post-sync refresh.
-- Added `dayId` preservation to saved-trip hydration from the Worker.
+- Added `dayId` and canonical `sortOrder` to schedule editable trip points, currentTrip serialization, replan preservation, and post-sync refresh.
+- Added `dayId` and canonical `sortOrder` preservation to saved-trip hydration from the Worker.
 - Added static release contracts for search, schedule, and hydration day-link preservation.
 
 Verification completed:
@@ -1930,4 +1930,29 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to add a searched place to a saved trip, reopen the schedule, and verify the place remains attached to the intended day.
 - The local route point shape now preserves canonical IDs, but future collaborative editing still needs conflict-aware sync.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Canonical Sort Order Refresh Result Record
+
+Plan:
+- Keep the mobile schedule's local route point order aligned with Worker-returned `trip_places.sort_order`.
+- Preserve canonical sort order when hydrating a saved trip from the Worker.
+- Extend static release contracts so schedule sync and hydration cannot drop canonical sort order.
+
+Completed:
+- Added `sortOrder` to schedule editable trip point parsing and currentTrip serialization.
+- Updated post-sync schedule refresh to store Worker-returned `sortOrder`.
+- Updated saved-trip hydration to keep `place.sortOrder` in local route points.
+- Added release contract checks for canonical sort order refresh and hydration.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to verify reordered saved trips after app restart.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

@@ -25,7 +25,8 @@ function toRoutePoint(place: TripPlaceDto) {
     name: place.name,
     latitude: place.lat,
     longitude: place.lng,
-    dayNumber: place.dayNumber ?? 1
+    dayNumber: place.dayNumber ?? 1,
+    ...(place.sortOrder ? { sortOrder: place.sortOrder } : {})
   };
 }
 

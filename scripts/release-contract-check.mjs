@@ -399,9 +399,19 @@ const mobileDayLinkContracts = [
     "Schedule remote sync must refresh canonical dayId from Worker places"
   ],
   [
+    scheduleScreen,
+    "syncedPlace?.sortOrder",
+    "Schedule remote sync must refresh canonical sort order from Worker places"
+  ],
+  [
     tripHydration,
     "place.dayId ? { dayId: place.dayId } : {}",
     "Saved trip hydration must preserve canonical dayId"
+  ],
+  [
+    tripHydration,
+    "place.sortOrder ? { sortOrder: place.sortOrder } : {}",
+    "Saved trip hydration must preserve canonical sort order"
   ]
 ];
 
