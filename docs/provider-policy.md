@@ -69,3 +69,5 @@ Sponsored places can appear only when:
 - ranking does not hide the sponsored nature of the recommendation
 
 The Worker applies active D1 `sponsored_places` campaigns to provider search results before persisting or returning `provider_places`. Matching can use `provider_place_id` or normalized place name. Sponsored matches must keep the same place data but set `isSponsored=true`, apply the explicit disclosure label, and record `sponsoredCount` in operational metadata.
+
+Sponsored campaigns are managed through the server-only `/api/v1/ops/sponsored-places` endpoints protected by `OPS_ADMIN_TOKEN`. Mobile clients must never call these operations endpoints or receive the operations token.

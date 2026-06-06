@@ -81,6 +81,7 @@ for (const file of [
   "docs/tripmate-v1-development-plan.md",
   "services/api-worker/wrangler.toml",
   "services/api-worker/src/db/schema.sql",
+  "services/api-worker/src/db/sponsored-places.ts",
   "services/api-worker/migrations/0001_initial.sql",
   "services/api-worker/migrations/0002_trip_exports.sql",
   "services/api-worker/migrations/0003_operational_events.sql",
@@ -172,7 +173,11 @@ const routeContracts = [
   [monetizationRoutes, 'monetizationRoutes.post("/entitlements/verify"', "POST /api/v1/monetization/entitlements/verify"],
   [monetizationRoutes, 'monetizationRoutes.get("/entitlements/me"', "GET /api/v1/monetization/entitlements/me"],
   [opsRoutes, 'opsRoutes.get("/summary"', "GET /api/v1/ops/summary"],
-  [opsRoutes, 'opsRoutes.post("/retention"', "POST /api/v1/ops/retention"]
+  [opsRoutes, 'opsRoutes.post("/retention"', "POST /api/v1/ops/retention"],
+  [opsRoutes, 'opsRoutes.get("/sponsored-places"', "GET /api/v1/ops/sponsored-places"],
+  [opsRoutes, 'opsRoutes.post("/sponsored-places"', "POST /api/v1/ops/sponsored-places"],
+  [opsRoutes, 'opsRoutes.patch("/sponsored-places/:sponsorId"', "PATCH /api/v1/ops/sponsored-places/:sponsorId"],
+  [opsRoutes, 'opsRoutes.delete("/sponsored-places/:sponsorId"', "DELETE /api/v1/ops/sponsored-places/:sponsorId"]
 ];
 
 for (const [content, routeText, label] of routeContracts) {
@@ -726,6 +731,21 @@ const sponsoredPlaceContracts = [
   ],
   [
     sponsoredPlacesDb,
+    "listSponsoredPlaces",
+    "Worker must expose sponsored place listing helper for ops"
+  ],
+  [
+    sponsoredPlacesDb,
+    "upsertSponsoredPlace",
+    "Worker must expose sponsored place upsert helper for ops"
+  ],
+  [
+    sponsoredPlacesDb,
+    "deactivateSponsoredPlace",
+    "Worker must expose sponsored place deactivation helper for ops"
+  ],
+  [
+    sponsoredPlacesDb,
     "FROM sponsored_places",
     "Sponsored place helper must read active campaigns from D1"
   ],
@@ -763,6 +783,31 @@ const sponsoredPlaceContracts = [
     operationsDb,
     '"sponsoredCount"',
     "Operational event metadata allowlist must include sponsored result counts"
+  ],
+  [
+    opsRoutes,
+    "upsertSponsoredPlace(c.env.DB",
+    "Ops routes must create or update sponsored place campaigns through DB helpers"
+  ],
+  [
+    opsRoutes,
+    "deactivateSponsoredPlace(c.env.DB",
+    "Ops routes must deactivate sponsored place campaigns without hard deletion"
+  ],
+  [
+    opsRoutes,
+    'action: "ops.sponsored_places.create"',
+    "Ops sponsored place creation must write an audit log"
+  ],
+  [
+    opsRoutes,
+    'action: "ops.sponsored_places.delete"',
+    "Ops sponsored place deactivation must write an audit log"
+  ],
+  [
+    workerSmokeScript,
+    "ops sponsored place campaign",
+    "Worker smoke must cover ops sponsored place campaign lifecycle when ops token is provided"
   ]
 ];
 

@@ -85,6 +85,23 @@ curl -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
 
 The summary endpoint returns grouped operational events, ad events, affiliate clicks, and entitlement counts. It requires `OPS_ADMIN_TOKEN`, must not be called from mobile clients, and records an `ops.summary.read` audit event without storing the token. The Worker trims the configured token and compares the submitted token with a hardened constant-time helper. Rotate `OPS_ADMIN_TOKEN` per environment when operator access changes, after an incident, before production handoff, and on the regular operations rotation schedule.
 
+Sponsored place campaign create/list/deactivate:
+
+```sh
+curl -X POST -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"providerPlaceId":"naver:example","name":"예시 장소","sponsorLabel":"스폰서","disclosureText":"광고","status":"active"}' \
+  "https://<worker-host>/api/v1/ops/sponsored-places"
+
+curl -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  "https://<worker-host>/api/v1/ops/sponsored-places"
+
+curl -X DELETE -H "Authorization: Bearer $OPS_ADMIN_TOKEN" \
+  "https://<worker-host>/api/v1/ops/sponsored-places/<sponsor-id>"
+```
+
+Sponsored place operations are server-only. The mobile app never receives `OPS_ADMIN_TOKEN`; it only receives `isSponsored` and `sponsorLabel` through normal place search responses after the Worker applies active D1 campaigns.
+
 Retention dry run:
 
 ```sh
@@ -122,6 +139,6 @@ npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
-The smoke script checks health, planner generate/replan, route optimization, provider search/geocode/reverse-geocode contracts, Kakao dev login, authenticated trip/day/place/share CRUD, free saved-trip limit denial, monetization event logging, entitlement state, optional ops summary, optional ops retention dry run, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
+The smoke script checks health, planner generate/replan, route optimization, provider search/geocode/reverse-geocode contracts, Kakao dev login, authenticated trip/day/place/share CRUD, free saved-trip limit denial, monetization event logging, entitlement state, optional ops summary, optional sponsored campaign lifecycle, optional ops retention dry run, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
 
 Preview smoke can also be triggered manually from GitHub Actions with `TripMate Worker Preview Smoke`. Provide the preview Worker base URL as `base_url`; the workflow uses `OPS_ADMIN_TOKEN` from repository secrets when available and still relies on the smoke script's `/health` environment guard before write requests.

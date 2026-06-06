@@ -2,6 +2,12 @@ import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
 import { createAuditLog } from "../db/audit";
+import {
+  deactivateSponsoredPlace,
+  listSponsoredPlaces,
+  upsertSponsoredPlace,
+  type SponsoredPlaceInput
+} from "../db/sponsored-places";
 import { errorResponse } from "../http/errors";
 import {
   DEFAULT_AUDIT_RETENTION_DAYS,
@@ -95,6 +101,52 @@ function daysParam(
 
 function booleanParam(value: string | undefined): boolean {
   return value === "1" || value === "true" || value === "yes";
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function statusValue(value: unknown): NonNullable<SponsoredPlaceInput["status"]> {
+  return value === "active" || value === "paused" || value === "inactive" ? value : "active";
+}
+
+function optionalDateTime(value: unknown): string | undefined {
+  const text = stringValue(value);
+  if (!text) {
+    return undefined;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) {
+    return undefined;
+  }
+
+  return text;
+}
+
+function sponsoredPlaceInput(raw: Record<string, unknown>, existingId?: string): SponsoredPlaceInput | null {
+  const name = stringValue(raw.name);
+  const sponsorLabel = stringValue(raw.sponsorLabel ?? raw.sponsor_label);
+  if (!name || !sponsorLabel) {
+    return null;
+  }
+
+  const providerPlaceId = stringValue(raw.providerPlaceId ?? raw.provider_place_id);
+  const startsAt = optionalDateTime(raw.startsAt ?? raw.starts_at);
+  const endsAt = optionalDateTime(raw.endsAt ?? raw.ends_at);
+  const input: SponsoredPlaceInput = {
+    ...(existingId ? { id: existingId } : {}),
+    name,
+    sponsorLabel,
+    disclosureText: stringValue(raw.disclosureText ?? raw.disclosure_text) ?? "스폰서",
+    status: statusValue(raw.status)
+  };
+  if (providerPlaceId) input.providerPlaceId = providerPlaceId;
+  if (startsAt) input.startsAt = startsAt;
+  if (endsAt) input.endsAt = endsAt;
+
+  return input;
 }
 
 opsRoutes.use("*", async (c, next) => {
@@ -203,6 +255,110 @@ opsRoutes.post("/retention", async (c) => {
   return c.json({
     ok: true,
     ...result,
+    requestId: c.get("requestId")
+  });
+});
+
+opsRoutes.get("/sponsored-places", async (c) => {
+  const sponsoredPlaces = await listSponsoredPlaces(c.env.DB);
+  await createAuditLog(c.env.DB, {
+    action: "ops.sponsored_places.list",
+    entityType: "sponsored_place",
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      placeCount: sponsoredPlaces.length,
+      hasSponsored: sponsoredPlaces.length > 0
+    }
+  });
+
+  return c.json({
+    ok: true,
+    sponsoredPlaces,
+    requestId: c.get("requestId")
+  });
+});
+
+opsRoutes.post("/sponsored-places", async (c) => {
+  const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (!raw) {
+    return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
+  }
+
+  const input = sponsoredPlaceInput(raw);
+  if (!input) {
+    return errorResponse(c, 400, "INVALID_SPONSORED_PLACE", "스폰서 장소명과 표시 라벨이 필요합니다.");
+  }
+
+  const sponsoredPlace = await upsertSponsoredPlace(c.env.DB, input);
+  await createAuditLog(c.env.DB, {
+    action: "ops.sponsored_places.create",
+    entityType: "sponsored_place",
+    entityId: sponsoredPlace.id,
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      status: sponsoredPlace.status,
+      hasSponsored: true
+    }
+  });
+
+  return c.json({
+    ok: true,
+    sponsoredPlace,
+    requestId: c.get("requestId")
+  }, 201);
+});
+
+opsRoutes.patch("/sponsored-places/:sponsorId", async (c) => {
+  const raw = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (!raw) {
+    return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
+  }
+
+  const input = sponsoredPlaceInput(raw, c.req.param("sponsorId"));
+  if (!input) {
+    return errorResponse(c, 400, "INVALID_SPONSORED_PLACE", "스폰서 장소명과 표시 라벨이 필요합니다.");
+  }
+
+  const sponsoredPlace = await upsertSponsoredPlace(c.env.DB, input);
+  await createAuditLog(c.env.DB, {
+    action: "ops.sponsored_places.update",
+    entityType: "sponsored_place",
+    entityId: sponsoredPlace.id,
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      status: sponsoredPlace.status,
+      hasSponsored: true
+    }
+  });
+
+  return c.json({
+    ok: true,
+    sponsoredPlace,
+    requestId: c.get("requestId")
+  });
+});
+
+opsRoutes.delete("/sponsored-places/:sponsorId", async (c) => {
+  const sponsorId = c.req.param("sponsorId");
+  const deactivated = await deactivateSponsoredPlace(c.env.DB, sponsorId);
+  if (!deactivated) {
+    return errorResponse(c, 404, "SPONSORED_PLACE_NOT_FOUND", "스폰서 장소를 찾을 수 없습니다.");
+  }
+
+  await createAuditLog(c.env.DB, {
+    action: "ops.sponsored_places.delete",
+    entityType: "sponsored_place",
+    entityId: sponsorId,
+    requestId: c.get("requestId") ?? "unknown",
+    metadata: {
+      status: "inactive",
+      hasSponsored: false
+    }
+  });
+
+  return c.json({
+    ok: true,
+    deactivated: true,
     requestId: c.get("requestId")
   });
 });

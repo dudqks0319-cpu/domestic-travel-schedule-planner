@@ -511,6 +511,41 @@ if (opsToken) {
     );
   });
 
+  await step("ops sponsored place campaign", async () => {
+    const sponsoredName = smokeName("스모크 스폰서 장소");
+    const createResult = await request("POST", "/api/v1/ops/sponsored-places", {
+      auth: false,
+      headers: { authorization: `Bearer ${opsToken}` },
+      json: {
+        providerPlaceId: `smoke-sponsored-${Date.now()}`,
+        name: sponsoredName,
+        sponsorLabel: "스폰서",
+        disclosureText: "광고",
+        status: "active"
+      }
+    });
+    assertStatus(createResult, 201, "POST /api/v1/ops/sponsored-places");
+    const sponsorId = createResult.body?.sponsoredPlace?.id;
+    assert(sponsorId, "ops sponsored place create should return id");
+
+    const listResult = await request("GET", "/api/v1/ops/sponsored-places", {
+      auth: false,
+      headers: { authorization: `Bearer ${opsToken}` }
+    });
+    assertOk(listResult, "GET /api/v1/ops/sponsored-places");
+    assert(
+      Array.isArray(listResult.body?.sponsoredPlaces),
+      "ops sponsored place list should return sponsoredPlaces array"
+    );
+
+    const deleteResult = await request("DELETE", `/api/v1/ops/sponsored-places/${sponsorId}`, {
+      auth: false,
+      headers: { authorization: `Bearer ${opsToken}` }
+    });
+    assertOk(deleteResult, "DELETE /api/v1/ops/sponsored-places/:sponsorId");
+    assert(deleteResult.body?.deactivated === true, "ops sponsored place delete should deactivate campaign");
+  });
+
   await step("ops retention dry run", async () => {
     const retention = await request("POST", "/api/v1/ops/retention?dryRun=true&auditDays=365&operationalDays=90", {
       auth: false,

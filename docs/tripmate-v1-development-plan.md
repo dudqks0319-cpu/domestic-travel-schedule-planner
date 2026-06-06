@@ -2944,3 +2944,32 @@ Verification completed:
 Remaining risks:
 - There is still no admin UI/API for creating sponsored campaigns; D1 rows must be seeded operationally.
 - Live campaign matching should be smoke-tested with seeded `sponsored_places` data in preview.
+
+## Sponsored Place Ops API Result Record
+
+Plan:
+- Add server-only operations endpoints for sponsored campaign list/create/update/deactivate.
+- Keep all sponsor operations behind the existing `OPS_ADMIN_TOKEN` middleware.
+- Write privacy-safe audit logs for sponsor operations.
+- Extend Worker smoke so preview/local ops tokens can verify the sponsor campaign lifecycle.
+
+Completed:
+- Added `listSponsoredPlaces()`, `upsertSponsoredPlace()`, and `deactivateSponsoredPlace()` DB helpers.
+- Added `GET/POST/PATCH/DELETE /api/v1/ops/sponsored-places` endpoints.
+- Added audit logs for sponsored campaign list/create/update/delete actions.
+- Extended Worker smoke to create, list, and deactivate a smoke sponsored campaign when `--ops-token` is provided.
+- Updated Cloudflare deployment docs, provider policy, and release contract coverage.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This adds an operations API, not a human-facing admin UI.
+- Live preview smoke still requires `OPS_ADMIN_TOKEN` and D1 write access in the preview Worker.
