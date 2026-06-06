@@ -8,12 +8,15 @@ import {
   View
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
-import { tripsApi } from "../../services/api";
+import { type TripDto, tripsApi } from "../../services/api";
+import { hydrateCurrentTripFromServerTrip } from "../../services/tripHydration";
 
 interface PlaceMarker {
   id: string;
+  trip: TripDto;
   name: string;
   lat: number;
   lng: number;
@@ -131,9 +134,12 @@ function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
 }
 
 export default function TabMapViewWeb() {
+  const router = useRouter();
   const [markers, setMarkers] = useState<PlaceMarker[]>([]);
   const [loadingMarkers, setLoadingMarkers] = useState(true);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+  const [openingTripId, setOpeningTripId] = useState<string | null>(null);
+  const [openError, setOpenError] = useState<string | null>(null);
   const kakaoMapKey = useMemo(() => readKakaoMapWebKey(), []);
   const [kakaoStatus, setKakaoStatus] = useState<KakaoMapStatus>(kakaoMapKey ? "idle" : "no-key");
   const [kakaoError, setKakaoError] = useState<string | null>(null);
@@ -147,20 +153,19 @@ export default function TabMapViewWeb() {
       const allMarkers: PlaceMarker[] = [];
 
       for (const trip of trips) {
-        const days = (trip as { days?: Array<{ places?: Array<Record<string, unknown>> }> }).days ?? [];
-        for (const day of days) {
-          const places = day.places ?? [];
-          for (const place of places) {
-            if (typeof place.lat === "number" && typeof place.lng === "number") {
-              allMarkers.push({
-                id: String(place.id ?? `${trip.id}-${place.name}`),
-                name: String(place.name ?? "장소"),
-                lat: place.lat,
-                lng: place.lng,
-                category: String(place.category ?? "attraction"),
-                tripTitle: String((trip as { title?: string }).title ?? "여행")
-              });
-            }
+        const placesResponse = await tripsApi.getPlacesByTrip(trip.id);
+        const places = placesResponse.data.places ?? [];
+        for (const place of places) {
+          if (typeof place.lat === "number" && typeof place.lng === "number") {
+            allMarkers.push({
+              id: place.id,
+              trip,
+              name: place.name,
+              lat: place.lat,
+              lng: place.lng,
+              category: place.category,
+              tripTitle: trip.title
+            });
           }
         }
       }
@@ -178,6 +183,19 @@ export default function TabMapViewWeb() {
   useEffect(() => {
     void loadMarkers();
   }, [loadMarkers]);
+
+  const openTripSchedule = useCallback(async (trip: TripDto) => {
+    setOpeningTripId(trip.id);
+    setOpenError(null);
+    try {
+      await hydrateCurrentTripFromServerTrip(trip);
+      router.push("/trip/schedule");
+    } catch {
+      setOpenError("저장된 여행 장소를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setOpeningTripId(null);
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!kakaoMapKey) {
@@ -315,6 +333,16 @@ export default function TabMapViewWeb() {
           </View>
           <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
           <Text style={styles.selectedCoord}>지도 marker 기준으로 표시된 장소입니다</Text>
+          {openError ? <Text style={styles.openErrorText}>{openError}</Text> : null}
+          <Pressable
+            style={styles.openScheduleButton}
+            onPress={() => { void openTripSchedule(selectedMarker.trip); }}
+            disabled={openingTripId === selectedMarker.trip.id}
+          >
+            <Text style={styles.openScheduleButtonText}>
+              {openingTripId === selectedMarker.trip.id ? "불러오는 중..." : "이 여행 일정표 열기"}
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -462,6 +490,26 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: Theme.colors.textTertiary,
     fontWeight: "600"
+  },
+  openErrorText: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.error,
+    fontWeight: "600"
+  },
+  openScheduleButton: {
+    marginTop: 10,
+    borderRadius: 999,
+    backgroundColor: Theme.colors.primary,
+    paddingVertical: 10,
+    alignItems: "center"
+  },
+  openScheduleButtonText: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: "#FFFFFF",
+    fontWeight: "800"
   },
   markerScroll: {
     gap: 8,

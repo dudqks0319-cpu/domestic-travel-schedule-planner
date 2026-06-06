@@ -147,6 +147,19 @@ export interface TripPlaceDto {
   sponsorLabel?: string | null;
 }
 
+export interface TripDto {
+  id: string;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  styleKey?: string | null;
+  transportMode?: string | null;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const placesApi = {
   search: (params: {
     query: string;
@@ -189,17 +202,19 @@ export const plannerApi = {
 };
 
 export const tripsApi = {
-  list: () => apiClient.get("/trips"),
+  list: () => apiClient.get<{ ok: true; trips: TripDto[] }>("/trips"),
   create: (data: Record<string, unknown>) => apiClient.post("/trips", data),
-  get: (tripId: string) => apiClient.get(`/trips/${tripId}`),
+  get: (tripId: string) => apiClient.get<{ ok: true; trip: TripDto }>(`/trips/${tripId}`),
   update: (tripId: string, data: Record<string, unknown>) =>
     apiClient.patch(`/trips/${tripId}`, data),
   delete: (tripId: string) => apiClient.delete(`/trips/${tripId}`),
   getDays: (tripId: string) => apiClient.get(`/trips/${tripId}/days`),
   createDay: (tripId: string, data: Record<string, unknown>) =>
     apiClient.post(`/trips/${tripId}/days`, data),
+  getPlacesByTrip: (tripId: string) =>
+    apiClient.get<{ ok: true; places: TripPlaceDto[] }>(`/trips/${tripId}/places`),
   getPlaces: (tripId: string, dayId: string) =>
-    apiClient.get(`/trips/${tripId}/days/${dayId}/places`),
+    apiClient.get<{ ok: true; places: TripPlaceDto[] }>(`/trips/${tripId}/days/${dayId}/places`),
   addPlace: (tripId: string, data: Record<string, unknown>) =>
     apiClient.post<{ ok: true; place: TripPlaceDto }>(`/trips/${tripId}/places`, data),
   createPlace: (tripId: string, dayId: string, data: Record<string, unknown>) =>

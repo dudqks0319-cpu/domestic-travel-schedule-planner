@@ -447,3 +447,28 @@ Verification completed:
 Remaining risks:
 - Existing local route points created before this change do not have `tripPlaceId`, so they remain local-only until trip detail hydration backfills server places.
 - Remote sync still depends on authenticated saved trips; guest/local drafts intentionally skip server mutation.
+
+## Saved Trip Hydration Result Record
+
+Plan:
+- Add typed mobile DTOs for saved trips and trip places.
+- Add a shared helper that loads Worker `trip_places` and writes canonical `currentTrip.routePoints`.
+- Update map tab marker loading to fetch saved trip places directly from `GET /trips/:tripId/places`.
+- Let users open the selected saved trip marker in the schedule screen.
+
+Completed:
+- Added typed `TripDto`, `TripPlaceDto`, and `tripsApi.getPlacesByTrip()`.
+- Added `hydrateCurrentTripFromServerTrip()` to preserve `tripPlaceId`, `providerPlaceId`, day number, and real provider coordinates in local draft storage.
+- Cleared stale optimized route cache whenever a saved trip is hydrated.
+- Updated web and native map tabs to fetch trip places per saved trip instead of assuming nested `days[].places` from the trip list.
+- Added "이 여행 일정표 열기" action from selected map marker to the schedule screen.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Marker loading currently fetches places sequentially per trip; batching or a Worker aggregate endpoint may be needed for large trip lists.
+- Hydration only starts from a selected marker, so saved trips with zero places still need a separate trip-list detail entry point.
