@@ -98,6 +98,7 @@ const monetizationRoutes = readText("services/api-worker/src/routes/monetization
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
+const profileSetupScreen = readText("apps/mobile/app/auth/profile-setup.tsx");
 const profileScreen = readText("apps/mobile/app/(tabs)/profile.tsx");
 const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
@@ -670,6 +671,21 @@ for (const [content, expectedText, label] of entitlementVerificationContracts) {
 
 const mobileAuthPrivacyContracts = [
   [
+    authProvider,
+    "saveGuestProfile: (profile: UserSignupProfile) => Promise<void>;",
+    "Mobile AuthProvider must expose a guest profile save path separate from authenticated sessions"
+  ],
+  [
+    authProvider,
+    "setStatus(\"unauthenticated\");",
+    "Mobile guest profile save must not mark the user as authenticated"
+  ],
+  [
+    profileSetupScreen,
+    "await saveGuestProfile(userData);",
+    "Mobile profile setup must save guest profile data without minting local auth tokens"
+  ],
+  [
     authCleanup,
     "export async function clearLocalAuthState",
     "Mobile auth cleanup must be shared outside AuthProvider"
@@ -719,6 +735,12 @@ const mobileAuthPrivacyContracts = [
 for (const [content, expectedText, label] of mobileAuthPrivacyContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing mobile auth privacy contract: ${label}`);
+  }
+}
+
+for (const text of ["signup_auth_", "signup_access_", "signup_refresh_", "setSession({"]) {
+  if (profileSetupScreen.includes(text)) {
+    errors.push(`Mobile profile setup must not mint fake signup auth tokens: ${text}`);
   }
 }
 

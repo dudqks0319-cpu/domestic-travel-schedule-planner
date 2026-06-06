@@ -2489,3 +2489,30 @@ Verification completed:
 Remaining risks:
 - Preview/production deployment still requires real Cloudflare binding IDs, Worker domains, secrets, and live smoke evidence.
 - Historical phase notes may still mention earlier placeholder states; the canonical deployment document now reflects the current implementation.
+
+## Guest Profile Token Boundary Result Record
+
+Plan:
+- Remove the profile setup path that minted local `signup_*` auth/access/refresh tokens.
+- Preserve guest-mode onboarding by saving profile preferences without marking the user authenticated.
+- Keep Kakao login as the only current authenticated mobile login path.
+- Add release contract and privacy checklist coverage so fake signup tokens cannot return silently.
+
+Completed:
+- Added `saveGuestProfile()` to the mobile AuthProvider for token-free guest profile persistence.
+- Updated auth bootstrap to load stored guest profiles while keeping `status` as `unauthenticated` when no server tokens exist.
+- Changed profile setup completion to call `saveGuestProfile(userData)` instead of `setSession()` with generated local tokens.
+- Added release contract checks that reject `signup_auth_`, `signup_access_`, `signup_refresh_`, and `setSession({` in profile setup.
+- Added privacy checklist coverage for guest profile setup not minting local tokens.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Email/password account creation remains a product/UI placeholder; current authenticated release path is Kakao login.
+- Guest profile preferences are local to the device until the user logs in and the profile is merged through Kakao login.

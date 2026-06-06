@@ -23,7 +23,7 @@ import type {
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
-  const { setSession } = useAuth();
+  const { saveGuestProfile } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
   const signupMemoryRef = useRef(getSignupMemory());
   const invalidFlowHandledRef = useRef(false);
@@ -132,13 +132,7 @@ export default function ProfileSetupScreen() {
     };
 
     try {
-      const tokenSeed = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-      await setSession({
-        authToken: `signup_auth_${tokenSeed}`,
-        accessToken: `signup_access_${tokenSeed}`,
-        refreshToken: `signup_refresh_${tokenSeed}`,
-        user: userData
-      });
+      await saveGuestProfile(userData);
       clearSignupMemory();
       router.replace("/(tabs)");
     } catch {

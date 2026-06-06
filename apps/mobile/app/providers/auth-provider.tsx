@@ -9,6 +9,8 @@ import React, {
 
 import { authApi } from "../../services/api";
 import {
+  clearAuthToken,
+  clearSessionTokens,
   getAccessToken,
   getAuthToken,
   getRefreshToken,
@@ -42,7 +44,7 @@ interface AuthContextValue {
   status: AuthStatus;
   user: UserSignupProfile | null;
   loginWithKakao: (kakaoAccessToken: string) => Promise<void>;
-  setSession: (session: AuthSession) => Promise<void>;
+  saveGuestProfile: (profile: UserSignupProfile) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
@@ -89,6 +91,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setUser(session.user);
     setStatus("authenticated");
+  }, []);
+
+  const saveGuestProfile = useCallback(async (profile: UserSignupProfile) => {
+    await Promise.all([
+      clearAuthToken(),
+      clearSessionTokens(),
+      setUserProfile(profile)
+    ]);
+
+    setUser(profile);
+    setStatus("unauthenticated");
   }, []);
 
   const logout = useCallback(async () => {
@@ -145,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const hasSessionToken = Boolean(authToken || accessToken || refreshToken);
         if (!hasSessionToken) {
-          setUser(null);
+          setUser(storedUser ?? null);
           setStatus("unauthenticated");
           return;
         }
@@ -205,11 +218,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       status,
       user,
       loginWithKakao,
-      setSession,
+      saveGuestProfile,
       logout,
       deleteAccount
     }),
-    [deleteAccount, loginWithKakao, logout, setSession, status, user]
+    [deleteAccount, loginWithKakao, logout, saveGuestProfile, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
