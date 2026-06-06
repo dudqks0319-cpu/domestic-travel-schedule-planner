@@ -18,6 +18,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Share tokens are unguessable.
 - [ ] Logout clears SecureStore tokens.
 - [ ] Account deletion and data deletion flows are exposed or documented.
+- [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.
 
 ## Location and Travel Data
 

@@ -227,6 +227,34 @@ export async function deleteUserData(db: D1Database, userId: string): Promise<bo
          SET status = 'deleted', deleted_at = datetime('now'), updated_at = datetime('now')
          WHERE user_id = ? AND deleted_at IS NULL`
       )
+      .bind(userId),
+    db
+      .prepare(
+        `UPDATE trip_exports
+         SET status = 'expired', deleted_at = datetime('now'), updated_at = datetime('now')
+         WHERE user_id = ? AND deleted_at IS NULL`
+      )
+      .bind(userId),
+    db
+      .prepare(
+        `UPDATE subscription_entitlements
+         SET status = 'revoked', deleted_at = datetime('now'), updated_at = datetime('now')
+         WHERE user_id = ? AND deleted_at IS NULL`
+      )
+      .bind(userId),
+    db
+      .prepare(
+        `UPDATE ad_events
+         SET user_id = NULL
+         WHERE user_id = ?`
+      )
+      .bind(userId),
+    db
+      .prepare(
+        `UPDATE affiliate_clicks
+         SET user_id = NULL, trip_id = NULL
+         WHERE user_id = ?`
+      )
       .bind(userId)
   ];
 

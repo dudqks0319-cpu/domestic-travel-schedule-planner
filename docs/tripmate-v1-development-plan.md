@@ -865,3 +865,27 @@ Verification completed:
 Remaining risks:
 - Audit logs still need an explicit time-based retention policy for production operations.
 - Entity ids in historical audit logs may reference deleted records; they should be treated as operational identifiers, not user-facing recovery handles.
+
+## Account Deletion Coverage Result Record
+
+Plan:
+- Re-check account deletion against the current v1.0 D1 schema.
+- Extend deletion beyond the original trip/session/share tables.
+- Soft-delete revocable user-owned records and anonymize event-style monetization rows.
+
+Completed:
+- Updated `deleteUserData()` to expire trip export jobs on account deletion.
+- Updated `deleteUserData()` to revoke subscription entitlements on account deletion.
+- Updated `deleteUserData()` to null out `ad_events.user_id`.
+- Updated `deleteUserData()` to null out `affiliate_clicks.user_id` and `affiliate_clicks.trip_id`.
+- Updated the privacy/security checklist with entitlement/export/ad/affiliate deletion coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- R2 export objects are not deleted yet; expired DB records prevent normal access, but storage lifecycle cleanup should be configured.
+- Event tables intentionally keep aggregate business events after ownership is removed.
