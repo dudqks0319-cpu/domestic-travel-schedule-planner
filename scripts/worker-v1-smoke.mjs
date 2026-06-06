@@ -209,6 +209,30 @@ await step("places search contract", async () => {
   }
 });
 
+await step("places geocode contract", async () => {
+  const geocode = await request("GET", "/api/v1/places/geocode?address=%EA%B0%95%EC%9B%90%20%EA%B0%95%EB%A6%89%EC%8B%9C%20%EC%B0%BD%ED%95%B4%EB%A1%9C", {
+    auth: false
+  });
+  assertOk(geocode, "GET /api/v1/places/geocode");
+  assert(Array.isArray(geocode.body?.warnings), "geocode should return warnings array");
+  assert(
+    geocode.body?.geocode === null ||
+      (typeof geocode.body?.geocode?.lat === "number" && typeof geocode.body?.geocode?.lng === "number"),
+    "geocode should return null or numeric coordinates"
+  );
+
+  const reverseGeocode = await request("GET", "/api/v1/places/reverse-geocode?lat=37.7715&lng=128.9489", {
+    auth: false
+  });
+  assertOk(reverseGeocode, "GET /api/v1/places/reverse-geocode");
+  assert(Array.isArray(reverseGeocode.body?.warnings), "reverse geocode should return warnings array");
+  assert(
+    reverseGeocode.body?.reverseGeocode === null ||
+      typeof reverseGeocode.body?.reverseGeocode?.address === "string",
+    "reverse geocode should return null or an address string"
+  );
+});
+
 await step("kakao dev login and session", async () => {
   const result = await request("POST", "/api/v1/auth/login/kakao", {
     auth: false,

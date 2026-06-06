@@ -2750,3 +2750,29 @@ Verification completed:
 Remaining risks:
 - Naver geocoding/directions still need Naver Cloud Maps credentials and endpoint implementation before provider parity is complete.
 - Live Kakao geocode behavior still requires configured `KAKAO_REST_API_KEY` in a local/preview Worker smoke.
+
+## Geocode Smoke Coverage Result Record
+
+Plan:
+- Extend the Worker smoke script so the newly added geocode endpoints are exercised before preview handoff.
+- Keep the smoke safe without real provider credentials by accepting either a normalized result or a `null` result with warnings.
+- Add release contract and deployment documentation coverage so geocode smoke checks are not removed accidentally.
+
+Completed:
+- Added a `places geocode contract` smoke step for `GET /api/v1/places/geocode`.
+- Added reverse-geocode smoke coverage for `GET /api/v1/places/reverse-geocode`.
+- Added release contract checks for the geocode smoke assertions.
+- Updated Cloudflare deployment docs to include provider geocode/reverse-geocode in Worker smoke coverage.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This validates endpoint shape and graceful degradation only; provider-positive geocode results still require a preview Worker with `KAKAO_REST_API_KEY`.
+- Naver geocoding and live directions remain separate provider parity work.

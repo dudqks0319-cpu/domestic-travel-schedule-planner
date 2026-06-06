@@ -1361,6 +1361,11 @@ for (const text of [
 for (const text of [
   "dayNumber auto-link",
   "dayNumber-only place create should auto-link a trip day",
+  "places geocode contract",
+  "GET /api/v1/places/geocode",
+  "GET /api/v1/places/reverse-geocode",
+  "geocode should return null or numeric coordinates",
+  "reverse geocode should return null or an address string",
   "free saved trip limit",
   "FREE_TRIP_LIMIT_REACHED",
   "ops retention dry run",
