@@ -1,0 +1,214 @@
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
+
+const currentFile = fileURLToPath(import.meta.url);
+const repoRoot = path.resolve(path.dirname(currentFile), "..");
+
+function fromRoot(...parts) {
+  return path.join(repoRoot, ...parts);
+}
+
+function readText(relativePath) {
+  return fs.readFileSync(fromRoot(relativePath), "utf8");
+}
+
+function walkFiles(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name === ".expo") {
+      continue;
+    }
+
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkFiles(entryPath, files);
+    } else {
+      files.push(entryPath);
+    }
+  }
+
+  return files;
+}
+
+const errors = [];
+const warnings = [];
+
+function requireFile(relativePath) {
+  if (!fs.existsSync(fromRoot(relativePath))) {
+    errors.push(`Missing required file: ${relativePath}`);
+  }
+}
+
+function requireText(relativePath, expectedText) {
+  const content = readText(relativePath);
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing "${expectedText}" in ${relativePath}`);
+  }
+}
+
+const packageJson = JSON.parse(readText("package.json"));
+const requiredRootScripts = [
+  "test",
+  "check:env",
+  "check:health",
+  "check:dev",
+  "mobile:typecheck",
+  "api:build",
+  "planner:build",
+  "worker:typecheck",
+  "worker:smoke",
+  "worker:deploy:preview"
+];
+
+for (const scriptName of requiredRootScripts) {
+  if (!packageJson.scripts?.[scriptName]) {
+    errors.push(`Missing root package script: ${scriptName}`);
+  }
+}
+
+for (const file of [
+  "docs/deployment-cloudflare.md",
+  "docs/env.md",
+  "docs/provider-policy.md",
+  "docs/monetization-policy.md",
+  "docs/privacy-security-checklist.md",
+  "docs/tripmate-v1-development-plan.md",
+  "services/api-worker/wrangler.toml",
+  "services/api-worker/src/db/schema.sql",
+  "services/api-worker/migrations/0001_initial.sql",
+  "services/api-worker/migrations/0002_trip_exports.sql",
+  "services/api-worker/migrations/0003_operational_events.sql"
+]) {
+  requireFile(file);
+}
+
+const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
+const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
+const placeRoutes = readText("services/api-worker/src/routes/places.ts");
+const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
+const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
+const authRoutes = readText("services/api-worker/src/routes/auth.ts");
+const v1Routes = readText("services/api-worker/src/routes/v1.ts");
+const indexRoutes = readText("services/api-worker/src/index.ts");
+
+const routeContracts = [
+  [indexRoutes, 'app.route("/health"', "GET /health"],
+  [v1Routes, 'v1Routes.route("/health"', "GET /api/v1/health"],
+  [authRoutes, 'authRoutes.post("/login/kakao"', "POST /api/v1/auth/login/kakao"],
+  [authRoutes, 'authRoutes.post("/refresh"', "POST /api/v1/auth/refresh"],
+  [authRoutes, 'authRoutes.get("/me"', "GET /api/v1/auth/me"],
+  [authRoutes, 'authRoutes.post("/logout"', "POST /api/v1/auth/logout"],
+  [authRoutes, 'authRoutes.delete("/me"', "DELETE /api/v1/auth/me"],
+  [placeRoutes, 'placeRoutes.get("/search"', "GET /api/v1/places/search"],
+  [placeRoutes, 'placeRoutes.get("/:placeId"', "GET /api/v1/places/:placeId"],
+  [plannerRoutes, 'plannerRoutes.post("/generate"', "POST /api/v1/planner/generate"],
+  [plannerRoutes, 'plannerRoutes.post("/replan"', "POST /api/v1/planner/replan"],
+  [routeRoutes, 'routeRoutes.post("/optimize"', "POST /api/v1/routes/optimize"],
+  [tripRoutes, 'tripRoutes.get("/",', "GET /api/v1/trips"],
+  [tripRoutes, 'tripRoutes.post("/",', "POST /api/v1/trips"],
+  [tripRoutes, 'tripRoutes.get("/:tripId"', "GET /api/v1/trips/:tripId"],
+  [tripRoutes, 'tripRoutes.patch("/:tripId"', "PATCH /api/v1/trips/:tripId"],
+  [tripRoutes, 'tripRoutes.delete("/:tripId"', "DELETE /api/v1/trips/:tripId"],
+  [tripRoutes, 'tripRoutes.post("/:tripId/days"', "POST /api/v1/trips/:tripId/days"],
+  [tripRoutes, 'tripRoutes.patch("/:tripId/days/:dayId"', "PATCH /api/v1/trips/:tripId/days/:dayId"],
+  [tripRoutes, 'tripRoutes.post("/:tripId/places"', "POST /api/v1/trips/:tripId/places"],
+  [tripRoutes, 'tripRoutes.patch("/:tripId/places/sync"', "PATCH /api/v1/trips/:tripId/places/sync"],
+  [tripRoutes, 'tripRoutes.patch("/:tripId/places/reorder"', "PATCH /api/v1/trips/:tripId/places/reorder"],
+  [tripRoutes, 'tripRoutes.patch("/:tripId/places/:placeId"', "PATCH /api/v1/trips/:tripId/places/:placeId"],
+  [tripRoutes, 'tripRoutes.delete("/:tripId/places/:placeId"', "DELETE /api/v1/trips/:tripId/places/:placeId"],
+  [tripRoutes, 'tripRoutes.post("/:tripId/share"', "POST /api/v1/trips/:tripId/share"],
+  [tripRoutes, 'shareRoutes.get("/:shareId"', "GET /api/v1/share/:shareId"],
+  [tripRoutes, 'tripRoutes.post("/:tripId/exports"', "POST /api/v1/trips/:tripId/exports"],
+  [tripRoutes, 'tripRoutes.get("/:tripId/exports/:exportId"', "GET /api/v1/trips/:tripId/exports/:exportId"],
+  [monetizationRoutes, 'monetizationRoutes.post("/ad-events"', "POST /api/v1/monetization/ad-events"],
+  [monetizationRoutes, 'monetizationRoutes.post("/affiliate-clicks"', "POST /api/v1/monetization/affiliate-clicks"],
+  [monetizationRoutes, 'monetizationRoutes.post("/entitlements/verify"', "POST /api/v1/monetization/entitlements/verify"],
+  [monetizationRoutes, 'monetizationRoutes.get("/entitlements/me"', "GET /api/v1/monetization/entitlements/me"]
+];
+
+for (const [content, routeText, label] of routeContracts) {
+  if (!content.includes(routeText)) {
+    errors.push(`Missing Worker route contract: ${label}`);
+  }
+}
+
+const requiredTables = [
+  "users",
+  "user_sessions",
+  "trips",
+  "trip_days",
+  "trip_places",
+  "provider_places",
+  "route_cache",
+  "place_cache",
+  "share_links",
+  "subscription_entitlements",
+  "ad_events",
+  "affiliate_clicks",
+  "sponsored_places",
+  "audit_logs",
+  "trip_exports",
+  "operational_events"
+];
+const schema = readText("services/api-worker/src/db/schema.sql");
+for (const tableName of requiredTables) {
+  if (!new RegExp(`CREATE TABLE IF NOT EXISTS ${tableName}\\b`).test(schema)) {
+    errors.push(`Missing D1 table in schema.sql: ${tableName}`);
+  }
+}
+
+const mobileEnvExample = readText("apps/mobile/.env.example");
+for (const key of ["EXPO_PUBLIC_API_BASE_URL", "EXPO_PUBLIC_MAP_PROVIDER"]) {
+  if (!mobileEnvExample.includes(key)) {
+    errors.push(`Missing mobile public env example key: ${key}`);
+  }
+}
+
+const serverOnlyKeys = [
+  "NAVER_CLIENT_ID",
+  "NAVER_CLIENT_SECRET",
+  "KAKAO_REST_API_KEY",
+  "DATA_GO_KR_API_KEY",
+  "JWT_ACCESS_SECRET",
+  "JWT_REFRESH_SECRET",
+  "APPLE_SHARED_SECRET",
+  "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON",
+  "ODSAY_API_KEY",
+  "OPS_ADMIN_TOKEN"
+];
+const scannedMobileFiles = walkFiles(fromRoot("apps", "mobile"))
+  .filter((file) => !file.endsWith("package-lock.json"))
+  .filter((file) => !file.endsWith("README.md"));
+for (const file of scannedMobileFiles) {
+  const content = fs.readFileSync(file, "utf8");
+  for (const key of serverOnlyKeys) {
+    if (content.includes(key)) {
+      errors.push(`Server-only secret key name appears in mobile bundle path: ${path.relative(repoRoot, file)} (${key})`);
+    }
+  }
+}
+
+for (const text of [
+  "Cloudflare Workers",
+  "D1",
+  "KV",
+  "R2",
+  "worker:smoke",
+  "Do not run this write smoke against production"
+]) {
+  requireText("docs/deployment-cloudflare.md", text);
+}
+
+for (const warning of warnings) {
+  console.warn(`[check:release-contract] WARN: ${warning}`);
+}
+
+if (errors.length > 0) {
+  for (const error of errors) {
+    console.error(`[check:release-contract] ERROR: ${error}`);
+  }
+  process.exit(1);
+}
+
+console.log("[check:release-contract] TripMate v1 release contract looks aligned.");

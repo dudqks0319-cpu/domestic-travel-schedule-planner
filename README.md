@@ -19,11 +19,12 @@ npm run mobile:typecheck
 npm run api:build
 npm run planner:build
 npm run worker:typecheck
+npm run check:release-contract
 npm run check:health
 npm run check:env
 ```
 
-`npm test` runs planner tests. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` also runs `scripts/dev-readiness-check.mjs`; local missing env files are warnings, while `check:env:preview` and `check:env:production` enforce Cloudflare deploy readiness.
+`npm test` runs planner tests. `npm run check:release-contract` verifies root scripts, required release docs, Worker route contracts, D1 schema tables, and mobile secret boundaries. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` runs the env check, release contract check, and health check; local missing env files are warnings, while `check:env:preview` and `check:env:production` enforce Cloudflare deploy readiness.
 
 ## Environment
 

@@ -1285,3 +1285,28 @@ Verification completed:
 
 Remaining risks:
 - The endpoint performs sequential D1 writes internally; a stricter transactional/batch strategy should be considered if D1 transaction support is introduced in the project.
+
+## Release Contract Gate Result Record
+
+Plan:
+- Add a deterministic local gate that catches drift between the v1 release requirements, Worker endpoints, D1 schema, root scripts, docs, and mobile secret boundaries.
+- Keep the check dependency-free and safe to run in local, CI, preview, and production readiness contexts.
+- Wire the gate into `check:dev` so it runs before broad local release checks.
+
+Completed:
+- Added `scripts/release-contract-check.mjs`.
+- Verified required root scripts, required release docs, Worker route contracts, D1 schema tables, mobile public env examples, and server-only secret names outside the mobile bundle path.
+- Added `npm run check:release-contract`.
+- Included the release contract check in `npm run check:dev`.
+- Updated README and Cloudflare deployment docs with the new gate.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is a static contract check; it complements but does not replace live Worker smoke against local/preview D1/KV/R2 bindings.
+- Local `check:dev` still reports expected warnings for missing local env files and placeholder preview/production Cloudflare resource ids.
