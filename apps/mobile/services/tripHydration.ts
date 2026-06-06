@@ -1,9 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { type TripDto, type TripPlaceDto, tripsApi } from "./api";
+import { CURRENT_TRIP_STORAGE_KEY } from "./localTripStorage";
 import { clearPersistedOptimizedRoute } from "./routeApi";
-
-const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
 function normalizeTransportMode(value?: string | null): "driving" | "transit" | "walking" {
   if (value === "transit" || value === "walking") {

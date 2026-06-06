@@ -24,6 +24,7 @@ import {
   type TravelStyleKey
 } from "../../constants/travelStyles";
 import { plannerApi } from "../../services/api";
+import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
 import { clearPersistedOptimizedRoute } from "../../services/routeApi";
 import type { CurrentTripStorage, TransportType, TripRouteMapPoint } from "../../types";
 
@@ -282,7 +283,7 @@ export default function TripCreateScreen() {
       };
 
       await Promise.all([
-        AsyncStorage.setItem("currentTrip", JSON.stringify(currentTrip)),
+        AsyncStorage.setItem(CURRENT_TRIP_STORAGE_KEY, JSON.stringify(currentTrip)),
         clearPersistedOptimizedRoute()
       ]);
       router.push("/trip/route-map");
@@ -303,7 +304,7 @@ export default function TripCreateScreen() {
         createdAt: new Date().toISOString()
       };
       await AsyncStorage.setItem(
-        "currentTrip",
+        CURRENT_TRIP_STORAGE_KEY,
         JSON.stringify(currentTrip)
       );
       await clearPersistedOptimizedRoute();

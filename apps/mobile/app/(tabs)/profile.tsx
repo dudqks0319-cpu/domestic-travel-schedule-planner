@@ -108,7 +108,7 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert("계정 삭제", "저장된 여행, 공유 링크, 세션 데이터가 삭제됩니다.", [
+    Alert.alert("계정 삭제", "저장된 여행, 공유 링크, 세션, 내보내기 파일, 로컬 임시 일정 데이터가 삭제됩니다.", [
       { text: "취소", style: "cancel" },
       {
         text: "삭제",

@@ -1408,3 +1408,29 @@ Verification completed:
 
 Remaining risks:
 - This verifies the Worker contract statically and in smoke script syntax locally; live preview smoke still requires a configured preview Worker.
+
+## Mobile Account Deletion Local Cleanup Result Record
+
+Plan:
+- Re-check the account deletion path after the Worker-side deletion and R2 export cleanup work.
+- Keep ordinary logout behavior unchanged, but clear user-owned local draft data after a successful account deletion.
+- Centralize the mobile `currentTrip` storage key so cleanup and itinerary screens cannot drift.
+
+Completed:
+- Added `apps/mobile/services/localTripStorage.ts` with the canonical `CURRENT_TRIP_STORAGE_KEY`.
+- Added `clearLocalTripDraftData()` to remove `currentTrip` and the cached `optimizedRoute`.
+- Wired `deleteAccount()` to clear auth tokens, user profile, local trip draft data, and cached route data after the Worker deletion succeeds.
+- Updated trip create, schedule, route map, search, and hydration code to use the shared storage key.
+- Updated the profile account deletion warning copy to mention local temporary itinerary data and export file deletion.
+- Updated the privacy/security checklist with mobile local cleanup coverage.
+
+Verification completed:
+- `git diff --check`
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Ordinary logout intentionally preserves local trip drafts for continuation; only account deletion performs destructive local draft cleanup.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

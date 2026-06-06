@@ -20,6 +20,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Account deletion and data deletion flows are exposed or documented.
 - [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.
 - [ ] Account deletion deletes owned R2 export manifest and asset objects before DB ownership cleanup.
+- [ ] Account deletion clears mobile local trip drafts and cached optimized routes.
 
 ## Location and Travel Data
 

@@ -29,6 +29,7 @@ import {
   type RoutePoint,
   type RouteTransportMode
 } from "../../services/routeApi";
+import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
 
 type ViewMode = "map" | "list";
 
@@ -39,8 +40,6 @@ interface RouteParams {
   transport?: string | string[];
   roundTrip?: string | string[];
 }
-
-const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
 const LEGACY_POINT_NAME_PATTERN = /(도착|추천 스팟|식당)$/;
 

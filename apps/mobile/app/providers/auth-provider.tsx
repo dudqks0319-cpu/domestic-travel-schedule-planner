@@ -21,6 +21,7 @@ import {
   setRefreshToken,
   setUserProfile
 } from "../../lib/secure-storage";
+import { clearLocalTripDraftData } from "../../services/localTripStorage";
 
 import type { UserSignupProfile } from "../../types";
 
@@ -98,7 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccount = useCallback(async () => {
     await authApi.deleteMe();
-    await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
+    await Promise.all([
+      clearAuthToken(),
+      clearSessionTokens(),
+      clearUserProfile(),
+      clearLocalTripDraftData()
+    ]);
     setUser(null);
     setStatus("unauthenticated");
   }, []);

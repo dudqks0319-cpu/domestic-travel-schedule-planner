@@ -26,6 +26,7 @@ import {
   type OptimizedRoute,
   type RoutePoint
 } from "../../services/routeApi";
+import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
 
 interface TripMeta {
   destination: string;
@@ -80,7 +81,6 @@ interface PlannerReplanResponse {
   places?: NormalizedPlaceDto[];
 }
 
-const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 const STOP_DWELL_MINUTES = 60;
 
 const DESTINATION_CENTERS: Record<string, { lat: number; lng: number }> = {

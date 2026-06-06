@@ -19,6 +19,7 @@ import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
 import { placesApi, tripsApi, type NormalizedPlaceDto } from "../../services/api";
+import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
 
 type CategoryKey =
   | "all"
@@ -43,8 +44,6 @@ interface DayOption {
   label: string;
   dateLabel: string;
 }
-
-const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
 const CATEGORIES: { key: CategoryKey; label: string; query?: string }[] = [
   { key: "all", label: "전체" },
