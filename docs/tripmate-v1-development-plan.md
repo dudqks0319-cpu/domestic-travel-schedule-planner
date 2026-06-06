@@ -665,3 +665,28 @@ Verification completed:
 Remaining risks:
 - Real affiliate URLs must be configured through public env after partner contracts are finalized.
 - Device-level smoke is still needed to verify `Linking.openURL()` behavior for each partner URL.
+
+## Schedule Export Gate Result Record
+
+Plan:
+- Add a schedule export surface that distinguishes free and premium behavior.
+- Use the existing entitlement API state instead of local-only feature flags.
+- Log free export attempts as monetization events without interrupting itinerary generation.
+- Keep PDF export as a server/R2-ready path while enabling image capture on supported devices.
+
+Completed:
+- Added a schedule-screen export section after itinerary content and before affiliate CTAs.
+- Wrapped itinerary content in a capture target for premium image export.
+- Connected free export attempts to `logAdEvent()` with the `free_export` placement.
+- Gated image/PDF export by `entitlement.benefits.exportEnabled`.
+- Added user-safe notices for premium gating, capture failure, and PDF export preparation.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- PDF generation still needs a Worker/R2 export job implementation before production launch.
+- Device-level smoke is still needed for `react-native-view-shot` capture and native share behavior.

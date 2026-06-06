@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Platform, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { captureRef } from "react-native-view-shot";
 
 import Button from "../../components/common/Button";
 import Header from "../../components/common/Header";
@@ -13,6 +14,7 @@ import Typography from "../../constants/Typography";
 import {
   DEFAULT_FREE_ENTITLEMENT,
   loadEntitlementState,
+  logAdEvent,
   logAffiliateClick,
   type PremiumEntitlementState
 } from "../../services/monetization";
@@ -466,6 +468,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
 
 export default function ScheduleScreen() {
   const router = useRouter();
+  const scheduleExportRef = useRef<View | null>(null);
   const [route, setRoute] = useState<OptimizedRoute | null>(null);
   const [currentTripPoints, setCurrentTripPoints] = useState<RoutePoint[]>([]);
   const [editableTripPoints, setEditableTripPoints] = useState<EditableTripPoint[]>([]);
@@ -478,6 +481,8 @@ export default function ScheduleScreen() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [affiliateNotice, setAffiliateNotice] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
   const affiliateOffers = useMemo(() => getAffiliateOffers(), []);
 
   useEffect(() => {
@@ -702,6 +707,56 @@ export default function ScheduleScreen() {
     }
   };
 
+  const requestFreeExportGate = async () => {
+    setExportNotice("PDF/이미지 내보내기는 프리미엄 기능입니다. 무료 사용자는 보상형 광고 기반 1회 내보내기 정책을 연결할 수 있습니다.");
+    await logAdEvent({
+      placement: "free_export",
+      eventType: "requested",
+      metadata: { screen: "trip_schedule", result: "premium_gate" }
+    }).catch(() => undefined);
+  };
+
+  const exportScheduleImage = async () => {
+    if (!entitlement.benefits.exportEnabled) {
+      await requestFreeExportGate();
+      return;
+    }
+
+    if (!scheduleExportRef.current) {
+      setExportNotice("내보낼 일정 영역이 아직 준비되지 않았어요.");
+      return;
+    }
+
+    setExportLoading(true);
+    setExportNotice(null);
+    try {
+      const uri = await captureRef(scheduleExportRef.current, {
+        format: "png",
+        quality: 0.92,
+        result: "tmpfile"
+      });
+      await Share.share({
+        title: `${tripMeta.destination} 일정표 이미지`,
+        message: `${tripMeta.destination} 여행 일정표 이미지`,
+        url: uri
+      });
+      setExportNotice("일정표 이미지를 생성했어요.");
+    } catch {
+      setExportNotice("이미지 내보내기를 완료하지 못했어요. 기기 저장 공간이나 공유 권한을 확인해 주세요.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const exportSchedulePdf = async () => {
+    if (!entitlement.benefits.exportEnabled) {
+      await requestFreeExportGate();
+      return;
+    }
+
+    setExportNotice("PDF 내보내기는 서버/R2 export 작업으로 연결할 준비가 되어 있습니다. 현재 빌드에서는 이미지 내보내기를 먼저 사용해 주세요.");
+  };
+
   const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
     if (!pointId || nextDayNumber < 1 || nextDayNumber > visibleDayTabs.length) {
       return;
@@ -854,6 +909,33 @@ export default function ScheduleScreen() {
     </View>
   );
 
+  const exportSection = (
+    <View style={styles.exportCard}>
+      <View style={styles.exportHeader}>
+        <Text style={styles.exportTitle}>내보내기</Text>
+        <Text style={[styles.exportBadge, entitlement.benefits.exportEnabled ? styles.exportBadgePremium : null]}>
+          {entitlement.benefits.exportEnabled ? "PREMIUM" : "프리미엄"}
+        </Text>
+      </View>
+      <Text style={styles.exportDescription}>
+        이미지/PDF 내보내기는 광고 제거와 함께 제공되는 프리미엄 기능입니다. 무료 사용자는 보상형 광고 정책으로 1회 내보내기를 열 수 있습니다.
+      </Text>
+      {exportNotice ? <Text style={styles.exportNotice}>{exportNotice}</Text> : null}
+      <View style={styles.exportActions}>
+        <TouchableOpacity
+          style={styles.exportButton}
+          onPress={() => { void exportScheduleImage(); }}
+          disabled={exportLoading}
+        >
+          <Text style={styles.exportButtonText}>{exportLoading ? "이미지 생성 중..." : "이미지 내보내기"}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.exportButton} onPress={() => { void exportSchedulePdf(); }}>
+          <Text style={styles.exportButtonText}>PDF 내보내기</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.frame}>
@@ -899,7 +981,10 @@ export default function ScheduleScreen() {
                   );
                 })}
               </ScrollView>
-              {savedPlaceSection}
+              <View ref={scheduleExportRef} collapsable={false} style={styles.exportCaptureArea}>
+                {savedPlaceSection}
+              </View>
+              {exportSection}
               {affiliateSection}
               <View style={styles.bottomActions}>
                 <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
@@ -955,42 +1040,46 @@ export default function ScheduleScreen() {
                 })}
               </ScrollView>
 
-              <View style={styles.tableCard}>
-                <View style={styles.activeDaySummary}>
-                  <Text style={styles.activeDaySummaryTitle}>
-                    {activeDay ? `${activeDay.dayNumber}일차 일정` : "선택 일정"}
-                  </Text>
-                  <Text style={styles.activeDaySummaryDate}>{activeDay?.dateText ?? "날짜 미정"}</Text>
-                </View>
-                <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderText, styles.timeCol]}>시간</Text>
-                  <Text style={[styles.tableHeaderText, styles.typeCol]}>구분</Text>
-                  <Text style={[styles.tableHeaderText, styles.contentCol]}>일정</Text>
+              <View ref={scheduleExportRef} collapsable={false} style={styles.exportCaptureArea}>
+                <View style={styles.tableCard}>
+                  <View style={styles.activeDaySummary}>
+                    <Text style={styles.activeDaySummaryTitle}>
+                      {activeDay ? `${activeDay.dayNumber}일차 일정` : "선택 일정"}
+                    </Text>
+                    <Text style={styles.activeDaySummaryDate}>{activeDay?.dateText ?? "날짜 미정"}</Text>
+                  </View>
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableHeaderText, styles.timeCol]}>시간</Text>
+                    <Text style={[styles.tableHeaderText, styles.typeCol]}>구분</Text>
+                    <Text style={[styles.tableHeaderText, styles.contentCol]}>일정</Text>
+                  </View>
+
+                  {dayRows.length ? (
+                    dayRows.map((row) => (
+                      <View key={row.id} style={[styles.tableRow, row.type === "move" ? styles.tableRowMove : styles.tableRowStop]}>
+                        <Text style={[styles.tableTime, styles.timeCol]}>{row.timeText}</Text>
+                        <View style={[styles.typeBadge, row.type === "move" ? styles.moveBadge : styles.stopBadge, styles.typeCol]}>
+                          <Text style={[styles.typeBadgeText, row.type === "move" ? styles.moveBadgeText : styles.stopBadgeText]}>
+                            {row.type === "move" ? "이동" : "방문"}
+                          </Text>
+                        </View>
+                        <View style={styles.contentCol}>
+                          <Text style={styles.tableTitle}>{row.title}</Text>
+                          <Text style={styles.tableDetail}>{row.detail}</Text>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={styles.emptyDayRow}>
+                      <Text style={styles.emptyDayText}>선택한 날짜에 배정된 일정이 아직 없어요.</Text>
+                    </View>
+                  )}
                 </View>
 
-                {dayRows.length ? (
-                  dayRows.map((row) => (
-                    <View key={row.id} style={[styles.tableRow, row.type === "move" ? styles.tableRowMove : styles.tableRowStop]}>
-                      <Text style={[styles.tableTime, styles.timeCol]}>{row.timeText}</Text>
-                      <View style={[styles.typeBadge, row.type === "move" ? styles.moveBadge : styles.stopBadge, styles.typeCol]}>
-                        <Text style={[styles.typeBadgeText, row.type === "move" ? styles.moveBadgeText : styles.stopBadgeText]}>
-                          {row.type === "move" ? "이동" : "방문"}
-                        </Text>
-                      </View>
-                      <View style={styles.contentCol}>
-                        <Text style={styles.tableTitle}>{row.title}</Text>
-                        <Text style={styles.tableDetail}>{row.detail}</Text>
-                      </View>
-                    </View>
-                  ))
-                ) : (
-                  <View style={styles.emptyDayRow}>
-                    <Text style={styles.emptyDayText}>선택한 날짜에 배정된 일정이 아직 없어요.</Text>
-                  </View>
-                )}
+                {savedPlaceSection}
               </View>
 
-              {savedPlaceSection}
+              {exportSection}
               {affiliateSection}
 
               <View style={styles.bottomActions}>
@@ -1346,6 +1435,76 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
     marginTop: 5
+  },
+  exportCaptureArea: {
+    gap: 12
+  },
+  exportCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: Spacing.md,
+    gap: 10,
+    ...Theme.shadow.sm
+  },
+  exportHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  exportTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  exportBadge: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
+    fontWeight: "800",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4
+  },
+  exportBadgePremium: {
+    color: "#146C43",
+    borderColor: "#A8E6C1",
+    backgroundColor: "#EAF8EF"
+  },
+  exportDescription: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    lineHeight: 18
+  },
+  exportNotice: {
+    ...Typography.normal.caption,
+    color: "#8A5D00",
+    borderRadius: 10,
+    backgroundColor: "#FFF9DB",
+    padding: Spacing.sm
+  },
+  exportActions: {
+    flexDirection: "row",
+    gap: 8
+  },
+  exportButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 10
+  },
+  exportButtonText: {
+    ...Typography.normal.caption,
+    color: Colors.common.white,
+    fontWeight: "800",
+    textAlign: "center"
   },
   affiliateCard: {
     backgroundColor: Theme.colors.surface,
