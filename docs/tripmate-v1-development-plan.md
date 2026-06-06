@@ -887,5 +887,27 @@ Verification completed:
 - `git diff --check`
 
 Remaining risks:
-- R2 export objects are not deleted yet; expired DB records prevent normal access, but storage lifecycle cleanup should be configured.
+- R2 export object deletion is handled in the account deletion route, but bucket lifecycle cleanup should still be configured as defense in depth.
 - Event tables intentionally keep aggregate business events after ownership is removed.
+
+## Account Deletion R2 Export Cleanup Result Record
+
+Plan:
+- Remove user-owned export artifacts from R2 during account deletion.
+- Query export manifest and asset keys before DB records are expired.
+- Delete R2 objects before DB ownership cleanup so incomplete object cleanup fails the deletion request.
+
+Completed:
+- Added `listUserTripExportObjectKeys()` to collect manifest and asset object keys from active trip export records.
+- Updated `DELETE /api/v1/auth/me` to delete owned R2 export objects before `deleteUserData()`.
+- Updated the privacy/security checklist with R2 export cleanup coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- If R2 deletion succeeds but later D1 cleanup fails, DB records may reference missing export objects; this is preferable to retaining deleted-account export data but should be monitored.
+- A bucket lifecycle policy is still recommended for orphaned objects and defense in depth.

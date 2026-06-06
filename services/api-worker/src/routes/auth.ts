@@ -4,6 +4,7 @@ import { verifyKakaoAccessToken } from "../auth/kakao";
 import { refreshTokenExpiresAt, sha256Hex, signToken, verifyToken } from "../auth/tokens";
 import type { AppBindings, Env } from "../bindings";
 import { anonymizeAuditLogsForUser, createAuditLog } from "../db/audit";
+import { listUserTripExportObjectKeys } from "../db/exports";
 import {
   createUserSession,
   deleteUserData,
@@ -142,6 +143,9 @@ authRoutes.delete("/me", requireAuth, async (c) => {
   if (!userId) {
     return errorResponse(c, 401, "AUTH_REQUIRED", "로그인이 필요한 기능입니다.");
   }
+
+  const exportObjectKeys = await listUserTripExportObjectKeys(c.env.DB, userId);
+  await Promise.all(exportObjectKeys.map((key) => c.env.TRIPMATE_ASSETS.delete(key)));
 
   const deleted = await deleteUserData(c.env.DB, userId);
   if (!deleted) {

@@ -90,3 +90,25 @@ export async function getOwnedTripExport(
 
   return record ?? null;
 }
+
+export async function listUserTripExportObjectKeys(
+  db: D1Database,
+  userId: string
+): Promise<string[]> {
+  const result = await db
+    .prepare(
+      `SELECT manifest_key, asset_key
+       FROM trip_exports
+       WHERE user_id = ?
+         AND deleted_at IS NULL`
+    )
+    .bind(userId)
+    .all<Pick<TripExportRecord, "manifest_key" | "asset_key">>();
+
+  const keys = (result.results ?? []).flatMap((record) => [
+    record.manifest_key,
+    ...(record.asset_key ? [record.asset_key] : [])
+  ]);
+
+  return Array.from(new Set(keys));
+}
