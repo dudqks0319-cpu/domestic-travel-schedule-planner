@@ -397,3 +397,28 @@ Verification completed:
 Remaining risks:
 - The mobile saved-trip editor still needs a richer move-between-days UI for already-saved places.
 - Real provider/Cloudflare preview validation remains required before release.
+
+## Schedule Place Editing Result Record
+
+Plan:
+- Preserve `dayNumber` from locally saved search places on the schedule screen.
+- Show saved places by trip day without exposing latitude or longitude to users.
+- Allow a saved place to move to the previous/next day or be removed from the local trip draft.
+- Invalidate stale optimized route cache after local schedule edits.
+
+Completed:
+- Added editable schedule parsing for `currentTrip.routePoints` with canonical `latitude`, `longitude`, and `dayNumber`.
+- Kept schedule tabs aligned to the trip date range, even when route segments are missing or fewer than trip days.
+- Added a "저장된 장소" section with per-day counts, add-place CTA, previous/next-day movement, and delete action.
+- Persisted local edits back to `currentTrip` and cleared `optimizedRoute` so route recalculation cannot reuse stale ordering.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+
+Remaining risks:
+- Expo web smoke could not complete in this session because `expo start --web` launched but did not open a listening port before timeout.
+- Place move/delete is currently local-first for the active draft; syncing edits to remote `trip_places` should be added after saved trip detail hydration is connected.
+- Drag-and-drop ordering and memo/time editing remain separate schedule editor work.

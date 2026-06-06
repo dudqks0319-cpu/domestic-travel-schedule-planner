@@ -15,7 +15,12 @@ import {
   loadEntitlementState,
   type PremiumEntitlementState
 } from "../../services/monetization";
-import { loadPersistedOptimizedRoute, type OptimizedRoute, type RoutePoint } from "../../services/routeApi";
+import {
+  clearPersistedOptimizedRoute,
+  loadPersistedOptimizedRoute,
+  type OptimizedRoute,
+  type RoutePoint
+} from "../../services/routeApi";
 
 interface TripMeta {
   destination: string;
@@ -29,6 +34,10 @@ interface DayTab {
   dateText: string;
   segmentStart: number;
   segmentEndExclusive: number;
+}
+
+interface EditableTripPoint extends RoutePoint {
+  dayNumber: number;
 }
 
 type DayRow = {
@@ -101,6 +110,36 @@ function toRoutePoint(raw: unknown, index: number): RoutePoint | null {
   return { id, name, lat, lng };
 }
 
+function toEditableTripPoint(raw: unknown, index: number): EditableTripPoint | null {
+  const point = toRoutePoint(raw, index);
+  if (!point || !raw || typeof raw !== "object") {
+    return point ? { ...point, dayNumber: 1 } : null;
+  }
+
+  const rawDayNumber = toFiniteNumber((raw as Record<string, unknown>).dayNumber);
+  const dayNumber = rawDayNumber && rawDayNumber >= 1 ? Math.floor(rawDayNumber) : 1;
+  return { ...point, dayNumber };
+}
+
+function editableToRoutePoint(point: EditableTripPoint): RoutePoint {
+  return {
+    id: point.id,
+    name: point.name,
+    lat: point.lat,
+    lng: point.lng
+  };
+}
+
+function serializeEditableTripPoint(point: EditableTripPoint): Record<string, unknown> {
+  return {
+    id: point.id,
+    name: point.name,
+    latitude: point.lat,
+    longitude: point.lng,
+    dayNumber: point.dayNumber
+  };
+}
+
 function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
   const normalized = destination.trim();
   const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
@@ -154,6 +193,23 @@ function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
   }
 
   return buildFallbackTripPoints(destination);
+}
+
+function parseEditableTripPoints(rawTrip: unknown): EditableTripPoint[] {
+  if (!rawTrip || typeof rawTrip !== "object") {
+    return [];
+  }
+
+  const value = rawTrip as Record<string, unknown>;
+  const routePoints = value.routePoints;
+
+  if (!Array.isArray(routePoints)) {
+    return [];
+  }
+
+  return routePoints
+    .map((item, index) => toEditableTripPoint(item, index))
+    .filter((item): item is EditableTripPoint => item !== null);
 }
 
 function parseTripMeta(rawTrip: unknown): TripMeta {
@@ -288,7 +344,7 @@ function formatDateLabel(date: Date | null): string {
 function buildDayTabs(route: OptimizedRoute, tripMeta: TripMeta): DayTab[] {
   const segmentCount = route.segments.length;
   const daysFromTrip = daysBetweenInclusive(tripMeta.startDate, tripMeta.endDate);
-  const daysCount = Math.max(1, Math.min(daysFromTrip, Math.max(1, segmentCount)));
+  const daysCount = Math.max(1, daysFromTrip);
   const segmentChunk = Math.max(1, Math.ceil(segmentCount / daysCount));
   const startDate = parseDateOnly(tripMeta.startDate);
 
@@ -307,6 +363,26 @@ function buildDayTabs(route: OptimizedRoute, tripMeta: TripMeta): DayTab[] {
       dateText: formatDateLabel(currentDate),
       segmentStart,
       segmentEndExclusive
+    };
+  });
+}
+
+function buildTripOnlyDayTabs(tripMeta: TripMeta): DayTab[] {
+  const daysCount = daysBetweenInclusive(tripMeta.startDate, tripMeta.endDate);
+  const startDate = parseDateOnly(tripMeta.startDate);
+
+  return Array.from({ length: daysCount }).map((_, index) => {
+    const currentDate = startDate ? new Date(startDate) : null;
+    if (currentDate) {
+      currentDate.setDate(currentDate.getDate() + index);
+    }
+
+    return {
+      key: `day-${index + 1}`,
+      dayNumber: index + 1,
+      dateText: formatDateLabel(currentDate),
+      segmentStart: 0,
+      segmentEndExclusive: 0
     };
   });
 }
@@ -376,6 +452,8 @@ export default function ScheduleScreen() {
   const router = useRouter();
   const [route, setRoute] = useState<OptimizedRoute | null>(null);
   const [currentTripPoints, setCurrentTripPoints] = useState<RoutePoint[]>([]);
+  const [editableTripPoints, setEditableTripPoints] = useState<EditableTripPoint[]>([]);
+  const [currentTripDraft, setCurrentTripDraft] = useState<Record<string, unknown> | null>(null);
   const [tripMeta, setTripMeta] = useState<TripMeta>({ destination: "여행", startDate: "", endDate: "" });
   const [loading, setLoading] = useState(true);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
@@ -398,11 +476,19 @@ export default function ScheduleScreen() {
         let parsedPoints: RoutePoint[] = [];
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
+          const parsedDraft =
+            parsedCurrentTrip && typeof parsedCurrentTrip === "object"
+              ? (parsedCurrentTrip as Record<string, unknown>)
+              : null;
           parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          setCurrentTripDraft(parsedDraft);
           setCurrentTripPoints(parsedPoints);
+          setEditableTripPoints(parseEditableTripPoints(parsedCurrentTrip));
           setTripMeta(parseTripMeta(parsedCurrentTrip));
         } else {
+          setCurrentTripDraft(null);
           setCurrentTripPoints([]);
+          setEditableTripPoints([]);
           setTripMeta({ destination: "여행", startDate: "", endDate: "" });
         }
 
@@ -452,14 +538,16 @@ export default function ScheduleScreen() {
     () => (displayedRoute ? buildDayTabs(displayedRoute, tripMeta) : []),
     [displayedRoute, tripMeta]
   );
+  const tripOnlyDayTabs = useMemo(() => buildTripOnlyDayTabs(tripMeta), [tripMeta]);
+  const visibleDayTabs = dayTabs.length ? dayTabs : tripOnlyDayTabs;
 
   useEffect(() => {
-    if (activeDayIndex >= dayTabs.length) {
+    if (activeDayIndex >= visibleDayTabs.length) {
       setActiveDayIndex(0);
     }
-  }, [activeDayIndex, dayTabs.length]);
+  }, [activeDayIndex, visibleDayTabs.length]);
 
-  const activeDay = dayTabs[activeDayIndex] ?? null;
+  const activeDay = visibleDayTabs[activeDayIndex] ?? null;
   const dayRows = useMemo(() => {
     if (!displayedRoute || !activeDay) {
       return [];
@@ -467,8 +555,134 @@ export default function ScheduleScreen() {
 
     return buildDayRows(displayedRoute, activeDay);
   }, [displayedRoute, activeDay]);
+  const savedPlacesForActiveDay = useMemo(() => {
+    if (!activeDay) {
+      return [];
+    }
+
+    return editableTripPoints.filter((point) => point.dayNumber === activeDay.dayNumber);
+  }, [activeDay, editableTripPoints]);
 
   const isFallbackTimeline = !route && !!fallbackRoute;
+  const hasEditablePlaces = editableTripPoints.length > 0;
+
+  const persistEditableTripPoints = async (nextPoints: EditableTripPoint[]) => {
+    const nextRoutePoints = nextPoints.map(editableToRoutePoint);
+    const baseDraft = currentTripDraft ?? {
+      destination: tripMeta.destination,
+      startDate: tripMeta.startDate,
+      endDate: tripMeta.endDate
+    };
+    const nextDraft = {
+      ...baseDraft,
+      destination: tripMeta.destination,
+      startDate: tripMeta.startDate,
+      endDate: tripMeta.endDate,
+      routePoints: nextPoints.map(serializeEditableTripPoint),
+      providerStatus: nextPoints.length >= 2 ? "ready" : "empty"
+    };
+
+    setEditableTripPoints(nextPoints);
+    setCurrentTripPoints(nextRoutePoints);
+    setCurrentTripDraft(nextDraft);
+    setRoute(null);
+
+    await Promise.all([
+      AsyncStorage.setItem(CURRENT_TRIP_STORAGE_KEY, JSON.stringify(nextDraft)),
+      clearPersistedOptimizedRoute()
+    ]);
+  };
+
+  const moveSavedPlace = (pointId: string | undefined, nextDayNumber: number) => {
+    if (!pointId || nextDayNumber < 1 || nextDayNumber > visibleDayTabs.length) {
+      return;
+    }
+
+    const nextPoints = editableTripPoints.map((point) =>
+      point.id === pointId ? { ...point, dayNumber: nextDayNumber } : point
+    );
+    void persistEditableTripPoints(nextPoints);
+  };
+
+  const removeSavedPlace = (pointId: string | undefined) => {
+    if (!pointId) {
+      return;
+    }
+
+    const nextPoints = editableTripPoints.filter((point) => point.id !== pointId);
+    void persistEditableTripPoints(nextPoints);
+  };
+
+  const savedPlaceSection = activeDay ? (
+    <View style={styles.savedPlacesCard}>
+      <View style={styles.savedPlacesHeader}>
+        <View>
+          <Text style={styles.savedPlacesTitle}>저장된 장소</Text>
+          <Text style={styles.savedPlacesSubtitle}>{`${activeDay.dayNumber}일차에 담긴 장소 ${savedPlacesForActiveDay.length}개`}</Text>
+        </View>
+        <TouchableOpacity style={styles.addPlaceButton} onPress={() => router.push("/search")}>
+          <Text style={styles.addPlaceButtonText}>장소 추가</Text>
+        </TouchableOpacity>
+      </View>
+
+      {savedPlacesForActiveDay.length ? (
+        savedPlacesForActiveDay.map((point, index) => (
+          <View key={`${point.id ?? point.name}-${index}`} style={styles.savedPlaceRow}>
+            <View style={styles.savedPlaceIndex}>
+              <Text style={styles.savedPlaceIndexText}>{index + 1}</Text>
+            </View>
+            <View style={styles.savedPlaceBody}>
+              <Text style={styles.savedPlaceName}>{point.name ?? "저장된 장소"}</Text>
+              <Text style={styles.savedPlaceMeta}>방문 장소 · 좌표는 일정표에 표시하지 않아요</Text>
+              <View style={styles.savedPlaceActions}>
+                <TouchableOpacity
+                  style={[styles.placeActionButton, activeDay.dayNumber <= 1 ? styles.placeActionDisabled : null]}
+                  disabled={activeDay.dayNumber <= 1}
+                  onPress={() => moveSavedPlace(point.id, activeDay.dayNumber - 1)}
+                >
+                  <Text
+                    style={[
+                      styles.placeActionText,
+                      activeDay.dayNumber <= 1 ? styles.placeActionTextDisabled : null
+                    ]}
+                  >
+                    전날
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.placeActionButton,
+                    activeDay.dayNumber >= visibleDayTabs.length ? styles.placeActionDisabled : null
+                  ]}
+                  disabled={activeDay.dayNumber >= visibleDayTabs.length}
+                  onPress={() => moveSavedPlace(point.id, activeDay.dayNumber + 1)}
+                >
+                  <Text
+                    style={[
+                      styles.placeActionText,
+                      activeDay.dayNumber >= visibleDayTabs.length ? styles.placeActionTextDisabled : null
+                    ]}
+                  >
+                    다음날
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.deleteActionButton} onPress={() => removeSavedPlace(point.id)}>
+                  <Text style={styles.deleteActionText}>삭제</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ))
+      ) : (
+        <View style={styles.emptySavedPlace}>
+          <Text style={styles.emptySavedPlaceTitle}>선택한 날짜에 담긴 장소가 없어요.</Text>
+          <Text style={styles.emptySavedPlaceDescription}>
+            검색 화면에서 실제 provider 장소를 담거나 다른 날짜의 장소를 이동해 주세요.
+          </Text>
+        </View>
+      )}
+    </View>
+  ) : null;
 
   return (
     <View style={styles.container}>
@@ -486,7 +700,7 @@ export default function ScheduleScreen() {
             </View>
           ) : null}
 
-          {!loading && !displayedRoute ? (
+          {!loading && !displayedRoute && !hasEditablePlaces ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>표시할 일정 데이터가 없어요</Text>
               <Text style={styles.emptyDescription}>
@@ -496,6 +710,31 @@ export default function ScheduleScreen() {
                 <Button title="경로 최적화 하러가기" onPress={() => router.push("/trip/route-map")} />
               </View>
             </View>
+          ) : null}
+
+          {!loading && !displayedRoute && hasEditablePlaces ? (
+            <>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayTabRow}>
+                {visibleDayTabs.map((dayTab, index) => {
+                  const active = index === activeDayIndex;
+                  return (
+                    <TouchableOpacity
+                      key={dayTab.key}
+                      style={[styles.dayTab, active ? styles.dayTabActive : null]}
+                      onPress={() => setActiveDayIndex(index)}
+                    >
+                      <Text style={[styles.dayTabTitle, active ? styles.dayTabTitleActive : null]}>{`${dayTab.dayNumber}일차`}</Text>
+                      <Text style={[styles.dayTabDate, active ? styles.dayTabDateActive : null]}>{dayTab.dateText}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {savedPlaceSection}
+              <View style={styles.bottomActions}>
+                <Button title="경로 최적화 하러가기" variant="outline" onPress={() => router.push("/trip/route-map")} />
+                <Button title="홈으로" onPress={() => router.replace("/(tabs)")} />
+              </View>
+            </>
           ) : null}
 
           {displayedRoute ? (
@@ -573,6 +812,8 @@ export default function ScheduleScreen() {
                   </View>
                 )}
               </View>
+
+              {savedPlaceSection}
 
               <View style={styles.bottomActions}>
                 <Button title="경로 지도 보기" variant="outline" onPress={() => router.push("/trip/route-map")} />
@@ -784,6 +1025,132 @@ const styles = StyleSheet.create({
   emptyDayText: {
     ...Typography.normal.bodySmall,
     color: Theme.colors.textSecondary
+  },
+  savedPlacesCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: Spacing.md,
+    gap: 12,
+    ...Theme.shadow.sm
+  },
+  savedPlacesHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12
+  },
+  savedPlacesTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  savedPlacesSubtitle: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    marginTop: 3
+  },
+  addPlaceButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7
+  },
+  addPlaceButtonText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
+    fontWeight: "700"
+  },
+  savedPlaceRow: {
+    flexDirection: "row",
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.common.gray100,
+    backgroundColor: "#FAFCFF",
+    padding: 12
+  },
+  savedPlaceIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Theme.colors.primaryLight
+  },
+  savedPlaceIndexText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.primary,
+    fontWeight: "800"
+  },
+  savedPlaceBody: {
+    flex: 1,
+    minWidth: 0
+  },
+  savedPlaceName: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  savedPlaceMeta: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    marginTop: 4
+  },
+  savedPlaceActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10
+  },
+  placeActionButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor: Colors.common.white
+  },
+  placeActionDisabled: {
+    opacity: 0.45
+  },
+  placeActionText: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  placeActionTextDisabled: {
+    color: Theme.colors.textSecondary
+  },
+  deleteActionButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.common.error,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    backgroundColor: Colors.common.white
+  },
+  deleteActionText: {
+    ...Typography.normal.caption,
+    color: Colors.common.error,
+    fontWeight: "700"
+  },
+  emptySavedPlace: {
+    borderRadius: 14,
+    backgroundColor: Colors.common.gray50,
+    padding: Spacing.md
+  },
+  emptySavedPlaceTitle: {
+    ...Typography.normal.bodySmall,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  emptySavedPlaceDescription: {
+    ...Typography.normal.caption,
+    color: Theme.colors.textSecondary,
+    marginTop: 5
   },
   bottomActions: {
     gap: Spacing.sm,
