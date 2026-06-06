@@ -34,7 +34,7 @@ export async function clearLocalAuthState(reason: LocalAuthClearReason = "manual
     clearAuthToken(),
     clearSessionTokens(),
     clearUserProfile(),
-    clearLocalTripDraftData()
+    clearLocalTripDraftData(reason)
   ]);
   notifyLocalAuthStateCleared(reason);
 }

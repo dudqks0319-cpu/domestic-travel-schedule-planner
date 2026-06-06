@@ -2175,3 +2175,31 @@ Remaining risks:
 - Device-level smoke is still needed to force a refresh failure and confirm navigation surfaces react immediately to unauthenticated state.
 - The cleanup listener is in-memory only; if cleanup occurs before AuthProvider mounts, bootstrap still handles persisted state on next mount.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Local Trip Draft Cleanup Screen Sync Result Record
+
+Plan:
+- Notify mounted mobile screens when local `currentTrip` and optimized-route cache are cleared.
+- Reset schedule, route-map, and search day-selection state so deleted or expired-session trips do not remain visible in memory.
+- Make route-map ignore stale route-point URL params after local trip draft cleanup.
+- Add release contract coverage for the screen subscriptions.
+
+Completed:
+- Added `subscribeLocalTripDraftDataCleared()` and clear reasons to `localTripStorage`.
+- Updated auth cleanup to pass its cleanup reason into local trip draft cleanup.
+- Updated schedule screen to clear route, editable places, trip draft, metadata, and active day when local draft cleanup fires.
+- Updated route-map screen to clear route state and ignore stale URL params after local draft cleanup.
+- Updated search screen to reset date/day selection after local draft cleanup.
+- Extended release contract checks and the privacy/security checklist for mounted-screen stale-state cleanup.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to delete an open trip or expire a session while schedule/route-map/search are mounted and confirm each screen switches to a safe empty state.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

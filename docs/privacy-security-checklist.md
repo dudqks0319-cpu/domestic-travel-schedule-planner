@@ -22,6 +22,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Expired sessions clear SecureStore tokens, local profile data, local trip drafts, and cached optimized routes.
 - [ ] Expired-session cleanup updates AuthProvider state to unauthenticated without requiring an app restart.
 - [ ] Deleting a saved trip clears the matching open local draft and cached optimized route on that device.
+- [ ] Schedule, route map, and search screens clear stale in-memory trip state after local trip draft cleanup.
 - [ ] Account deletion and data deletion flows are exposed or documented.
 - [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.
 - [ ] Account deletion deletes owned R2 export manifest and asset objects before DB ownership cleanup.

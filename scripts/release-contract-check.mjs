@@ -582,7 +582,7 @@ const mobileAuthPrivacyContracts = [
   ],
   [
     authCleanup,
-    "clearLocalTripDraftData()",
+    "clearLocalTripDraftData(reason)",
     "Mobile logout/account cleanup must clear local trip drafts and cached routes"
   ],
   [
@@ -621,6 +621,16 @@ for (const [content, expectedText, label] of mobileAuthPrivacyContracts) {
 const mobileTripDeletionPrivacyContracts = [
   [
     localTripStorage,
+    "subscribeLocalTripDraftDataCleared",
+    "Mobile local trip storage must notify mounted screens when local trip drafts are cleared"
+  ],
+  [
+    localTripStorage,
+    "notifyLocalTripDraftDataCleared(reason)",
+    "Mobile local trip draft cleanup must emit a reason after clearing persisted data"
+  ],
+  [
+    localTripStorage,
     "clearLocalTripDraftDataForTrip",
     "Mobile local trip storage must support targeted currentTrip cleanup"
   ],
@@ -648,6 +658,26 @@ const mobileTripDeletionPrivacyContracts = [
     profileScreen,
     "이 기기의 열린 일정",
     "Mobile trip deletion copy must explain local open-itinerary cleanup"
+  ],
+  [
+    scheduleScreen,
+    "subscribeLocalTripDraftDataCleared(() =>",
+    "Schedule screen must clear in-memory itinerary state when local trip draft is cleared"
+  ],
+  [
+    routeMapScreen,
+    "subscribeLocalTripDraftDataCleared(() =>",
+    "Route map screen must clear in-memory route state when local trip draft is cleared"
+  ],
+  [
+    routeMapScreen,
+    "localTripDraftCleared ? {} : params",
+    "Route map screen must ignore stale route params after local trip draft cleanup"
+  ],
+  [
+    searchScreen,
+    "subscribeLocalTripDraftDataCleared(() =>",
+    "Search screen must reset stale day selection when local trip draft is cleared"
   ]
 ];
 

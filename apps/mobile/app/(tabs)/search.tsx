@@ -19,7 +19,7 @@ import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
 import { placesApi, tripsApi, type NormalizedPlaceDto, type TripPlaceDto } from "../../services/api";
-import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
+import { CURRENT_TRIP_STORAGE_KEY, subscribeLocalTripDraftDataCleared } from "../../services/localTripStorage";
 
 type CategoryKey =
   | "all"
@@ -247,6 +247,11 @@ export default function SearchScreen() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => subscribeLocalTripDraftDataCleared(() => {
+    setDayOptions([{ dayNumber: 1, label: "1일차", dateLabel: "날짜 미정" }]);
+    setSelectedDayNumber(1);
+  }), []);
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();

@@ -34,7 +34,7 @@ import {
   type OptimizedRoute,
   type RoutePoint
 } from "../../services/routeApi";
-import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
+import { CURRENT_TRIP_STORAGE_KEY, subscribeLocalTripDraftDataCleared } from "../../services/localTripStorage";
 
 interface TripMeta {
   destination: string;
@@ -667,6 +667,16 @@ export default function ScheduleScreen() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => subscribeLocalTripDraftDataCleared(() => {
+    setRoute(null);
+    setCurrentTripPoints([]);
+    setEditableTripPoints([]);
+    setCurrentTripDraft(null);
+    setTripMeta({ destination: "여행", startDate: "", endDate: "" });
+    setActiveDayIndex(0);
+    setLoading(false);
+  }), []);
 
   useEffect(() => {
     let mounted = true;

@@ -29,7 +29,7 @@ import {
   type RoutePoint,
   type RouteTransportMode
 } from "../../services/routeApi";
-import { CURRENT_TRIP_STORAGE_KEY } from "../../services/localTripStorage";
+import { CURRENT_TRIP_STORAGE_KEY, subscribeLocalTripDraftDataCleared } from "../../services/localTripStorage";
 
 type ViewMode = "map" | "list";
 
@@ -623,15 +623,16 @@ export default function RouteMapScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [localTripDraftCleared, setLocalTripDraftCleared] = useState(false);
   const autoRequestKeyRef = useRef<string>("");
 
   const requestConfig = useMemo(
     () =>
-      buildRequestConfig(params, {
+      buildRequestConfig(localTripDraftCleared ? {} : params, {
         fallbackPoints: tripPoints,
         fallbackMode: tripMode
       }),
-    [params, tripPoints, tripMode]
+    [localTripDraftCleared, params, tripPoints, tripMode]
   );
 
   useEffect(() => {
@@ -689,6 +690,18 @@ export default function RouteMapScreen() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => subscribeLocalTripDraftDataCleared(() => {
+    setLocalTripDraftCleared(true);
+    setTripPoints([]);
+    setTripMode(null);
+    setProviderStatus(null);
+    setOptimizedRoute(null);
+    setOptimizedMode(null);
+    setErrorMessage(null);
+    setLoading(false);
+    autoRequestKeyRef.current = "";
+  }), []);
 
   const routeRequest = useMemo(
     () => (requestConfig.request ? { ...requestConfig.request, mode } : null),
