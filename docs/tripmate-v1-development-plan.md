@@ -1956,3 +1956,28 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to verify reordered saved trips after app restart.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Search Add Per-Day Sort Order Result Record
+
+Plan:
+- Make search add-to-trip calculate `sortOrder` within the selected day instead of using the total route point count.
+- Keep local draft ordering aligned with the same per-day order sent to the Worker.
+- Add a release contract check so selected-day sort order does not regress.
+
+Completed:
+- Added `routePointDayNumber()` and `nextSortOrderForDay()` helpers to the search screen.
+- Changed remote add payloads to use selected-day sort order.
+- Changed local route point fallback `sortOrder` to use selected-day sort order.
+- Added a static release contract for per-day search add sort order.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to add multiple search results across different days and verify each day's order after reopening the schedule.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

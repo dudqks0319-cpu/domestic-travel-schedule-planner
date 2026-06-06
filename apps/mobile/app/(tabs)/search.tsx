@@ -104,6 +104,28 @@ function buildDayOptions(currentTrip: Record<string, unknown> | null): DayOption
   });
 }
 
+function routePointDayNumber(value: unknown): number | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const rawDayNumber = (value as Record<string, unknown>).dayNumber;
+  if (typeof rawDayNumber === "number" && Number.isFinite(rawDayNumber) && rawDayNumber >= 1) {
+    return Math.floor(rawDayNumber);
+  }
+
+  if (typeof rawDayNumber === "string" && rawDayNumber.trim()) {
+    const parsed = Number(rawDayNumber);
+    return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : null;
+  }
+
+  return null;
+}
+
+function nextSortOrderForDay(routePoints: unknown[], dayNumber: number): number {
+  return routePoints.filter((item) => routePointDayNumber(item) === dayNumber).length + 1;
+}
+
 async function persistPlaceToRemoteTrip(
   currentTrip: Record<string, unknown>,
   place: NormalizedPlaceDto,
@@ -157,9 +179,10 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     return value.id === place.id;
   });
 
+  const nextSortOrder = nextSortOrderForDay(routePoints, dayNumber);
   const remotePlace = alreadyAdded
     ? null
-    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length + 1, dayNumber);
+    : await persistPlaceToRemoteTrip(currentTrip, place, nextSortOrder, dayNumber);
 
   if (!alreadyAdded) {
     routePoints.push({
@@ -171,7 +194,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
       latitude: place.lat,
       longitude: place.lng,
       dayNumber: remotePlace?.dayNumber ?? dayNumber,
-      sortOrder: remotePlace?.sortOrder ?? routePoints.length + 1
+      sortOrder: remotePlace?.sortOrder ?? nextSortOrder
     });
   }
 

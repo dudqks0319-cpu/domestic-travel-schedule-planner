@@ -384,6 +384,11 @@ const mobileDayLinkContracts = [
     "Search add-to-trip must persist the Worker canonical sort order locally"
   ],
   [
+    searchScreen,
+    "nextSortOrderForDay(routePoints, dayNumber)",
+    "Search add-to-trip must calculate sort order within the selected day"
+  ],
+  [
     scheduleScreen,
     "dayId?: string;",
     "Schedule editable trip points must carry canonical dayId"
