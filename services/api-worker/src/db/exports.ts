@@ -93,6 +93,35 @@ export async function getOwnedTripExport(
   return record ?? null;
 }
 
+export async function getSharedTripExport(
+  db: D1Database,
+  shareToken: string,
+  exportId: string
+): Promise<TripExportRecord | null> {
+  const record = await db
+    .prepare(
+      `SELECT e.*
+       FROM trip_exports e
+       INNER JOIN share_links s
+         ON s.trip_id = e.trip_id
+        AND s.user_id = e.user_id
+       WHERE s.token = ?
+         AND s.status = 'active'
+         AND s.deleted_at IS NULL
+         AND (s.expires_at IS NULL OR s.expires_at > datetime('now'))
+         AND e.id = ?
+         AND e.status = 'ready'
+         AND e.asset_key IS NOT NULL
+         AND (e.expires_at IS NULL OR e.expires_at > datetime('now'))
+         AND e.deleted_at IS NULL
+       LIMIT 1`
+    )
+    .bind(shareToken, exportId)
+    .first<TripExportRecord>();
+
+  return record ?? null;
+}
+
 export async function listUserTripExportObjectKeys(
   db: D1Database,
   userId: string

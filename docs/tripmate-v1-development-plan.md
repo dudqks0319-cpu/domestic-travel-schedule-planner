@@ -3387,3 +3387,32 @@ Verification completed:
 
 Remaining risks:
 - Device-level validation is still needed to confirm the SVG download URL opens correctly in native and web runtime environments.
+
+## Worker Shared Export Download Result Record
+
+Plan:
+- Add a read-only shared export download endpoint without exposing R2 object keys.
+- Authorize shared export downloads through active, unexpired share links tied to the same trip and user as the export.
+- Keep public shared asset responses private, no-store, noindex, and referrer-safe.
+- Extend Worker smoke and release contract checks so the shared export path stays covered.
+
+Completed:
+- Added `getSharedTripExport()` to load ready export assets only through active share tokens.
+- Added `GET /api/v1/share/:shareId/exports/:exportId/download`.
+- Kept owned export downloads authenticated while allowing shared read-only downloads through the existing bearer share token model.
+- Added smoke coverage for public shared PDF export download headers and content.
+- Updated API Worker docs and release contract checks for shared export downloads.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Public shared export download uses the existing share token as a bearer URL; preview smoke with real D1/R2 bindings is still needed before production handoff.

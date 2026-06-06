@@ -97,6 +97,7 @@ const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
 const sharePageRoutes = readText("services/api-worker/src/routes/share-page.ts");
 const workerTokens = readText("services/api-worker/src/auth/tokens.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
+const tripExportsDb = readText("services/api-worker/src/db/exports.ts");
 const auditDb = readText("services/api-worker/src/db/audit.ts");
 const routeCacheDb = readText("services/api-worker/src/db/route-cache.ts");
 const operationsDb = readText("services/api-worker/src/db/operations.ts");
@@ -169,6 +170,7 @@ const routeContracts = [
   [tripRoutes, 'tripRoutes.delete("/:tripId/places/:placeId"', "DELETE /api/v1/trips/:tripId/places/:placeId"],
   [tripRoutes, 'tripRoutes.post("/:tripId/share"', "POST /api/v1/trips/:tripId/share"],
   [tripRoutes, 'shareRoutes.get("/:shareId"', "GET /api/v1/share/:shareId"],
+  [tripRoutes, 'shareRoutes.get("/:shareId/exports/:exportId/download"', "GET /api/v1/share/:shareId/exports/:exportId/download"],
   [tripRoutes, 'tripRoutes.post("/:tripId/exports"', "POST /api/v1/trips/:tripId/exports"],
   [tripRoutes, 'tripRoutes.get("/:tripId/exports/:exportId"', "GET /api/v1/trips/:tripId/exports/:exportId"],
   [monetizationRoutes, 'monetizationRoutes.post("/ad-events"', "POST /api/v1/monetization/ad-events"],
@@ -1049,13 +1051,48 @@ const exportDownloadContracts = [
   ],
   [
     tripRoutes,
+    'shareRoutes.get("/:shareId/exports/:exportId/download"',
+    "Worker must expose shared export download endpoint"
+  ],
+  [
+    tripRoutes,
     "getOwnedTripExport(",
     "Export download must enforce trip export ownership"
   ],
   [
     tripRoutes,
+    "getSharedTripExport(",
+    "Shared export download must enforce active share token access"
+  ],
+  [
+    tripExportsDb,
+    "INNER JOIN share_links s",
+    "Shared export lookup must join exports through share links"
+  ],
+  [
+    tripExportsDb,
+    "s.status = 'active'",
+    "Shared export lookup must require an active share link"
+  ],
+  [
+    tripExportsDb,
+    "e.expires_at IS NULL OR e.expires_at > datetime('now')",
+    "Shared export lookup must reject expired export assets"
+  ],
+  [
+    tripRoutes,
     'headers.set("cache-control", "private, max-age=300")',
     "Export downloads must use private cache headers"
+  ],
+  [
+    tripRoutes,
+    'headers.set("cache-control", "private, no-store")',
+    "Shared export downloads must prevent caching"
+  ],
+  [
+    tripRoutes,
+    'headers.set("x-robots-tag", "noindex, nofollow")',
+    "Shared export downloads must prevent indexing"
   ],
   [
     tripRoutes,
@@ -1096,6 +1133,16 @@ const exportDownloadContracts = [
     workerSmokeScript,
     "premium export download should be private",
     "Worker smoke must verify private export download cache headers"
+  ],
+  [
+    workerSmokeScript,
+    "shared export download should prevent caching",
+    "Worker smoke must verify shared export no-store headers"
+  ],
+  [
+    workerSmokeScript,
+    "shared export download should prevent indexing",
+    "Worker smoke must verify shared export noindex headers"
   ],
   [
     workerSmokeScript,

@@ -586,6 +586,21 @@ await step("premium trip export", async () => {
     "premium export download should return printable TripMate content"
   );
 
+  const sharedDownloadedExport = await request(
+    "GET",
+    `/api/v1/share/${shareToken}/exports/${exportId}/download`,
+    { auth: false }
+  );
+  assertOk(sharedDownloadedExport, "GET /api/v1/share/:shareId/exports/:exportId/download");
+  assertHeaderIncludes(sharedDownloadedExport, "content-type", "text/html", "shared export download should return HTML");
+  assertHeaderIncludes(sharedDownloadedExport, "cache-control", "no-store", "shared export download should prevent caching");
+  assertHeaderIncludes(sharedDownloadedExport, "x-robots-tag", "noindex", "shared export download should prevent indexing");
+  assertHeaderIncludes(sharedDownloadedExport, "referrer-policy", "no-referrer", "shared export download should avoid referrer leaks");
+  assert(
+    typeof sharedDownloadedExport.body === "string" && sharedDownloadedExport.body.includes("TripMate"),
+    "shared export download should return printable TripMate content"
+  );
+
   const createdImageExport = await request("POST", `/api/v1/trips/${tripId}/exports`, {
     json: { format: "image" }
   });

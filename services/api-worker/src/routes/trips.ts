@@ -5,6 +5,7 @@ import { createAuditLog } from "../db/audit";
 import {
   createTripExport,
   getOwnedTripExport,
+  getSharedTripExport,
   toPublicTripExport,
   type TripExportFormat
 } from "../db/exports";
@@ -1221,6 +1222,7 @@ tripRoutes.get("/:tripId/exports/:exportId/download", async (c) => {
   object.writeHttpMetadata(headers);
   headers.set("etag", object.httpEtag);
   headers.set("cache-control", "private, max-age=300");
+  headers.set("x-content-type-options", "nosniff");
   return new Response(object.body, { headers });
 });
 
@@ -1338,6 +1340,36 @@ tripRoutes.post("/:tripId/share", async (c) => {
     },
     requestId: c.get("requestId")
   }, 201);
+});
+
+shareRoutes.get("/:shareId/exports/:exportId/download", async (c) => {
+  const exportRecord = await getSharedTripExport(
+    c.env.DB,
+    c.req.param("shareId"),
+    c.req.param("exportId")
+  );
+
+  if (!exportRecord) {
+    return errorResponse(c, 404, "EXPORT_NOT_FOUND", "공유된 내보내기 파일을 찾을 수 없습니다.");
+  }
+
+  if (!exportRecord.asset_key) {
+    return errorResponse(c, 409, "EXPORT_NOT_READY", "내보내기 파일이 아직 준비되지 않았습니다.");
+  }
+
+  const object = await c.env.TRIPMATE_ASSETS.get(exportRecord.asset_key);
+  if (!object) {
+    return errorResponse(c, 404, "EXPORT_ASSET_NOT_FOUND", "내보내기 파일을 찾을 수 없습니다.");
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "private, no-store");
+  headers.set("x-robots-tag", "noindex, nofollow");
+  headers.set("referrer-policy", "no-referrer");
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(object.body, { headers });
 });
 
 shareRoutes.get("/:shareId", async (c) => {
