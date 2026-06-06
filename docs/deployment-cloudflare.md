@@ -38,6 +38,7 @@ Before preview deploy:
 
 - Create preview D1, KV, and R2 resources.
 - Replace placeholder IDs in `services/api-worker/wrangler.toml`.
+- Replace preview `ALLOWED_ORIGINS` with real HTTPS browser origins for the preview web/admin surfaces. Do not use localhost, loopback, placeholder, or example origins for deploy readiness.
 - Set all Cloudflare secrets with `wrangler secret put`.
 - Confirm the `TripMate v1 Gate` GitHub Actions workflow is passing on the branch.
 - Run `npm run check:env:preview`.
@@ -61,7 +62,7 @@ Production gates:
 - provider keys set as Cloudflare secrets
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` set as Cloudflare secrets in preview and production
 - `OPS_ADMIN_TOKEN` set as a Cloudflare secret for `/api/v1/ops/*`
-- `ALLOWED_ORIGINS` explicitly lists browser origins for the target environment
+- `ALLOWED_ORIGINS` explicitly lists real HTTPS browser origins for the target environment; localhost, loopback, placeholder, and example origins fail deploy readiness
 - no provider secrets in mobile env or bundle
 - gitleaks pre-push passes
 

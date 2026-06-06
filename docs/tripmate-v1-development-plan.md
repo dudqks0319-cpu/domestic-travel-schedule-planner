@@ -2594,3 +2594,30 @@ Verification completed:
 Remaining risks:
 - Real preview/production web origins still need to replace placeholder/example deployment values before release.
 - Native mobile requests are not CORS-governed; API auth and rate limits remain the relevant controls there.
+
+## Deploy CORS Origin Readiness Result Record
+
+Plan:
+- Keep local development CORS behavior usable while making preview/production deploy checks stricter.
+- Parse `ALLOWED_ORIGINS` directly instead of relying on broad `wrangler.toml` block substring checks.
+- Fail preview and production readiness when browser origins are empty, localhost/loopback, placeholder/example, or non-HTTPS.
+- Update release contract and deployment docs so the stricter origin boundary cannot regress silently.
+
+Completed:
+- Added deploy-target `ALLOWED_ORIGINS` parsing and validation to `scripts/dev-readiness-check.mjs`.
+- Added release contract checks that require explicit deploy CORS origin validation.
+- Updated environment and Cloudflare deployment docs with the HTTPS real-origin requirement for preview and production.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+- `npm run check:env:preview` failed as expected until real preview EAS URL, Kakao web key, D1/KV ids, and HTTPS `ALLOWED_ORIGINS` are configured.
+- `npm run check:env:production` failed as expected until real production EAS URL, Kakao web key, D1/KV ids, and non-example HTTPS `ALLOWED_ORIGINS` are configured.
+
+Remaining risks:
+- Preview and production `ALLOWED_ORIGINS` values in `services/api-worker/wrangler.toml` are still intentionally not deploy-ready until real Cloudflare Pages/admin origins are assigned.
+- `check:env:preview` and `check:env:production` should continue to fail until real binding IDs, EAS URLs, Kakao web keys, and HTTPS origins are configured.

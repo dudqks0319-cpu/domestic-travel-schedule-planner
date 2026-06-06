@@ -289,6 +289,42 @@ function requireNoPlaceholder(content, label, keyPattern) {
   }
 }
 
+function extractTomlStringValue(content, key) {
+  const match = content.match(new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, "m"));
+  return match?.[1]?.trim() ?? "";
+}
+
+function assertDeployAllowedOrigins(content) {
+  const allowedOrigins = extractTomlStringValue(content, "ALLOWED_ORIGINS");
+  if (!allowedOrigins) {
+    errors.push(`Cloudflare ${checkTarget} ALLOWED_ORIGINS must explicitly list browser origins.`);
+    return;
+  }
+
+  const origins = allowedOrigins
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (origins.length === 0) {
+    errors.push(`Cloudflare ${checkTarget} ALLOWED_ORIGINS must include at least one browser origin.`);
+  }
+
+  for (const origin of origins) {
+    if (/REPLACE_WITH|example/.test(origin)) {
+      errors.push(`Cloudflare ${checkTarget} ALLOWED_ORIGINS must not contain placeholder or example origins.`);
+    }
+
+    if (/localhost|127\.0\.0\.1/.test(origin)) {
+      errors.push(`Cloudflare ${checkTarget} ALLOWED_ORIGINS must not contain localhost or 127.0.0.1 for deploy readiness.`);
+    }
+
+    if (!origin.startsWith("https://")) {
+      errors.push(`Cloudflare ${checkTarget} ALLOWED_ORIGINS must use HTTPS browser origins: ${origin}`);
+    }
+  }
+}
+
 const serverOnlyWorkerSecretKeys = [
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
@@ -376,9 +412,7 @@ if (!fs.existsSync(wranglerPath)) {
         errors.push(`Cloudflare ${checkTarget} ENVIRONMENT must be "${checkTarget}".`);
       }
 
-      if (checkTarget === "production" && /localhost|127\.0\.0\.1|example/.test(targetBlock)) {
-        errors.push("Cloudflare production ALLOWED_ORIGINS must not contain localhost, 127.0.0.1, or example domains.");
-      }
+      assertDeployAllowedOrigins(targetBlock);
     }
   }
 }

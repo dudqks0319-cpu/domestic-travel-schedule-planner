@@ -969,6 +969,17 @@ for (const text of [
   }
 }
 
+for (const text of [
+  "assertDeployAllowedOrigins",
+  "ALLOWED_ORIGINS must explicitly list browser origins",
+  "ALLOWED_ORIGINS must not contain localhost or 127.0.0.1 for deploy readiness",
+  "ALLOWED_ORIGINS must use HTTPS browser origins"
+]) {
+  if (!devReadinessCheck.includes(text)) {
+    errors.push(`dev-readiness-check must validate deploy CORS origins: ${text}`);
+  }
+}
+
 const serverOnlyKeys = [
   "NAVER_CLIENT_ID",
   "NAVER_CLIENT_SECRET",

@@ -65,7 +65,7 @@ Do not place any of the secrets above in `services/api-worker/wrangler.toml` `[v
 
 The Worker only permits deterministic JWT fallback secrets when `ENVIRONMENT=local`. Preview and production must have `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` configured as Cloudflare secrets before any auth smoke or release validation.
 
-`ALLOWED_ORIGINS` is a non-secret allowlist. Empty allowlists are tolerated only in local development; preview and production must explicitly list the deployed mobile web/admin origins that may call the Worker from browsers.
+`ALLOWED_ORIGINS` is a non-secret allowlist. Empty allowlists are tolerated only in local development; preview and production must explicitly list the deployed mobile web/admin origins that may call the Worker from browsers. Preview and production deploy checks require HTTPS origins and fail on localhost, loopback, placeholder, or example origins.
 
 ## Cloudflare Bindings
 
@@ -88,6 +88,6 @@ Configured in `services/api-worker/wrangler.toml`:
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
 - `OPS_ADMIN_TOKEN`
 
-`npm run check:env` fails when any non-`EXPO_PUBLIC_` key or known server-only key appears in any `apps/mobile/.env*` runtime file, excluding `.env.example`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe production origins.
+`npm run check:env` fails when any non-`EXPO_PUBLIC_` key or known server-only key appears in any `apps/mobile/.env*` runtime file, excluding `.env.example`. Run `npm run check:env:preview` or `npm run check:env:production` before Cloudflare deploys to fail on unresolved D1/KV/R2 placeholder IDs and unsafe deploy origins.
 The same check fails if server-only Worker secrets are added to `wrangler.toml` vars instead of Cloudflare secrets.
 For preview/production targets, the check also fails when the corresponding EAS `EXPO_PUBLIC_API_BASE_URL` still points to localhost, an example domain, or a placeholder Worker URL.
