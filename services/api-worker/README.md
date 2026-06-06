@@ -10,7 +10,11 @@ The current production-reference implementation remains in `services/api` until 
 npm --prefix services/api-worker run dev
 npm --prefix services/api-worker run typecheck
 npm --prefix services/api-worker run deploy:preview
+npm run worker:smoke -- --base-url http://127.0.0.1:8787
+npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
+
+`worker:smoke:naver` is the strict preview provider smoke. It requires live Naver Search and Naver Cloud Maps geocode, reverse-geocode, planner route enrichment, and route optimization responses. It still refuses write smoke outside `ENVIRONMENT=local` or `preview`.
 
 ## Implemented
 
@@ -38,7 +42,7 @@ npm --prefix services/api-worker run deploy:preview
 
 - binary PDF/image rendering workers
 - public/shared export links for generated export assets
-- live provider smoke test with production Cloudflare secrets
+- live strict provider smoke evidence from a configured preview Worker
 - mobile IAP receipt submission UI
 
 See `docs/tripmate-v1-development-plan.md` for the release plan and phase order.

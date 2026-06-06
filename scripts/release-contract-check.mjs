@@ -62,6 +62,7 @@ const requiredRootScripts = [
   "planner:build",
   "worker:typecheck",
   "worker:smoke",
+  "worker:smoke:naver",
   "worker:deploy:preview"
 ];
 
@@ -136,6 +137,7 @@ const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
 const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
+const apiWorkerReadme = readText("services/api-worker/README.md");
 
 const routeContracts = [
   [indexRoutes, 'app.route("/health"', "GET /health"],
@@ -1877,10 +1879,28 @@ for (const text of [
   "KV",
   "R2",
   "worker:smoke",
+  "worker:smoke:naver",
   "/api/v1/ops/retention",
   "Do not run this write smoke against production"
 ]) {
   requireText("docs/deployment-cloudflare.md", text);
+}
+
+for (const text of [
+  "npm run worker:smoke:naver -- --base-url",
+  "live strict provider smoke evidence from a configured preview Worker"
+]) {
+  if (!apiWorkerReadme.includes(text) && !cloudflareDeploymentDoc.includes(text)) {
+    errors.push(`Missing strict provider smoke operations contract: ${text}`);
+  }
+}
+
+if (packageJson.scripts?.["worker:smoke:naver"] !== "node scripts/worker-v1-smoke.mjs --require-provider naver") {
+  errors.push("Missing strict provider smoke root script: worker:smoke:naver");
+}
+
+if (apiWorkerReadme.includes("production Cloudflare secrets")) {
+  errors.push("API Worker README must not describe live provider smoke as a production-secret operation.");
 }
 
 for (const text of [

@@ -137,6 +137,7 @@ Worker v1 smoke:
 ```sh
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
+npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 npm run worker:smoke -- --base-url https://<preview-worker> --require-provider naver --ops-token "$OPS_ADMIN_TOKEN"
 ```
 

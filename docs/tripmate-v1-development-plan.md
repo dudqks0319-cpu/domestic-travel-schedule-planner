@@ -3274,3 +3274,29 @@ Verification completed:
 
 Remaining risks:
 - This is a static/typechecked copy pass; device-level route-map smoke is still needed with live Naver route warnings from a preview Worker.
+
+## Strict Naver Smoke Operations Script Result Record
+
+Plan:
+- Add a root-level shortcut for strict Naver provider smoke so preview validation is less error-prone.
+- Update Worker operations docs to describe strict preview smoke instead of stale production-secret wording.
+- Add release contract coverage for the script and documentation boundary.
+
+Completed:
+- Added `npm run worker:smoke:naver`, which runs `scripts/worker-v1-smoke.mjs --require-provider naver`.
+- Documented local smoke and strict Naver preview smoke in `services/api-worker/README.md`.
+- Added `worker:smoke:naver` to the Cloudflare deployment smoke commands.
+- Added release contract checks for the strict provider smoke script and stale production-secret wording.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm run worker:smoke:naver -- --help`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The shortcut still requires a deployed preview Worker with D1/KV/R2 bindings, provider secrets, and enabled Naver products to produce live evidence.
