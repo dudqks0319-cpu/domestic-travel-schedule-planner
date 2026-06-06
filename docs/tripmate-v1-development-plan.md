@@ -3648,3 +3648,33 @@ Verification completed:
 
 Remaining risks:
 - The full preview gate cannot pass until real preview Worker URL, EAS preview API URL, Cloudflare D1/KV/R2 IDs, Cloudflare secrets, HTTPS origins, Kakao web key, and live provider products are configured.
+
+## Production Release Gate Result Record
+
+Plan:
+- Add a production handoff gate that mirrors preview readiness checks without running any write smoke.
+- Require a real production Worker URL and reject localhost, preview, example, and placeholder URLs.
+- Verify deployed production Worker health through read-only `GET /health` and `GET /api/v1/health`.
+- Require both health payloads to report `ENVIRONMENT=production`.
+
+Completed:
+- Added `scripts/production-release-gate.mjs`.
+- Added root script `release:production:gate`.
+- The gate runs `check:env:production`, `check:secrets:production`, `check:release-contract`, `npm test`, and `check:health` before any deployed Worker health check.
+- The gate performs read-only health checks only and does not invoke `worker:smoke` or `worker:smoke:naver`.
+- Updated release contract checks so the production gate, health-only behavior, and production environment assertion cannot be dropped silently.
+- Updated README, API Worker README, and Cloudflare deployment docs to route production handoff through `release:production:gate`.
+
+Verification completed:
+- `node --check scripts/production-release-gate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run release:production:gate -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The full production gate cannot pass until real production Worker URL, EAS production API URL, Cloudflare D1/KV/R2 IDs, production secrets, HTTPS origins, Kakao web key, and live provider products are configured.

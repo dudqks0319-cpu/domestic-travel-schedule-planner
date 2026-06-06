@@ -57,6 +57,7 @@ const requiredRootScripts = [
   "check:secrets:preview",
   "check:secrets:production",
   "release:preview:gate",
+  "release:production:gate",
   "mobile:typecheck",
   "mobile:web:qa",
   "api:build",
@@ -92,6 +93,7 @@ for (const file of [
   "services/api-worker/migrations/0004_user_profile_image.sql",
   "scripts/check-cloudflare-secrets.mjs",
   "scripts/preview-release-gate.mjs",
+  "scripts/production-release-gate.mjs",
   "scripts/worker-local-smoke.mjs"
 ]) {
   requireFile(file);
@@ -142,10 +144,79 @@ const ciWorkflow = readText(".github/workflows/tripmate-v1-gate.yml");
 const previewSmokeWorkflow = readText(".github/workflows/tripmate-worker-preview-smoke.yml");
 const workerSmokeScript = readText("scripts/worker-v1-smoke.mjs");
 const previewReleaseGateScript = readText("scripts/preview-release-gate.mjs");
+const productionReleaseGateScript = readText("scripts/production-release-gate.mjs");
 const workerLocalSmokeScript = readText("scripts/worker-local-smoke.mjs");
 const cloudflareSecretsCheck = readText("scripts/check-cloudflare-secrets.mjs");
 const cloudflareDeploymentDoc = readText("docs/deployment-cloudflare.md");
 const apiWorkerReadme = readText("services/api-worker/README.md");
+
+const productionReleaseGateContracts = [
+  [
+    packageJson.scripts?.["release:production:gate"] ?? "",
+    "scripts/production-release-gate.mjs",
+    "Root package must expose the production release gate"
+  ],
+  [
+    productionReleaseGateScript,
+    '["run", "check:env:production"]',
+    "Production release gate must run production env readiness"
+  ],
+  [
+    productionReleaseGateScript,
+    '["run", "check:secrets:production"]',
+    "Production release gate must verify Cloudflare production secret names"
+  ],
+  [
+    productionReleaseGateScript,
+    '["run", "check:release-contract"]',
+    "Production release gate must run release contract checks"
+  ],
+  [
+    productionReleaseGateScript,
+    '["test"]',
+    "Production release gate must run planner tests"
+  ],
+  [
+    productionReleaseGateScript,
+    '["run", "check:health"]',
+    "Production release gate must run build/typecheck health checks"
+  ],
+  [
+    productionReleaseGateScript,
+    'readHealthJson("/health")',
+    "Production release gate must check the root health endpoint"
+  ],
+  [
+    productionReleaseGateScript,
+    'readHealthJson("/api/v1/health")',
+    "Production release gate must check the v1 health endpoint"
+  ],
+  [
+    productionReleaseGateScript,
+    'body.environment !== "production"',
+    "Production release gate must require ENVIRONMENT=production"
+  ],
+  [
+    productionReleaseGateScript,
+    "No production write smoke is run by this gate.",
+    "Production release gate must document that it does not run write smoke"
+  ],
+  [
+    productionReleaseGateScript,
+    "real deployed production Worker URL",
+    "Production release gate must reject placeholder production URLs"
+  ]
+];
+
+for (const [content, expectedText, label] of productionReleaseGateContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing production release gate contract: ${label}`);
+  }
+}
+
+if (productionReleaseGateScript.includes('"worker:smoke"') || productionReleaseGateScript.includes("worker:smoke:naver")) {
+  errors.push("Production release gate must not invoke Worker write smoke scripts.");
+}
 
 const previewReleaseGateContracts = [
   [

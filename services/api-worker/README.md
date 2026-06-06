@@ -12,6 +12,7 @@ npm --prefix services/api-worker run typecheck
 npm --prefix services/api-worker run deploy:preview
 npm run worker:smoke:local
 npm run release:preview:gate -- --base-url https://<preview-worker>
+npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
@@ -19,6 +20,8 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 `worker:smoke:local` is the preferred local runtime gate. It applies local D1 migrations, starts `wrangler dev --local`, runs the full v1 write smoke, and stops the Worker process.
 
 `release:preview:gate` is the preferred preview handoff gate. It runs preview env readiness, Cloudflare secret-name checks, release contract checks, planner tests, build/typecheck health checks, and strict provider smoke against the deployed preview Worker.
+
+`release:production:gate` is the preferred production handoff gate. It runs production env readiness, production secret-name checks, release contract checks, planner tests, build/typecheck health checks, and read-only health checks against the deployed production Worker. It does not run write smoke against production.
 
 `worker:smoke:naver` is the strict preview provider smoke. It requires live Naver Search and Naver Cloud Maps geocode, reverse-geocode, planner route enrichment, and route optimization responses. It still refuses write smoke outside `ENVIRONMENT=local` or `preview`.
 

@@ -51,12 +51,7 @@ Production deploy must use Cloudflare Workers Paid for monetized service operati
 Production gates:
 
 - `TripMate v1 Gate` GitHub Actions workflow passing on the release commit
-- `npm run check:health`
-- `npm run check:env:production`
-- `npm run check:secrets:production` from a Cloudflare-authenticated shell. Production fails this check unless the required base secrets and split Naver provider secrets are configured.
-- `npm run check:release-contract`
-- `npm test`
-- local or preview Worker smoke for `/health`
+- `npm run release:production:gate -- --base-url https://<production-worker>` from a Cloudflare-authenticated shell. This includes `check:env:production`, `check:secrets:production`, release contract checks, tests, health checks, and read-only production Worker health checks. It never runs write smoke against production.
 - D1 migration reviewed
 - provider keys set as Cloudflare secrets
 - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` set as Cloudflare secrets in preview and production
@@ -134,6 +129,7 @@ Worker v1 smoke:
 ```sh
 npm run worker:smoke:local
 npm run release:preview:gate -- --base-url https://<preview-worker>
+npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
