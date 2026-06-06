@@ -38,7 +38,7 @@ if (!allowedTargets.has(target)) {
 
 const result = spawnSync(
   "npm",
-  ["--prefix", "services/api-worker", "exec", "wrangler", "secret", "list", "--env", target, "--json"],
+  ["--prefix", "services/api-worker", "exec", "--", "wrangler", "secret", "list", "--env", target, "--json"],
   {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]

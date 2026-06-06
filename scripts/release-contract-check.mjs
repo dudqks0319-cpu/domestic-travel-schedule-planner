@@ -998,6 +998,7 @@ for (const text of [
   "wrangler",
   "secret",
   "list",
+  "exec\", \"--\", \"wrangler",
   "--json",
   "--print-required",
   "Missing Cloudflare ${target} secret",

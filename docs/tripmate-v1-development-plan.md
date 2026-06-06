@@ -2660,6 +2660,7 @@ Completed:
 - Added `scripts/check-cloudflare-secrets.mjs`.
 - Added root scripts `check:secrets:preview` and `check:secrets:production`.
 - Added release contract checks for the script, required secret names, and `wrangler secret list --json` usage.
+- Used `npm exec -- wrangler ...` so Wrangler flags are passed to Wrangler instead of npm.
 - Updated environment and Cloudflare deployment docs with the remote secret validation step.
 
 Verification completed:
