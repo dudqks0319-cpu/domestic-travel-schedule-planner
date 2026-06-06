@@ -3171,3 +3171,32 @@ Verification completed:
 
 Remaining risks:
 - This validates secret names only. Provider product activation and key correctness still require preview/production smoke calls.
+
+## Strict Live Provider Smoke Result Record
+
+Plan:
+- Add an optional Worker smoke mode that requires provider-positive responses instead of accepting graceful fallback.
+- Return geocode/reverse-geocode provider metadata so preview smoke can prove which provider answered.
+- Expose the strict mode through the manual GitHub Actions preview smoke workflow.
+- Update deployment/provider documentation and release contract checks.
+
+Completed:
+- Added `--require-provider naver|kakao` and `TRIPMATE_REQUIRE_PROVIDER` support to `scripts/worker-v1-smoke.mjs`.
+- Strict mode now requires matching provider results for place search, geocode, reverse geocode, planner generate/replan route summaries, route optimization, and cached route optimization.
+- Added `provider` metadata to Worker geocode and reverse-geocode responses.
+- Added the `require_provider` input to the manual `TripMate Worker Preview Smoke` workflow.
+- Documented strict Naver preview smoke usage in Cloudflare deployment and provider policy docs.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Local static checks can verify the strict smoke contract, but actual provider product activation still requires running preview smoke against a deployed Worker with live Naver Search and Cloud Maps secrets.

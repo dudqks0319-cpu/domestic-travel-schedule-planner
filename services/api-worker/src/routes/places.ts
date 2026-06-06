@@ -95,6 +95,7 @@ placeRoutes.get("/geocode", async (c) => {
   return c.json({
     ok: true,
     geocode: result.result,
+    provider: result.provider,
     warnings: result.warnings,
     cacheStatus: result.cacheStatus,
     requestId: c.get("requestId")
@@ -112,6 +113,7 @@ placeRoutes.get("/reverse-geocode", async (c) => {
   return c.json({
     ok: true,
     reverseGeocode: result.result,
+    provider: result.provider,
     warnings: result.warnings,
     cacheStatus: result.cacheStatus,
     requestId: c.get("requestId")

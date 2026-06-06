@@ -334,6 +334,11 @@ const geocodeContracts = [
   ],
   [
     providerIndex,
+    "provider = adapter.provider;",
+    "Geocode and reverse geocode cache payloads must preserve provider metadata"
+  ],
+  [
+    providerIndex,
     'eventType: "provider_geocode"',
     "Geocode provider calls must record operational events"
   ],
@@ -351,6 +356,11 @@ const geocodeContracts = [
     placeRoutes,
     'placeRoutes.use("/reverse-geocode", rateLimit({',
     "Reverse geocode endpoint must be rate limited"
+  ],
+  [
+    placeRoutes,
+    "provider: result.provider",
+    "Geocode endpoints must return provider metadata for live smoke validation"
   ],
   [
     placeRoutes,
@@ -1869,10 +1879,14 @@ for (const text of [
 for (const text of [
   "workflow_dispatch",
   "base_url",
+  "require_provider",
   "TRIPMATE_WORKER_BASE_URL",
+  "TRIPMATE_REQUIRE_PROVIDER",
   "OPS_ADMIN_TOKEN",
   "node --check scripts/worker-v1-smoke.mjs",
-  "npm run worker:smoke -- --base-url"
+  "--require-provider",
+  "args=(--base-url",
+  'npm run worker:smoke -- "${args[@]}"'
 ]) {
   if (!previewSmokeWorkflow.includes(text)) {
     errors.push(`Missing preview smoke workflow contract: ${text}`);
@@ -1883,10 +1897,19 @@ for (const text of [
   "dayNumber auto-link",
   "dayNumber-only place create should auto-link a trip day",
   "places geocode contract",
+  "--require-provider",
+  "TRIPMATE_REQUIRE_PROVIDER",
+  "places search should include required provider results",
+  "planner generate should return required provider route summary",
+  "planner replan should return required provider route summary",
+  "route optimize should return required provider route",
+  "cached route optimize should return required provider route",
   "GET /api/v1/places/geocode",
   "GET /api/v1/places/reverse-geocode",
   "geocode should return null or numeric coordinates",
+  "geocode should return required provider coordinates",
   "reverse geocode should return null or an address string",
+  "reverse geocode should return required provider address",
   "free saved trip limit",
   "FREE_TRIP_LIMIT_REACHED",
   "ops retention dry run",

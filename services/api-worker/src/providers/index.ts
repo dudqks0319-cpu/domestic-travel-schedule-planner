@@ -8,6 +8,7 @@ import type {
   NormalizedRoute,
   PlaceProviderAdapter,
   PlaceProviderSearchInput,
+  ProviderKind,
   ProviderSearchResult,
   TravelMode
 } from "./types";
@@ -241,24 +242,36 @@ export async function searchPlaces(env: Env, input: PlaceProviderSearchInput): P
   return payload;
 }
 
-export async function geocodeAddress(env: Env, address: string): Promise<{
+type GeocodeProviderResult = {
   result: { lat: number; lng: number } | null;
+  provider: ProviderKind | null;
   warnings: string[];
   cacheStatus: "hit" | "miss";
-}> {
+};
+
+type ReverseGeocodeProviderResult = {
+  result: { address: string } | null;
+  provider: ProviderKind | null;
+  warnings: string[];
+  cacheStatus: "hit" | "miss";
+};
+
+export async function geocodeAddress(env: Env, address: string): Promise<GeocodeProviderResult> {
   const key = geocodeCacheKey(address);
   const cached = await env.PLACE_CACHE.get(key, "json");
   if (cached && typeof cached === "object" && "result" in cached) {
-    return cached as { result: { lat: number; lng: number } | null; warnings: string[]; cacheStatus: "hit" };
+    return cached as GeocodeProviderResult;
   }
 
   const warnings: string[] = [];
   let result: { lat: number; lng: number } | null = null;
+  let provider: ProviderKind | null = null;
 
   for (const adapter of geocodeAdapters(env)) {
     try {
       result = await geocodeAdapter(env, adapter, address);
       if (result) {
+        provider = adapter.provider;
         break;
       }
       warnings.push(`${adapter.provider} returned no geocode result`);
@@ -267,7 +280,7 @@ export async function geocodeAddress(env: Env, address: string): Promise<{
     }
   }
 
-  const payload = { result, warnings, cacheStatus: "miss" as const };
+  const payload = { result, provider, warnings, cacheStatus: "miss" as const };
   await env.PLACE_CACHE.put(key, JSON.stringify({ ...payload, cacheStatus: "hit" }), {
     expirationTtl: GEOCODE_TTL_SECONDS
   });
@@ -275,24 +288,25 @@ export async function geocodeAddress(env: Env, address: string): Promise<{
   return payload;
 }
 
-export async function reverseGeocodeCoordinate(env: Env, input: { lat: number; lng: number }): Promise<{
-  result: { address: string } | null;
-  warnings: string[];
-  cacheStatus: "hit" | "miss";
-}> {
+export async function reverseGeocodeCoordinate(
+  env: Env,
+  input: { lat: number; lng: number }
+): Promise<ReverseGeocodeProviderResult> {
   const key = reverseGeocodeCacheKey(input.lat, input.lng);
   const cached = await env.PLACE_CACHE.get(key, "json");
   if (cached && typeof cached === "object" && "result" in cached) {
-    return cached as { result: { address: string } | null; warnings: string[]; cacheStatus: "hit" };
+    return cached as ReverseGeocodeProviderResult;
   }
 
   const warnings: string[] = [];
   let result: { address: string } | null = null;
+  let provider: ProviderKind | null = null;
 
   for (const adapter of geocodeAdapters(env)) {
     try {
       result = await reverseGeocodeAdapter(env, adapter, input);
       if (result) {
+        provider = adapter.provider;
         break;
       }
       warnings.push(`${adapter.provider} returned no reverse geocode result`);
@@ -301,7 +315,7 @@ export async function reverseGeocodeCoordinate(env: Env, input: { lat: number; l
     }
   }
 
-  const payload = { result, warnings, cacheStatus: "miss" as const };
+  const payload = { result, provider, warnings, cacheStatus: "miss" as const };
   await env.PLACE_CACHE.put(key, JSON.stringify({ ...payload, cacheStatus: "hit" }), {
     expirationTtl: GEOCODE_TTL_SECONDS
   });

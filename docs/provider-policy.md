@@ -37,6 +37,14 @@ Driving route optimization is server-side. When Naver Cloud Maps credentials are
 
 Planner generate/replan responses also use provider directions when available. The pure planner package remains a fallback schedule engine, while the Worker enriches day-level `routeToNext` segments and `routeSummary` with Naver or Kakao driving route data before returning the response. If provider enrichment fails, the Worker keeps fallback movement times and returns recoverable provider warnings.
 
+Preview deployments must run the strict live provider smoke after secrets are configured:
+
+```sh
+npm run worker:smoke -- --base-url https://<preview-worker> --require-provider naver
+```
+
+This mode requires Naver-backed place search, geocode, reverse geocode, planner route enrichment, and route optimization responses. Graceful degradation remains valid for normal app behavior, but strict preview smoke must fail if the configured provider only returns fallback or null results.
+
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability

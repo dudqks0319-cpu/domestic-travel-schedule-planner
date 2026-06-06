@@ -7,6 +7,11 @@ on:
         description: "Preview Worker base URL, for example https://tripmate-api-preview.<account>.workers.dev"
         required: true
         type: string
+      require_provider:
+        description: "Optional strict live provider check, for example naver"
+        required: false
+        default: ""
+        type: string
 
 concurrency:
   group: tripmate-worker-preview-smoke-${{ inputs.base_url }}
@@ -38,6 +43,7 @@ jobs:
         env:
           OPS_ADMIN_TOKEN: ${{ secrets.OPS_ADMIN_TOKEN }}
           TRIPMATE_WORKER_BASE_URL: ${{ inputs.base_url }}
+          TRIPMATE_REQUIRE_PROVIDER: ${{ inputs.require_provider }}
         shell: bash
         run: |
           set -euo pipefail
@@ -47,8 +53,13 @@ jobs:
             exit 1
           fi
 
+          args=(--base-url "$TRIPMATE_WORKER_BASE_URL")
+          if [[ -n "${TRIPMATE_REQUIRE_PROVIDER:-}" ]]; then
+            args+=(--require-provider "$TRIPMATE_REQUIRE_PROVIDER")
+          fi
+
           if [[ -n "${OPS_ADMIN_TOKEN:-}" ]]; then
-            npm run worker:smoke -- --base-url "$TRIPMATE_WORKER_BASE_URL" --ops-token "$OPS_ADMIN_TOKEN"
+            npm run worker:smoke -- "${args[@]}" --ops-token "$OPS_ADMIN_TOKEN"
           else
-            npm run worker:smoke -- --base-url "$TRIPMATE_WORKER_BASE_URL"
+            npm run worker:smoke -- "${args[@]}"
           fi

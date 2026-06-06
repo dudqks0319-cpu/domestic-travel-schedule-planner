@@ -28,10 +28,12 @@ Usage:
   npm run worker:smoke
   npm run worker:smoke -- --base-url http://127.0.0.1:8787
   npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
+  npm run worker:smoke -- --base-url https://<preview-worker> --require-provider naver
 
 Options:
-  --base-url   Worker base URL. Default: ${DEFAULT_BASE_URL}
-  --ops-token  Optional server-only token for /api/v1/ops summary and retention smoke.
+  --base-url          Worker base URL. Default: ${DEFAULT_BASE_URL}
+  --ops-token         Optional server-only token for /api/v1/ops summary and retention smoke.
+  --require-provider  Optional strict live provider check: naver or kakao.
 
 Notes:
   - The script creates and deletes smoke-owned data.
@@ -49,6 +51,14 @@ if (shouldShowHelp()) {
 const baseUrl = readArg("--base-url", process.env.TRIPMATE_WORKER_BASE_URL ?? DEFAULT_BASE_URL)
   .replace(/\/+$/, "");
 const opsToken = readArg("--ops-token", process.env.OPS_ADMIN_TOKEN ?? "");
+const requiredProvider = readArg("--require-provider", process.env.TRIPMATE_REQUIRE_PROVIDER ?? "")
+  .trim()
+  .toLowerCase();
+const allowedRequiredProviders = new Set(["", "naver", "kakao"]);
+
+if (!allowedRequiredProviders.has(requiredProvider)) {
+  throw new Error(`--require-provider must be naver or kakao when provided; got ${requiredProvider}`);
+}
 
 let accessToken = "";
 let refreshToken = "";
@@ -113,6 +123,17 @@ function assertHeaderIncludes(result, headerName, expectedValue, label) {
   );
 }
 
+function assertRequiredProvider(provider, message) {
+  if (!requiredProvider) {
+    return;
+  }
+
+  assert(
+    provider === requiredProvider,
+    `${message}: expected ${requiredProvider}, got ${provider ?? "none"}`
+  );
+}
+
 async function step(label, fn) {
   process.stdout.write(`- ${label} ... `);
   await fn();
@@ -168,6 +189,10 @@ await step("planner generate and replan", async () => {
   const generated = await request("POST", "/api/v1/planner/generate", { auth: false, json: input });
   assertOk(generated, "POST /api/v1/planner/generate");
   assert(Array.isArray(generated.body?.days), "planner generate should return days");
+  assertRequiredProvider(
+    generated.body?.routeSummary?.provider,
+    "planner generate should return required provider route summary"
+  );
 
   const replanned = await request("POST", "/api/v1/planner/replan", {
     auth: false,
@@ -176,6 +201,10 @@ await step("planner generate and replan", async () => {
   assertOk(replanned, "POST /api/v1/planner/replan");
   assert(replanned.body?.replan?.removedPlaceCount === 1, "planner replan should report removed place count");
   assert(Array.isArray(replanned.body?.places), "planner replan should return normalized places used for route rebuild");
+  assertRequiredProvider(
+    replanned.body?.routeSummary?.provider,
+    "planner replan should return required provider route summary"
+  );
 });
 
 await step("route optimize", async () => {
@@ -195,6 +224,7 @@ await step("route optimize", async () => {
     ["fallback", "naver", "kakao"].includes(result.body?.route?.provider),
     "route optimize should return explicit fallback, Naver, or Kakao provider route"
   );
+  assertRequiredProvider(result.body?.route?.provider, "route optimize should return required provider route");
   assert(
     result.body?.cacheStatus === "hit" || result.body?.cacheStatus === "miss",
     "route optimize should return a stable cache status"
@@ -206,6 +236,7 @@ await step("route optimize", async () => {
   });
   assertOk(cachedResult, "POST /api/v1/routes/optimize cached");
   assert(cachedResult.body?.cacheStatus === "hit", "route optimize should return cacheStatus hit on repeated request");
+  assertRequiredProvider(cachedResult.body?.route?.provider, "cached route optimize should return required provider route");
 });
 
 await step("places search contract", async () => {
@@ -214,6 +245,12 @@ await step("places search contract", async () => {
   });
   assertOk(result, "GET /api/v1/places/search");
   assert(Array.isArray(result.body?.places), "places search should return places array");
+  if (requiredProvider) {
+    assert(
+      result.body.places.some((place) => place?.provider === requiredProvider),
+      "places search should include required provider results"
+    );
+  }
 
   const firstPlaceId = result.body?.places?.[0]?.id;
   if (firstPlaceId) {
@@ -235,6 +272,13 @@ await step("places geocode contract", async () => {
       (typeof geocode.body?.geocode?.lat === "number" && typeof geocode.body?.geocode?.lng === "number"),
     "geocode should return null or numeric coordinates"
   );
+  if (requiredProvider) {
+    assert(
+      typeof geocode.body?.geocode?.lat === "number" && typeof geocode.body?.geocode?.lng === "number",
+      "geocode should return required provider coordinates"
+    );
+    assertRequiredProvider(geocode.body?.provider, "geocode should return required provider coordinates");
+  }
 
   const reverseGeocode = await request("GET", "/api/v1/places/reverse-geocode?lat=37.7715&lng=128.9489", {
     auth: false
@@ -246,6 +290,13 @@ await step("places geocode contract", async () => {
       typeof reverseGeocode.body?.reverseGeocode?.address === "string",
     "reverse geocode should return null or an address string"
   );
+  if (requiredProvider) {
+    assert(
+      typeof reverseGeocode.body?.reverseGeocode?.address === "string",
+      "reverse geocode should return required provider address"
+    );
+    assertRequiredProvider(reverseGeocode.body?.provider, "reverse geocode should return required provider address");
+  }
 });
 
 await step("kakao dev login and session", async () => {

@@ -137,8 +137,11 @@ Worker v1 smoke:
 ```sh
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
 npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
+npm run worker:smoke -- --base-url https://<preview-worker> --require-provider naver --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
 The smoke script checks health, planner generate/replan, route optimization, provider search/geocode/reverse-geocode contracts, Kakao dev login, authenticated trip/day/place/share CRUD, free saved-trip limit denial, monetization event logging, entitlement state, optional ops summary, optional sponsored campaign lifecycle, optional ops retention dry run, cleanup, and logout. It creates and deletes smoke-owned data. Before any write step, it reads `/health` and refuses to continue unless `ENVIRONMENT` is `local` or `preview`. Do not run this write smoke against production.
 
-Preview smoke can also be triggered manually from GitHub Actions with `TripMate Worker Preview Smoke`. Provide the preview Worker base URL as `base_url`; the workflow uses `OPS_ADMIN_TOKEN` from repository secrets when available and still relies on the smoke script's `/health` environment guard before write requests.
+Use `--require-provider naver` after preview secrets are configured to require live Naver Search, Cloud Maps geocode/reverse-geocode, planner route enrichment, and route optimization responses. In that strict mode, fallback routes, empty provider results, and null geocode responses fail the smoke instead of passing as graceful degradation.
+
+Preview smoke can also be triggered manually from GitHub Actions with `TripMate Worker Preview Smoke`. Provide the preview Worker base URL as `base_url`; set `require_provider` to `naver` for the strict live provider check. The workflow uses `OPS_ADMIN_TOKEN` from repository secrets when available and still relies on the smoke script's `/health` environment guard before write requests.
