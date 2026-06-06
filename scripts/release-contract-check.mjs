@@ -273,6 +273,26 @@ for (const [content, expectedText, label] of accountDeletionContracts) {
 
 const geocodeContracts = [
   [
+    naverProvider,
+    "https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode",
+    "Naver provider must call the Naver Cloud Geocoding API"
+  ],
+  [
+    naverProvider,
+    "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc",
+    "Naver provider must call the Naver Cloud Reverse Geocoding API"
+  ],
+  [
+    naverProvider,
+    "naverCloudHeaders(this.env)",
+    "Naver geocode calls must use server-only NCP credentials"
+  ],
+  [
+    providerIndex,
+    "new NaverPlaceAdapter(env),\n    new KakaoPlaceAdapter(env)",
+    "Provider geocode orchestration must try Naver before Kakao"
+  ],
+  [
     kakaoProvider,
     "https://dapi.kakao.com/v2/local/search/address.json",
     "Kakao provider must call the Local address search API for geocoding"

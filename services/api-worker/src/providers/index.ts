@@ -37,6 +37,7 @@ function adapters(env: Env): PlaceProviderAdapter[] {
 
 function geocodeAdapters(env: Env): PlaceProviderAdapter[] {
   return [
+    new NaverPlaceAdapter(env),
     new KakaoPlaceAdapter(env)
   ];
 }

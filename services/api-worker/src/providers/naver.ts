@@ -24,6 +24,52 @@ interface NaverLocalResponse {
   items?: NaverLocalItem[];
 }
 
+interface NaverGeocodeAddress {
+  roadAddress?: string;
+  jibunAddress?: string;
+  x?: string;
+  y?: string;
+}
+
+interface NaverGeocodeResponse {
+  status?: string;
+  addresses?: NaverGeocodeAddress[];
+}
+
+interface NaverReverseRegionArea {
+  name?: string;
+}
+
+interface NaverReverseLand {
+  name?: string;
+  number1?: string;
+  number2?: string;
+  addition0?: {
+    type?: string;
+    value?: string;
+  };
+}
+
+interface NaverReverseResult {
+  name?: string;
+  region?: {
+    area1?: NaverReverseRegionArea;
+    area2?: NaverReverseRegionArea;
+    area3?: NaverReverseRegionArea;
+    area4?: NaverReverseRegionArea;
+  };
+  land?: NaverReverseLand;
+}
+
+interface NaverReverseGeocodeResponse {
+  status?: {
+    code?: number;
+    name?: string;
+    message?: string;
+  };
+  results?: NaverReverseResult[];
+}
+
 interface NaverDirectionsPath {
   summary?: {
     distance?: number;
@@ -41,6 +87,13 @@ interface NaverDirectionsResponse {
 
 function coordinate(point: { lat: number; lng: number }): string {
   return `${point.lng},${point.lat}`;
+}
+
+function naverCloudHeaders(env: Env): Record<string, string> {
+  return {
+    "x-ncp-apigw-api-key-id": env.NAVER_CLIENT_ID ?? "",
+    "x-ncp-apigw-api-key": env.NAVER_CLIENT_SECRET ?? ""
+  };
 }
 
 function pointLabel(point: { id?: string; name?: string }, index: number): string {
@@ -69,6 +122,21 @@ function metersToKm(value: number | undefined): number {
 function millisecondsToMin(value: number | undefined): number {
   if (!value || value < 0) return 0;
   return Math.max(1, Math.round(value / 60_000));
+}
+
+function reverseAddress(result: NaverReverseResult): string | null {
+  const region = [
+    result.region?.area1?.name,
+    result.region?.area2?.name,
+    result.region?.area3?.name,
+    result.region?.area4?.name
+  ].filter(Boolean);
+  const land = result.land;
+  const number = [land?.number1, land?.number2].filter(Boolean).join("-");
+  const roadOrLand = [land?.name, number].filter(Boolean).join(" ");
+  const building = land?.addition0?.type === "building" ? land.addition0.value : undefined;
+  const address = [...region, roadOrLand, building].filter(Boolean).join(" ").trim();
+  return address || null;
 }
 
 function allocateSegments(
@@ -145,12 +213,57 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     });
   }
 
-  async geocode(): Promise<{ lat: number; lng: number } | null> {
-    return null;
+  async geocode(input: { address: string }): Promise<{ lat: number; lng: number } | null> {
+    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET || !input.address.trim()) {
+      return null;
+    }
+
+    const url = new URL("https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode");
+    url.searchParams.set("query", input.address.trim());
+
+    const response = await fetchProvider(url, {
+      headers: naverCloudHeaders(this.env)
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json<NaverGeocodeResponse>();
+    if (data.status && data.status !== "OK") {
+      return null;
+    }
+
+    const first = data.addresses?.[0];
+    const lat = toNumber(first?.y);
+    const lng = toNumber(first?.x);
+    return lat === null || lng === null ? null : { lat, lng };
   }
 
-  async reverseGeocode(): Promise<{ address: string } | null> {
-    return null;
+  async reverseGeocode(input: { lat: number; lng: number }): Promise<{ address: string } | null> {
+    if (!this.env.NAVER_CLIENT_ID || !this.env.NAVER_CLIENT_SECRET) {
+      return null;
+    }
+
+    const url = new URL("https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc");
+    url.searchParams.set("request", "coordsToaddr");
+    url.searchParams.set("coords", coordinate(input));
+    url.searchParams.set("sourcecrs", "epsg:4326");
+    url.searchParams.set("orders", "roadaddr,addr,legalcode,admcode");
+    url.searchParams.set("output", "json");
+
+    const response = await fetchProvider(url, {
+      headers: naverCloudHeaders(this.env)
+    });
+    if (!response.ok) return null;
+
+    const data = await response.json<NaverReverseGeocodeResponse>();
+    if (data.status?.code !== undefined && data.status.code !== 0) {
+      return null;
+    }
+
+    const preferred = data.results?.find((result) => result.name === "roadaddr")
+      ?? data.results?.find((result) => result.name === "addr")
+      ?? data.results?.[0];
+    const address = preferred ? reverseAddress(preferred) : null;
+    return address ? { address } : null;
   }
 
   async getDirections(input: {
@@ -180,10 +293,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     }
 
     const response = await fetchProvider(url, {
-      headers: {
-        "x-ncp-apigw-api-key-id": this.env.NAVER_CLIENT_ID,
-        "x-ncp-apigw-api-key": this.env.NAVER_CLIENT_SECRET
-      }
+      headers: naverCloudHeaders(this.env)
     });
     if (!response.ok) return null;
 

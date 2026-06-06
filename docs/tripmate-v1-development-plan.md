@@ -3080,3 +3080,32 @@ Verification completed:
 Remaining risks:
 - Live Naver directions success requires Naver Cloud Maps Directions 5 enabled for the configured key pair.
 - Naver Directions 5 returns total route summary; waypoint segment timing is proportionally allocated until a richer per-leg provider result is available.
+
+## Naver Geocode Provider Result Record
+
+Plan:
+- Replace Naver geocode/reverse-geocode no-op behavior with real server-side Naver Cloud Maps calls.
+- Keep provider secrets server-only through Worker bindings and NCP headers.
+- Try Naver before Kakao for address geocoding and reverse geocoding while preserving existing KV caching and warning behavior.
+- Update release contract and provider policy docs so Naver geocode parity does not regress.
+
+Completed:
+- Implemented `NaverPlaceAdapter.geocode()` with Naver Cloud Maps Geocoding API.
+- Implemented `NaverPlaceAdapter.reverseGeocode()` with Naver Cloud Maps Reverse Geocoding API.
+- Added normalized reverse address formatting from Naver region/land results.
+- Updated geocode provider orchestration to try Naver before Kakao.
+- Updated provider policy and release contract checks for Naver geocoding parity.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `git diff --check`
+- `npm test`
+- `npm run check:env`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Naver geocode success requires Naver Cloud Maps Geocoding and Reverse Geocoding enabled for the configured key pair.
+- Existing env names are reused for Naver Cloud Maps credentials; deployments must ensure these are NCP API key id/key values, not only legacy Naver Search client credentials.
