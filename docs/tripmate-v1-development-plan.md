@@ -1236,3 +1236,25 @@ Verification completed:
 Remaining risks:
 - Reorder updates are still sequential inside the Worker; this avoids many mobile network calls but is not a D1 transaction.
 - New provider suggestions created during replan remain local-only until the user explicitly saves/adds them.
+
+## Replan Suggested Place Persistence Result Record
+
+Plan:
+- Keep the local-first replan UX, but persist newly suggested provider places for authenticated saved trips.
+- Avoid duplicate remote places by matching existing saved places before creating missing ones.
+- Store returned `tripPlaceId` values back into `currentTrip.routePoints` so later move/delete/share/export actions use canonical server ids.
+
+Completed:
+- Added schedule-screen matching by `providerPlaceId` and normalized name/coordinate key.
+- Loaded existing remote `trip_places` before creating missing replanned places.
+- Created only unmatched replanned places with category, address, coordinates, sponsorship label, day number, and sort order.
+- Reused the bulk reorder endpoint after creation so saved trips and share/export views reflect the final replan order.
+- Persisted newly created or relinked `tripPlaceId` values back into local `currentTrip` storage.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm test`
+- `npm run check:health`
+
+Remaining risks:
+- New place creation still happens sequentially from mobile; a future Worker sync endpoint could create/reorder in one authenticated server-side operation.

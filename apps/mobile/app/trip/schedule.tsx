@@ -213,6 +213,22 @@ function editablePointToNormalizedPlace(point: EditableTripPoint, index: number)
   };
 }
 
+function tripPointMatchKey(input: {
+  name?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}): string | null {
+  if (!input.name || typeof input.lat !== "number" || typeof input.lng !== "number") {
+    return null;
+  }
+
+  return [
+    input.name.trim().toLowerCase(),
+    input.lat.toFixed(5),
+    input.lng.toFixed(5)
+  ].join(":");
+}
+
 function buildExistingPointLookup(points: EditableTripPoint[]): Map<string, EditableTripPoint> {
   const lookup = new Map<string, EditableTripPoint>();
   for (const point of points) {
@@ -757,10 +773,61 @@ export default function ScheduleScreen() {
   const syncRemoteReplannedPlaces = async (nextPoints: EditableTripPoint[]) => {
     const tripId = currentServerTripId();
     if (!tripId) {
-      return { updated: 0, skipped: nextPoints.length };
+      return { points: nextPoints, created: 0, relinked: 0, updated: 0, skipped: nextPoints.length };
     }
 
-    const places = nextPoints.flatMap((point, index) => {
+    const syncedPoints = [...nextPoints];
+    const remotePlaces = await tripsApi.getPlacesByTrip(tripId);
+    const remoteByProviderPlaceId = new Map<string, string>();
+    const remoteByMatchKey = new Map<string, string>();
+    for (const place of remotePlaces.data.places ?? []) {
+      if (place.providerPlaceId) {
+        remoteByProviderPlaceId.set(place.providerPlaceId, place.id);
+      }
+      const matchKey = tripPointMatchKey({
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng
+      });
+      if (matchKey) {
+        remoteByMatchKey.set(matchKey, place.id);
+      }
+    }
+
+    let created = 0;
+    let relinked = 0;
+    for (let index = 0; index < syncedPoints.length; index += 1) {
+      const point = syncedPoints[index];
+      if (point.tripPlaceId) {
+        continue;
+      }
+
+      const matchedTripPlaceId = (
+        point.providerPlaceId ? remoteByProviderPlaceId.get(point.providerPlaceId) : undefined
+      ) ?? remoteByMatchKey.get(tripPointMatchKey(point) ?? "");
+      if (matchedTripPlaceId) {
+        syncedPoints[index] = { ...point, tripPlaceId: matchedTripPlaceId };
+        relinked += 1;
+        continue;
+      }
+
+      const response = await tripsApi.addPlace(tripId, {
+        providerPlaceId: point.providerPlaceId ?? point.id,
+        name: point.name,
+        category: point.category ?? "장소",
+        ...(point.address ? { address: point.address } : {}),
+        lat: point.lat,
+        lng: point.lng,
+        dayNumber: point.dayNumber,
+        sortOrder: index + 1,
+        isSponsored: point.isSponsored === true,
+        ...(point.sponsorLabel ? { sponsorLabel: point.sponsorLabel } : {})
+      });
+      syncedPoints[index] = { ...point, tripPlaceId: response.data.place.id };
+      created += 1;
+    }
+
+    const places = syncedPoints.flatMap((point, index) => {
       if (!point.tripPlaceId) {
         return [];
       }
@@ -772,13 +839,16 @@ export default function ScheduleScreen() {
       }];
     });
     if (!places.length) {
-      return { updated: 0, skipped: nextPoints.length };
+      return { points: syncedPoints, created, relinked, updated: 0, skipped: nextPoints.length };
     }
 
     const response = await tripsApi.reorderPlaces(tripId, places);
     return {
+      points: syncedPoints,
+      created,
+      relinked,
       updated: response.data.places.length,
-      skipped: nextPoints.length - places.length
+      skipped: syncedPoints.length - places.length
     };
   };
 
@@ -969,10 +1039,16 @@ export default function ScheduleScreen() {
 
       await persistEditableTripPoints(nextPoints);
       const syncResult = await syncRemoteReplannedPlaces(nextPoints);
+      if (syncResult.created > 0 || syncResult.relinked > 0) {
+        await persistEditableTripPoints(syncResult.points);
+      }
       setActiveDayIndex(0);
+      const createdNotice = syncResult.created > 0
+        ? ` 새 장소 ${syncResult.created}개도 저장했습니다.`
+        : "";
       setReplanNotice(
         syncResult.updated > 0
-          ? `일정을 다시 정리하고 저장된 장소 ${syncResult.updated}개를 서버에 반영했어요. 경로 최적화를 실행하면 새 순서로 이동시간을 계산합니다.`
+          ? `일정을 다시 정리하고 저장된 장소 ${syncResult.updated}개를 서버에 반영했어요.${createdNotice}`
           : "일정을 다시 정리했어요. 로그인 후 저장된 여행에서는 새 순서를 서버에도 반영할 수 있습니다."
       );
     } catch {
