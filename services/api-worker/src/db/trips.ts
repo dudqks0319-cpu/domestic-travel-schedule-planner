@@ -160,6 +160,19 @@ export async function listTrips(db: D1Database, userId: string): Promise<TripRec
   return result.results ?? [];
 }
 
+export async function countActiveTrips(db: D1Database, userId: string): Promise<number> {
+  const record = await db
+    .prepare(
+      `SELECT COUNT(*) AS count
+       FROM trips
+       WHERE user_id = ? AND deleted_at IS NULL AND status = 'active'`
+    )
+    .bind(userId)
+    .first<{ count: number }>();
+
+  return record?.count ?? 0;
+}
+
 export async function getOwnedTrip(
   db: D1Database,
   userId: string,

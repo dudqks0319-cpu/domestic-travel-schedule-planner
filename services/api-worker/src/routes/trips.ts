@@ -10,6 +10,7 @@ import {
 } from "../db/exports";
 import { listActiveEntitlements } from "../db/monetization";
 import {
+  countActiveTrips,
   createShareLink,
   createTripDay,
   createTripPlace,
@@ -38,6 +39,8 @@ import { rateLimit } from "../middleware/rate-limit";
 
 export const tripRoutes = new Hono<AppBindings>();
 export const shareRoutes = new Hono<AppBindings>();
+
+const FREE_TRIP_SAVE_LIMIT = 3;
 
 function currentUserId(c: { get: (key: "userId") => string | undefined }): string {
   const userId = c.get("userId");
@@ -498,13 +501,43 @@ tripRoutes.post("/", async (c) => {
   }
 
   const userId = currentUserId(c);
+  const [activeTripCount, entitlements] = await Promise.all([
+    countActiveTrips(c.env.DB, userId),
+    listActiveEntitlements(c.env.DB, userId)
+  ]);
+
+  if (!entitlements.length && activeTripCount >= FREE_TRIP_SAVE_LIMIT) {
+    await createAuditLog(c.env.DB, {
+      userId,
+      action: "trip.create_denied",
+      entityType: "trip",
+      requestId: requestId(c),
+      metadata: {
+        reason: "free_trip_limit",
+        activeTripCount,
+        freeLimit: FREE_TRIP_SAVE_LIMIT
+      }
+    });
+    return errorResponse(
+      c,
+      403,
+      "FREE_TRIP_LIMIT_REACHED",
+      `무료 플랜은 저장 여행 ${FREE_TRIP_SAVE_LIMIT}개까지 지원합니다. 프리미엄에서 무제한 저장을 사용할 수 있어요.`
+    );
+  }
+
   const trip = await createTrip(c.env.DB, userId, input);
   await createAuditLog(c.env.DB, {
     userId,
     action: "trip.create",
     entityType: "trip",
     entityId: trip.id,
-    requestId: requestId(c)
+    requestId: requestId(c),
+    metadata: {
+      plan: entitlements.length ? "premium" : "free",
+      activeTripCountBeforeCreate: activeTripCount,
+      freeLimit: FREE_TRIP_SAVE_LIMIT
+    }
   });
   return c.json({ ok: true, trip: toPublicTrip(trip), requestId: c.get("requestId") }, 201);
 });

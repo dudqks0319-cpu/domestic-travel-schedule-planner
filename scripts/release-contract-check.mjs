@@ -87,6 +87,8 @@ for (const file of [
 }
 
 const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
+const tripDb = readText("services/api-worker/src/db/trips.ts");
+const auditDb = readText("services/api-worker/src/db/audit.ts");
 const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
 const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
@@ -242,6 +244,50 @@ const exportDownloadContracts = [
 for (const [content, expectedText, label] of exportDownloadContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing export download contract: ${label}`);
+  }
+}
+
+const premiumStorageContracts = [
+  [
+    tripRoutes,
+    "FREE_TRIP_SAVE_LIMIT",
+    "Worker trip creation must define the free saved-trip limit"
+  ],
+  [
+    tripRoutes,
+    "listActiveEntitlements(c.env.DB, userId)",
+    "Worker trip creation must check active premium entitlements"
+  ],
+  [
+    tripRoutes,
+    "FREE_TRIP_LIMIT_REACHED",
+    "Free saved-trip limit must return a stable API error code"
+  ],
+  [
+    tripRoutes,
+    "trip.create_denied",
+    "Free saved-trip limit denial must be audit logged"
+  ],
+  [
+    tripDb,
+    "countActiveTrips",
+    "Trip DB layer must expose an active trip count helper"
+  ],
+  [
+    auditDb,
+    '"freeLimit"',
+    "Audit metadata allowlist must include the free limit"
+  ],
+  [
+    auditDb,
+    '"activeTripCountBeforeCreate"',
+    "Audit metadata allowlist must include the pre-create trip count"
+  ]
+];
+
+for (const [content, expectedText, label] of premiumStorageContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing premium storage contract: ${label}`);
   }
 }
 

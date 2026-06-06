@@ -1674,3 +1674,33 @@ Remaining risks:
 - Live Apple/Google IAP SDK integration is still required before real store purchase and restore flows can submit receipts.
 - The current purchase action intentionally reports SDK-unavailable state instead of starting a fake purchase.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Premium Saved Trip Limit Result Record
+
+Plan:
+- Make "unlimited trip storage" a real server-side premium benefit, not only UI copy.
+- Enforce a free saved-trip limit in the Worker trip creation path.
+- Audit both allowed creates and free-limit denials without logging sensitive trip detail.
+- Add release contract checks so the storage policy cannot silently disappear.
+
+Completed:
+- Added `countActiveTrips()` to the Worker trip DB layer.
+- Added `FREE_TRIP_SAVE_LIMIT = 3` to the Worker trip creation route.
+- Blocked non-premium users from creating more than 3 active saved trips with stable error code `FREE_TRIP_LIMIT_REACHED`.
+- Kept active premium entitlement holders on unlimited saved trips.
+- Added audit metadata allowlist keys for the storage policy.
+- Added release contract checks for the free limit, entitlement check, denial code, audit record, and active trip count helper.
+- Documented the free saved-trip limit in the monetization policy.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm test`
+- `npm run check:release-contract`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- The mobile trip creation surfaces still use generic failure handling for `FREE_TRIP_LIMIT_REACHED`; an upsell-specific error view can improve conversion.
+- Active entitlement state still depends on live Apple/Google validation being completed before production purchases can unlock the limit automatically.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

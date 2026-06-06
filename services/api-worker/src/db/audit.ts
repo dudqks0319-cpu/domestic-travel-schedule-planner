@@ -28,6 +28,10 @@ const ALLOWED_METADATA_KEYS = new Set([
   "deletedOperationalEvents",
   "deletedExportObjects",
   "expiredTripExports",
+  "plan",
+  "activeTripCount",
+  "activeTripCountBeforeCreate",
+  "freeLimit",
   "dryRun"
 ]);
 

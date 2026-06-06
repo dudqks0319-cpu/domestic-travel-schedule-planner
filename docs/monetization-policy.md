@@ -25,6 +25,8 @@ Premium unlocks:
 - weather-based alternative plans
 - collaboration-ready features
 
+Free users can keep up to 3 active saved trips. The limit is enforced by the Worker `POST /api/v1/trips` route using server-side active entitlement state; the mobile client must only present the plan state and cannot override the storage policy.
+
 Digital premium purchases must use Apple IAP or Google Play Billing. The Worker endpoint `/api/v1/monetization/entitlements/verify` stores entitlement state and is ready for store validation integration. Do not route digital premium purchases through an external PG inside the mobile app.
 
 The mobile client must not decide premium status by itself. Apple/Google verification requests may submit a store receipt or transaction id to the Worker, but the Worker stores only a hash and returns `pending` until live store validation is implemented. Manual active entitlements are allowed only outside production for operations/testing.
