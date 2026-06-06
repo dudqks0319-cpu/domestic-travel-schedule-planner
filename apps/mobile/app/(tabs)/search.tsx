@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -38,6 +38,12 @@ interface SearchResultItem {
   place: NormalizedPlaceDto;
 }
 
+interface DayOption {
+  dayNumber: number;
+  label: string;
+  dateLabel: string;
+}
+
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 
 const CATEGORIES: { key: CategoryKey; label: string; query?: string }[] = [
@@ -62,20 +68,48 @@ function categoryQuery(key: CategoryKey): string | undefined {
   return CATEGORIES.find((category) => category.key === key)?.query;
 }
 
-function dayNumberForCurrentTrip(currentTrip: Record<string, unknown>): number {
-  const startDate = typeof currentTrip.startDate === "string" ? currentTrip.startDate : "";
-  const endDate = typeof currentTrip.endDate === "string" ? currentTrip.endDate : "";
-  if (!startDate || !endDate) {
-    return 1;
+function parseDateOnly(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
   }
 
-  return 1;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateLabel(date: Date): string {
+  const weekLabel = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()] ?? "";
+  return `${date.getMonth() + 1}.${date.getDate()} (${weekLabel})`;
+}
+
+function buildDayOptions(currentTrip: Record<string, unknown> | null): DayOption[] {
+  const startDateText = typeof currentTrip?.startDate === "string" ? currentTrip.startDate : "";
+  const endDateText = typeof currentTrip?.endDate === "string" ? currentTrip.endDate : "";
+  const startDate = parseDateOnly(startDateText);
+  const endDate = parseDateOnly(endDateText);
+
+  if (!startDate || !endDate) {
+    return [{ dayNumber: 1, label: "1일차", dateLabel: "날짜 미정" }];
+  }
+
+  const diffDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const dayCount = Math.max(1, Math.min(diffDays, 15));
+  return Array.from({ length: dayCount }).map((_, index) => {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + index);
+    return {
+      dayNumber: index + 1,
+      label: `${index + 1}일차`,
+      dateLabel: formatDateLabel(date)
+    };
+  });
 }
 
 async function persistPlaceToRemoteTrip(
   currentTrip: Record<string, unknown>,
   place: NormalizedPlaceDto,
-  nextSortOrder: number
+  nextSortOrder: number,
+  dayNumber: number
 ): Promise<boolean> {
   const tripId = typeof currentTrip.id === "string" ? currentTrip.id : "";
   if (!tripId || tripId.startsWith("trip_")) {
@@ -90,7 +124,7 @@ async function persistPlaceToRemoteTrip(
       address: place.roadAddress || place.address,
       lat: place.lat,
       lng: place.lng,
-      dayNumber: dayNumberForCurrentTrip(currentTrip),
+      dayNumber,
       sortOrder: nextSortOrder,
       isSponsored: place.isSponsored,
       ...(place.sponsorLabel ? { sponsorLabel: place.sponsorLabel } : {})
@@ -101,7 +135,7 @@ async function persistPlaceToRemoteTrip(
   }
 }
 
-async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<{
+async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: number): Promise<{
   count: number;
   remoteSaved: boolean;
 }> {
@@ -129,13 +163,14 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto): Promise<{
       id: place.id,
       name: place.name,
       latitude: place.lat,
-      longitude: place.lng
+      longitude: place.lng,
+      dayNumber
     });
   }
 
   const remoteSaved = alreadyAdded
     ? false
-    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length);
+    : await persistPlaceToRemoteTrip(currentTrip, place, routePoints.length, dayNumber);
 
   await AsyncStorage.setItem(
     CURRENT_TRIP_STORAGE_KEY,
@@ -156,6 +191,36 @@ export default function SearchScreen() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [dayOptions, setDayOptions] = useState<DayOption[]>([{ dayNumber: 1, label: "1일차", dateLabel: "날짜 미정" }]);
+  const [selectedDayNumber, setSelectedDayNumber] = useState(1);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadTripDays = async () => {
+      const rawTrip = await AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY).catch(() => null);
+      const currentTrip =
+        rawTrip && rawTrip.trim()
+          ? (JSON.parse(rawTrip) as Record<string, unknown>)
+          : null;
+      const nextOptions = buildDayOptions(currentTrip);
+      if (!mounted) {
+        return;
+      }
+      setDayOptions(nextOptions);
+      setSelectedDayNumber((current) =>
+        nextOptions.some((option) => option.dayNumber === current)
+          ? current
+          : nextOptions[0]?.dayNumber ?? 1
+      );
+    };
+
+    void loadTripDays();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -186,17 +251,19 @@ export default function SearchScreen() {
 
   const handleAddPlace = useCallback(async (place: NormalizedPlaceDto) => {
     try {
-      const result = await addPlaceToCurrentTrip(place);
+      const result = await addPlaceToCurrentTrip(place, selectedDayNumber);
+      const selectedDayLabel =
+        dayOptions.find((option) => option.dayNumber === selectedDayNumber)?.label ?? `${selectedDayNumber}일차`;
       Alert.alert(
         "일정에 담았어요",
         result.remoteSaved
-          ? `${place.name}까지 ${result.count}개 장소가 담기고 서버에 저장됐습니다.`
-          : `${place.name}까지 ${result.count}개 장소가 이 기기에 담겼습니다.`
+          ? `${place.name}이 ${selectedDayLabel}에 담기고 서버에 저장됐습니다.`
+          : `${place.name}이 ${selectedDayLabel}에 담겼습니다. 현재 ${result.count}개 장소가 있습니다.`
       );
     } catch {
       Alert.alert("담기 실패", "장소를 일정에 담지 못했어요. 다시 시도해주세요.");
     }
-  }, []);
+  }, [dayOptions, selectedDayNumber]);
 
   const renderItem = ({ item }: { item: SearchResultItem }) => {
     const place = item.place;
@@ -282,6 +349,34 @@ export default function SearchScreen() {
           contentContainerStyle={styles.categoryRow}
         />
 
+        <View style={styles.dayPickerWrap}>
+          <Text style={styles.dayPickerLabel}>담을 날짜</Text>
+          <FlatList
+            horizontal
+            data={dayOptions}
+            keyExtractor={(item) => String(item.dayNumber)}
+            renderItem={({ item }) => {
+              const active = selectedDayNumber === item.dayNumber;
+              return (
+                <TouchableOpacity
+                  style={[styles.dayChip, active ? styles.dayChipActive : null]}
+                  onPress={() => setSelectedDayNumber(item.dayNumber)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.dayChipTitle, active ? styles.dayChipTitleActive : null]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.dayChipDate, active ? styles.dayChipDateActive : null]}>
+                    {item.dateLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayRow}
+          />
+        </View>
+
         {warnings.length ? (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>{warnings[0]}</Text>
@@ -365,6 +460,55 @@ const styles = StyleSheet.create({
   categoryChipActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
   categoryChipText: { fontSize: 13, lineHeight: 17, fontWeight: "700", color: Colors.common.gray600 },
   categoryChipTextActive: { color: Colors.young.primary },
+  dayPickerWrap: {
+    marginHorizontal: Spacing.screenPadding,
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    backgroundColor: "#FFF",
+    paddingVertical: 10
+  },
+  dayPickerLabel: {
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Colors.common.gray500,
+    fontWeight: "800"
+  },
+  dayRow: {
+    paddingHorizontal: 12,
+    gap: 8
+  },
+  dayChip: {
+    minWidth: 86,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    backgroundColor: "#F8F9FA",
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
+  dayChipActive: {
+    borderColor: Colors.young.primary,
+    backgroundColor: "#E8F4FD"
+  },
+  dayChipTitle: {
+    fontSize: 13,
+    lineHeight: 17,
+    color: Colors.common.gray700,
+    fontWeight: "800"
+  },
+  dayChipTitleActive: { color: Colors.young.primary },
+  dayChipDate: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 14,
+    color: Colors.common.gray500,
+    fontWeight: "700"
+  },
+  dayChipDateActive: { color: Colors.young.primary },
   warningBox: {
     marginHorizontal: Spacing.screenPadding,
     marginBottom: 10,

@@ -70,6 +70,7 @@ export interface TripRouteMapPoint {
   name: string;
   latitude: number;
   longitude: number;
+  dayNumber?: number;
 }
 
 export interface CurrentTripStorage {

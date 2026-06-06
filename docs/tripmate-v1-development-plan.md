@@ -361,3 +361,21 @@ Verification completed:
 Remaining risks:
 - Search still defaults new places to day 1 until a date-picker/day-selection UI is added to the add-to-trip action.
 - Local-only fallback trips cannot be remotely persisted until the user logs in and saves the draft as a server trip.
+
+## Search Day Selection Result Record
+
+Completed:
+- Added day selection chips to the mobile search screen based on `currentTrip.startDate` and `currentTrip.endDate`.
+- Search add-to-trip now uses the selected day number for local route point metadata.
+- Remote `/trips/:tripId/places` persistence now receives the selected `dayNumber`.
+- Extended `TripRouteMapPoint` with optional `dayNumber` so local saved places retain their selected itinerary day.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Expo web smoke at `/search` with 390px viewport and zero console errors.
+
+Remaining risks:
+- Search add-to-trip does not yet create missing remote `trip_days` rows automatically; it writes `dayNumber` directly to `trip_places`.
+- A fuller saved-trip editor should later expose moving a searched place between days after it is added.
