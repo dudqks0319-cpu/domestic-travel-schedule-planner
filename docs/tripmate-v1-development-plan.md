@@ -283,3 +283,23 @@ Verification required before Phase 0 commit:
 - `npm run api:build`
 - `npm run planner:build`
 - `git diff --check`
+
+## Auth Hardening Result Record
+
+Completed:
+- Added Worker auth endpoints for Kakao login, token refresh, current user, logout, and account/data deletion.
+- Replaced temporary Bearer-string ownership with HMAC-signed access/refresh tokens.
+- Stored refresh sessions in D1 and revoked sessions on logout.
+- Made account deletion soft-delete user, sessions, trips, trip days, trip places, and share links.
+- Updated mobile auth provider to call server logout and account deletion.
+- Added a profile-screen entry point for account and data deletion.
+
+Verification completed:
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- Worker local smoke for login, me, refresh, authenticated trip write, logout revoke, and account deletion.
+
+Remaining risks:
+- Production Kakao login still requires real Kakao access token validation against Kakao userinfo.
+- Store receipt validation remains a later monetization hardening item.

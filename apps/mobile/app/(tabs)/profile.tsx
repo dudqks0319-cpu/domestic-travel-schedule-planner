@@ -42,7 +42,7 @@ function ActionCard({ icon, label, point }: { icon: keyof typeof Ionicons.glyphM
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { deleteAccount, logout } = useAuth();
   const [entitlement, setEntitlement] = useState<PremiumEntitlementState>(DEFAULT_FREE_ENTITLEMENT);
   const [entitlementStatus, setEntitlementStatus] = useState<"loading" | "ready" | "guest">("loading");
 
@@ -84,6 +84,24 @@ export default function ProfileScreen() {
         onPress: async () => {
           await logout();
           router.replace("/auth/login");
+        }
+      }
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert("계정 삭제", "저장된 여행, 공유 링크, 세션 데이터가 삭제됩니다.", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "삭제",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteAccount();
+            router.replace("/auth/login");
+          } catch {
+            Alert.alert("계정 삭제", "계정 삭제 요청에 실패했어요. 잠시 후 다시 시도해주세요.");
+          }
         }
       }
     ]);
@@ -184,6 +202,10 @@ export default function ProfileScreen() {
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.75}>
           <Text style={styles.logoutText}>로그아웃</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount} activeOpacity={0.75}>
+          <Text style={styles.deleteText}>계정 및 데이터 삭제</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -435,6 +457,19 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   logoutText: {
+    fontSize: 14,
+    color: Theme.colors.error,
+    fontWeight: "800"
+  },
+  deleteButton: {
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    paddingVertical: 12,
+    alignItems: "center"
+  },
+  deleteText: {
     fontSize: 14,
     color: Theme.colors.error,
     fontWeight: "800"

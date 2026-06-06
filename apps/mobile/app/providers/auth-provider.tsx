@@ -46,6 +46,7 @@ interface AuthContextValue {
   loginWithKakao: (kakaoAccessToken: string) => Promise<void>;
   setSession: (session: AuthSession) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -89,6 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    await authApi.logout().catch(() => undefined);
+    await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
+    setUser(null);
+    setStatus("unauthenticated");
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    await authApi.deleteMe();
     await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
     setUser(null);
     setStatus("unauthenticated");
@@ -190,9 +199,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loginWithKakao,
       setSession,
-      logout
+      logout,
+      deleteAccount
     }),
-    [loginWithKakao, logout, setSession, status, user]
+    [deleteAccount, loginWithKakao, logout, setSession, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

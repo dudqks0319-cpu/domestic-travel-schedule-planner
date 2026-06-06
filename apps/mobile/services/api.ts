@@ -113,6 +113,7 @@ export const authApi = {
     apiClient.post("/auth/login/kakao", { kakaoAccessToken }),
   getMe: () => apiClient.get("/auth/me"),
   logout: () => apiClient.post("/auth/logout"),
+  deleteMe: () => apiClient.delete("/auth/me"),
 };
 
 export const plannerApi = {

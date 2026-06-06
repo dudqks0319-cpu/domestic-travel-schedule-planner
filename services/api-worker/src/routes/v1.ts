@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
+import { authRoutes } from "./auth";
 import { healthRoutes } from "./health";
 import { monetizationRoutes } from "./monetization";
 import { placeRoutes } from "./places";
@@ -11,6 +12,8 @@ import { shareRoutes, tripRoutes } from "./trips";
 export const v1Routes = new Hono<AppBindings>();
 
 v1Routes.route("/health", healthRoutes);
+
+v1Routes.route("/auth", authRoutes);
 
 v1Routes.route("/places", placeRoutes);
 

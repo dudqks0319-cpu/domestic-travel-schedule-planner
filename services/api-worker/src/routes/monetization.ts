@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 
+import { verifyToken } from "../auth/tokens";
 import type { AppBindings } from "../bindings";
 import {
   createAdEvent,
@@ -37,19 +38,15 @@ const ALLOWED_ENTITLEMENT_STATUSES = new Set<EntitlementStatus>([
   "pending"
 ]);
 
-function optionalUserId(c: Context<AppBindings>): string | undefined {
-  const explicitUserId = c.req.header("x-tripmate-user-id")?.trim();
-  if (explicitUserId) {
-    return explicitUserId;
-  }
-
+async function optionalUserId(c: Context<AppBindings>): Promise<string | undefined> {
   const authorization = c.req.header("authorization");
   if (!authorization?.startsWith("Bearer ")) {
     return undefined;
   }
 
   const token = authorization.slice("Bearer ".length).trim();
-  return token || undefined;
+  const payload = await verifyToken(c.env, token, "access");
+  return payload?.sub;
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -106,7 +103,7 @@ monetizationRoutes.post("/ad-events", async (c) => {
     return errorResponse(c, 400, "INVALID_AD_EVENT", "지원하지 않는 광고 이벤트입니다.");
   }
 
-  const userId = optionalUserId(c);
+  const userId = await optionalUserId(c);
   const eventId = await createAdEvent(c.env.DB, {
     ...(userId ? { userId } : {}),
     placement,
@@ -136,7 +133,7 @@ monetizationRoutes.post("/affiliate-clicks", async (c) => {
     return errorResponse(c, 400, "INVALID_AFFILIATE_TARGET", "안전한 외부 예약 링크가 필요합니다.");
   }
 
-  const userId = optionalUserId(c);
+  const userId = await optionalUserId(c);
   const clickId = await createAffiliateClick(c.env.DB, {
     ...(userId ? { userId } : {}),
     ...(tripId ? { tripId } : {}),

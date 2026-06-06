@@ -19,6 +19,7 @@ export interface Env {
 export interface RequestContextVariables {
   requestId: string;
   userId?: string;
+  sessionId?: string;
 }
 
 export type AppBindings = {
