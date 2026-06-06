@@ -9,9 +9,6 @@ import React, {
 
 import { authApi } from "../../services/api";
 import {
-  clearAuthToken,
-  clearSessionTokens,
-  clearUserProfile,
   getAccessToken,
   getAuthToken,
   getRefreshToken,
@@ -21,7 +18,7 @@ import {
   setRefreshToken,
   setUserProfile
 } from "../../lib/secure-storage";
-import { clearLocalTripDraftData } from "../../services/localTripStorage";
+import { clearLocalAuthState } from "../../services/authCleanup";
 
 import type { UserSignupProfile } from "../../types";
 
@@ -76,15 +73,6 @@ function mergeUserProfile(
     foods: existingProfile?.foods ?? [],
     childAgeGroups: existingProfile?.childAgeGroups ?? []
   };
-}
-
-async function clearLocalAuthState(): Promise<void> {
-  await Promise.all([
-    clearAuthToken(),
-    clearSessionTokens(),
-    clearUserProfile(),
-    clearLocalTripDraftData()
-  ]);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

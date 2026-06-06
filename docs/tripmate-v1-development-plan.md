@@ -2120,3 +2120,30 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to force AsyncStorage cleanup failure or simulate it in development and verify the exact user-facing notice.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Expired Session Local Cleanup Boundary Result Record
+
+Plan:
+- Share the mobile local auth cleanup path across AuthProvider and the API interceptor.
+- Clear auth tokens, stored user profile, local `currentTrip`, and cached optimized routes when refresh cannot recover a 401 response.
+- Avoid leaving a logged-out device with stale profile or itinerary data after token expiry.
+- Add release contract and privacy checklist coverage for API-interceptor cleanup.
+
+Completed:
+- Added `apps/mobile/services/authCleanup.ts` with exported `clearLocalAuthState()`.
+- Updated AuthProvider logout, account deletion, and bootstrap invalid-session cleanup to use the shared cleanup service.
+- Updated the API interceptor to call the same cleanup service when no refresh token exists or refresh fails.
+- Added release contract checks for the shared cleanup service and API-interceptor cleanup usage.
+- Updated the privacy/security checklist with expired-session local cleanup coverage.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to expire/rotate tokens and confirm app navigation/state resets cleanly after interceptor cleanup.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

@@ -96,6 +96,7 @@ const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
 const monetizationRoutes = readText("services/api-worker/src/routes/monetization.ts");
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
+const authCleanup = readText("apps/mobile/services/authCleanup.ts");
 const profileScreen = readText("apps/mobile/app/(tabs)/profile.tsx");
 const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
 const v1Routes = readText("services/api-worker/src/routes/v1.ts");
@@ -565,12 +566,12 @@ for (const [content, expectedText, label] of rewardedExportContracts) {
 
 const mobileAuthPrivacyContracts = [
   [
-    authProvider,
-    "async function clearLocalAuthState",
-    "Mobile auth provider must centralize local auth cleanup"
+    authCleanup,
+    "export async function clearLocalAuthState",
+    "Mobile auth cleanup must be shared outside AuthProvider"
   ],
   [
-    authProvider,
+    authCleanup,
     "clearLocalTripDraftData()",
     "Mobile logout/account cleanup must clear local trip drafts and cached routes"
   ],
@@ -578,6 +579,11 @@ const mobileAuthPrivacyContracts = [
     authProvider,
     "await clearLocalAuthState();",
     "Mobile logout and invalid-session cleanup must use local auth cleanup"
+  ],
+  [
+    mobileApi,
+    "await clearLocalAuthState();",
+    "Mobile API interceptor must clear local auth/profile/trip state when refresh cannot recover"
   ]
 ];
 

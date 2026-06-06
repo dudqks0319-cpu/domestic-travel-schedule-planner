@@ -19,6 +19,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Public share pages use no-store/noindex/no-referrer headers and do not render share token fragments.
 - [ ] Public share JSON uses no-store/noindex/no-referrer headers and does not echo bearer share tokens.
 - [ ] Logout clears SecureStore tokens, local trip drafts, and cached optimized routes.
+- [ ] Expired sessions clear SecureStore tokens, local profile data, local trip drafts, and cached optimized routes.
 - [ ] Deleting a saved trip clears the matching open local draft and cached optimized route on that device.
 - [ ] Account deletion and data deletion flows are exposed or documented.
 - [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.

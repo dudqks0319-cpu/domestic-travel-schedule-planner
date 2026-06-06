@@ -1,10 +1,10 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import {
-  clearSessionTokens,
   getAccessToken,
   getRefreshToken,
   setAccessToken,
 } from "../lib/secure-storage";
+import { clearLocalAuthState } from "./authCleanup";
 import { getApiOriginUrl, getApiV1BaseUrl } from "./apiBase";
 
 const API_BASE = getApiV1BaseUrl();
@@ -66,7 +66,7 @@ apiClient.interceptors.response.use(
     }
     const refreshToken = await getRefreshToken();
     if (!refreshToken) {
-      await clearSessionTokens();
+      await clearLocalAuthState();
       return Promise.reject(error);
     }
     originalRequest._retry = true;
@@ -77,7 +77,7 @@ apiClient.interceptors.response.use(
       applyAuthorizationHeader(originalRequest, newToken);
       return apiClient(originalRequest as AxiosRequestConfig);
     } catch {
-      await clearSessionTokens();
+      await clearLocalAuthState();
     }
     return Promise.reject(error);
   }
