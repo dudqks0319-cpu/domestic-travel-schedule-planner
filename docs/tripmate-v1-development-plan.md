@@ -1876,3 +1876,30 @@ Remaining risks:
 - Live Worker smoke with D1 is still required to execute the public share token-redaction assertion against a real database.
 - Public share URLs remain bearer links; recipient-scoped access or password-protected sharing remains a future privacy hardening option.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Public Share Smoke Header Assertions Result Record
+
+Plan:
+- Make live Worker smoke verify public share privacy headers, not only the JSON body.
+- Rename the smoke variable from `shareId` to `shareToken` so the public bearer-link model is clear in test code.
+- Add release contract checks that keep the public share header assertions in the smoke script.
+
+Completed:
+- Added `assertHeaderIncludes()` to `scripts/worker-v1-smoke.mjs`.
+- Updated the public share smoke step to assert `cache-control` includes `no-store`.
+- Updated the public share smoke step to assert `x-robots-tag` includes `noindex`.
+- Updated the public share smoke step to assert `referrer-policy` includes `no-referrer`.
+- Added release contract checks for the new public share smoke header assertions.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Header assertions are syntax/static verified locally; live execution still requires a running local or preview Worker with D1/KV/R2 bindings.
+- Public share HTML page headers are contract-checked statically; a browser-level preview smoke remains useful before production.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

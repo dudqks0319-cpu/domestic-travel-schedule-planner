@@ -342,6 +342,21 @@ const publicShareApiPrivacyContracts = [
     workerSmokeScript,
     "public share read should not echo the bearer token",
     "Worker smoke must verify public share token redaction"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should prevent caching",
+    "Worker smoke must verify public share cache-control headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should prevent indexing",
+    "Worker smoke must verify public share noindex headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share read should avoid referrer leaks",
+    "Worker smoke must verify public share referrer-policy headers"
   ]
 ];
 

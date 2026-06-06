@@ -55,7 +55,7 @@ let refreshToken = "";
 let tripId = "";
 let dayId = "";
 let placeId = "";
-let shareId = "";
+let shareToken = "";
 let workerEnvironment = "";
 const limitTripIds = [];
 
@@ -102,6 +102,14 @@ function assertOk(result, label) {
   assert(
     result.response.ok,
     `${label}: expected ok status, got ${result.response.status} ${JSON.stringify(result.body)}`
+  );
+}
+
+function assertHeaderIncludes(result, headerName, expectedValue, label) {
+  const actualValue = result.response.headers.get(headerName) ?? "";
+  assert(
+    actualValue.toLowerCase().includes(expectedValue.toLowerCase()),
+    `${label}: expected ${headerName} to include "${expectedValue}", got "${actualValue}"`
   );
 }
 
@@ -352,11 +360,14 @@ await step("trip, day, place, and share CRUD", async () => {
 
   const share = await request("POST", `/api/v1/trips/${tripId}/share`);
   assertStatus(share, 201, "POST /api/v1/trips/:tripId/share");
-  shareId = share.body?.share?.token ?? "";
-  assert(shareId, "share create should return public token");
-  const publicShare = await request("GET", `/api/v1/share/${shareId}`, { auth: false });
+  shareToken = share.body?.share?.token ?? "";
+  assert(shareToken, "share create should return public token");
+  const publicShare = await request("GET", `/api/v1/share/${shareToken}`, { auth: false });
   assertOk(publicShare, "GET /api/v1/share/:shareId");
   assert(!publicShare.body?.share?.token, "public share read should not echo the bearer token");
+  assertHeaderIncludes(publicShare, "cache-control", "no-store", "public share read should prevent caching");
+  assertHeaderIncludes(publicShare, "x-robots-tag", "noindex", "public share read should prevent indexing");
+  assertHeaderIncludes(publicShare, "referrer-policy", "no-referrer", "public share read should avoid referrer leaks");
 });
 
 await step("free saved trip limit", async () => {
