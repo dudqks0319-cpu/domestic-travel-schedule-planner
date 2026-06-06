@@ -234,8 +234,13 @@ const d1MigrationRunnerContracts = [
   ],
   [
     d1MigrateScript,
-    "allowFailure: planOnly",
-    "D1 migration runner plan mode must tolerate a missing ledger table without writing"
+    "allowedFailurePattern",
+    "D1 migration runner plan mode must narrow tolerated failures to known missing-ledger errors"
+  ],
+  [
+    d1MigrateScript,
+    "no such table:\\s*schema_migrations",
+    "D1 migration runner plan mode must tolerate only a missing ledger table without writing"
   ]
 ];
 

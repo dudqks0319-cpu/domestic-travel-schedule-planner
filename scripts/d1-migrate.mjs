@@ -147,7 +147,7 @@ function runWranglerD1(databaseName, args, options = {}) {
         return;
       }
 
-      if (options.allowFailure) {
+      if (options.allowedFailurePattern?.test(output)) {
         resolve(output);
         return;
       }
@@ -185,7 +185,11 @@ async function listAppliedMigrations(databaseName) {
   const output = await runWranglerD1(
     databaseName,
     [`--command=SELECT name FROM ${migrationLedgerTable} ORDER BY name;`],
-    { label: `${target}: read ${migrationLedgerTable}`, capture: true, allowFailure: planOnly }
+    {
+      label: `${target}: read ${migrationLedgerTable}`,
+      capture: true,
+      ...(planOnly ? { allowedFailurePattern: /no such table:\s*schema_migrations/i } : {})
+    }
   );
 
   return parseAppliedMigrations(output);

@@ -3774,3 +3774,33 @@ Verification completed:
 Remaining risks:
 - Plan mode still reads remote D1 and therefore requires real Cloudflare binding IDs and auth for live evidence.
 - Operators still need to backfill `schema_migrations` manually if a remote database was migrated before ledger adoption.
+
+## Remote D1 Migration Plan Failure Hardening Result Record
+
+Plan:
+- Prevent D1 plan mode from hiding real remote failures.
+- Allow missing `schema_migrations` only as the expected first-run ledger absence.
+- Keep auth, network, binding, and SQL errors as hard failures.
+- Update release contracts and deployment docs to preserve this safety boundary.
+
+Completed:
+- Replaced broad `allowFailure` handling in `scripts/d1-migrate.mjs` with `allowedFailurePattern`.
+- Restricted plan-mode tolerated failures to `/no such table:\s*schema_migrations/i`.
+- Updated release contract checks for narrowed missing-ledger-only failure handling.
+- Updated Cloudflare deployment docs to state that auth, network, binding, and SQL errors still fail in plan mode.
+
+Verification completed:
+- `node --check scripts/d1-migrate.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run d1:plan:preview -- --help`
+- `npm run d1:plan:production -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Missing-ledger handling has not been exercised against a real remote D1 database without `schema_migrations`.
+- Live auth/network/binding failure behavior still needs real Cloudflare execution evidence before release handoff.

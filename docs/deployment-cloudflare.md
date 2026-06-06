@@ -46,7 +46,7 @@ Before preview deploy:
 - Apply preview D1 migrations with `npm run d1:migrate:preview`.
 - Run `npm run release:preview:gate -- --base-url https://<preview-worker>` from a Cloudflare-authenticated shell. This includes `check:env:preview`, `check:secrets:preview`, release contract checks, tests, health checks, and strict Naver provider smoke by default.
 
-The D1 migration plan mode reads `schema_migrations` without writing and prints applied/pending filenames. The migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
+The D1 migration plan mode reads `schema_migrations` without writing and prints applied/pending filenames. It tolerates a missing `schema_migrations` table as zero applied migrations, but auth, network, binding, and SQL errors still fail the command. The migration runner creates `schema_migrations` if needed, records applied SQL filenames, and skips migrations that are already recorded.
 
 ## Production Deploy
 
