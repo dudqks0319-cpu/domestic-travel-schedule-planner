@@ -119,6 +119,7 @@ const forbiddenMobileKeys = [
   "NAVER_CLIENT_SECRET",
   "KAKAO_REST_API_KEY",
   "DATA_GO_KR_API_KEY",
+  "ODSAY_API_KEY",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
   "APPLE_SHARED_SECRET",
@@ -133,6 +134,12 @@ if (!fs.existsSync(mobileEnvPath)) {
   const mobileEnv = parseEnvFile(mobileEnvPath);
   if (mobileEnv.has("EXPO_PUBLIC_API_BASE_URL") && !hasNonEmptyValue(mobileEnv.get("EXPO_PUBLIC_API_BASE_URL"))) {
     warnings.push("apps/mobile/.env has empty EXPO_PUBLIC_API_BASE_URL.");
+  }
+
+  for (const key of mobileEnv.keys()) {
+    if (!key.startsWith("EXPO_PUBLIC_")) {
+      errors.push(`Forbidden non-public key in apps/mobile/.env: ${key}. Mobile env keys must start with EXPO_PUBLIC_.`);
+    }
   }
 
   for (const key of forbiddenMobileKeys) {

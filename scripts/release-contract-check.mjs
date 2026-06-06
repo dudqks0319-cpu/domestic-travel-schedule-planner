@@ -724,11 +724,24 @@ for (const text of [
   }
 }
 
+const devReadinessCheck = readText("scripts/dev-readiness-check.mjs");
 const mobileEnvExample = readText("apps/mobile/.env.example");
-for (const key of ["EXPO_PUBLIC_API_BASE_URL", "EXPO_PUBLIC_MAP_PROVIDER"]) {
+for (const key of [
+  "EXPO_PUBLIC_API_BASE_URL",
+  "EXPO_PUBLIC_MAP_PROVIDER",
+  "EXPO_PUBLIC_AFFILIATE_HOTEL_URL",
+  "EXPO_PUBLIC_AFFILIATE_RENTAL_CAR_URL",
+  "EXPO_PUBLIC_AFFILIATE_TICKET_URL",
+  "EXPO_PUBLIC_AFFILIATE_INSURANCE_URL",
+  "EXPO_PUBLIC_AFFILIATE_LOCAL_TOUR_URL"
+]) {
   if (!mobileEnvExample.includes(key)) {
     errors.push(`Missing mobile public env example key: ${key}`);
   }
+}
+
+if (!devReadinessCheck.includes('!key.startsWith("EXPO_PUBLIC_")')) {
+  errors.push("dev-readiness-check must reject non-EXPO_PUBLIC keys in apps/mobile/.env.");
 }
 
 const serverOnlyKeys = [

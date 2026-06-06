@@ -2203,3 +2203,30 @@ Verification completed:
 Remaining risks:
 - Device-level smoke is still needed to delete an open trip or expire a session while schedule/route-map/search are mounted and confirm each screen switches to a safe empty state.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Mobile Env Public-Key Gate Result Record
+
+Plan:
+- Strengthen `check:env` so every key in `apps/mobile/.env` must be explicitly public.
+- Add missing server-only route provider secret coverage for `ODSAY_API_KEY`.
+- Align the mobile `.env.example` with the public affiliate URL variables used by the app.
+- Add release contract and env documentation coverage for the stricter mobile env boundary.
+
+Completed:
+- Updated `scripts/dev-readiness-check.mjs` to reject any mobile env key that does not start with `EXPO_PUBLIC_`.
+- Added `ODSAY_API_KEY` to the mobile server-only forbidden list.
+- Added public affiliate URL keys to `apps/mobile/.env.example`.
+- Extended release contract checks to require the stricter mobile env gate and public affiliate examples.
+- Updated `docs/env.md` with the mobile public-key-only rule.
+
+Verification completed:
+- `npm run check:env`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Existing local untracked `apps/mobile/.env` files on developer machines must be corrected before `npm run check:env` can pass.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
