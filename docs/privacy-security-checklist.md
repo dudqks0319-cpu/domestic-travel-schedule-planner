@@ -23,6 +23,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Expired sessions clear SecureStore tokens, local profile data, local trip drafts, and cached optimized routes.
 - [ ] Expired-session cleanup updates AuthProvider state to unauthenticated without requiring an app restart.
 - [ ] Guest profile setup stores profile preferences only and does not mint local access or refresh tokens.
+- [ ] Guest/login screens do not collect passwords until an email authentication backend exists.
 - [ ] Deleting a saved trip clears the matching open local draft and cached optimized route on that device.
 - [ ] Schedule, route map, and search screens clear stale in-memory trip state after local trip draft cleanup.
 - [ ] Account deletion and data deletion flows are exposed or documented.

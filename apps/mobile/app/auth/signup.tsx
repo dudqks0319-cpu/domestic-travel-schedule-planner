@@ -22,8 +22,6 @@ export default function SignupScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -42,18 +40,6 @@ export default function SignupScreen() {
       newErrors.nickname = "2글자 이상 입력해주세요";
     }
 
-    if (!password) {
-      newErrors.password = "비밀번호를 입력해주세요";
-    } else if (password.length < 8) {
-      newErrors.password = "8자리 이상 입력해주세요";
-    }
-
-    if (!passwordConfirm) {
-      newErrors.passwordConfirm = "비밀번호 확인을 입력해주세요";
-    } else if (password !== passwordConfirm) {
-      newErrors.passwordConfirm = "비밀번호가 일치하지 않아요";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -67,7 +53,7 @@ export default function SignupScreen() {
       router.push("/auth/profile-setup");
     } catch {
       clearSignupMemory();
-      Alert.alert("오류", "회원가입에 실패했어요. 다시 시도해주세요.");
+      Alert.alert("오류", "게스트 프로필 설정을 시작하지 못했어요. 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
@@ -85,8 +71,8 @@ export default function SignupScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.emoji}>🗺️</Text>
-          <Text style={styles.title}>TripMate 가입하기</Text>
-          <Text style={styles.subtitle}>여행의 시작, 계정을 만들어볼까요?</Text>
+          <Text style={styles.title}>게스트 프로필 만들기</Text>
+          <Text style={styles.subtitle}>로그인 전에도 취향을 저장하고 일정 초안을 만들 수 있어요</Text>
         </View>
 
         <ProgressBar currentStep={1} totalSteps={6} />
@@ -112,31 +98,11 @@ export default function SignupScreen() {
             error={errors.nickname}
             maxLength={10}
           />
-
-          <Input
-            label="비밀번호"
-            icon="🔒"
-            placeholder="8자리 이상"
-            value={password}
-            onChangeText={setPassword}
-            error={errors.password}
-            isPassword
-          />
-
-          <Input
-            label="비밀번호 확인"
-            icon="🔒"
-            placeholder="비밀번호를 한번 더 입력"
-            value={passwordConfirm}
-            onChangeText={setPasswordConfirm}
-            error={errors.passwordConfirm}
-            isPassword
-          />
         </View>
 
         <View style={styles.buttonArea}>
           <Button
-            title="다음 단계로 →"
+            title="취향 설정 계속하기 →"
             onPress={() => void handleSignup()}
             size="large"
             loading={loading}
@@ -144,9 +110,9 @@ export default function SignupScreen() {
           />
 
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>이미 계정이 있으신가요? </Text>
+            <Text style={styles.loginText}>저장/공유까지 사용하려면 </Text>
             <TouchableOpacity onPress={() => router.push("/auth/login")}>
-              <Text style={styles.loginLink}>로그인</Text>
+              <Text style={styles.loginLink}>카카오 로그인</Text>
             </TouchableOpacity>
           </View>
         </View>

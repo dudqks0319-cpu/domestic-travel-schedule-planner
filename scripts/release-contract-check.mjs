@@ -98,6 +98,8 @@ const monetizationRoutes = readText("services/api-worker/src/routes/monetization
 const authRoutes = readText("services/api-worker/src/routes/auth.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
+const loginScreen = readText("apps/mobile/app/auth/login.tsx");
+const signupScreen = readText("apps/mobile/app/auth/signup.tsx");
 const profileSetupScreen = readText("apps/mobile/app/auth/profile-setup.tsx");
 const profileScreen = readText("apps/mobile/app/(tabs)/profile.tsx");
 const opsRoutes = readText("services/api-worker/src/routes/ops.ts");
@@ -686,6 +688,16 @@ const mobileAuthPrivacyContracts = [
     "Mobile profile setup must save guest profile data without minting local auth tokens"
   ],
   [
+    loginScreen,
+    "로그인 없이 둘러보기",
+    "Mobile login screen must expose guest mode instead of unsupported email login"
+  ],
+  [
+    signupScreen,
+    "게스트 프로필 만들기",
+    "Mobile signup route must be positioned as guest profile setup until email auth exists"
+  ],
+  [
     authCleanup,
     "export async function clearLocalAuthState",
     "Mobile auth cleanup must be shared outside AuthProvider"
@@ -741,6 +753,17 @@ for (const [content, expectedText, label] of mobileAuthPrivacyContracts) {
 for (const text of ["signup_auth_", "signup_access_", "signup_refresh_", "setSession({"]) {
   if (profileSetupScreen.includes(text)) {
     errors.push(`Mobile profile setup must not mint fake signup auth tokens: ${text}`);
+  }
+}
+
+for (const [content, label] of [
+  [loginScreen, "Mobile login screen"],
+  [signupScreen, "Mobile guest profile screen"]
+]) {
+  for (const text of ["비밀번호", "passwordConfirm", "isPassword"]) {
+    if (content.includes(text)) {
+      errors.push(`${label} must not collect password fields until email authentication is implemented: ${text}`);
+    }
   }
 }
 

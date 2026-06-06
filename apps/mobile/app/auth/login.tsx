@@ -7,50 +7,13 @@ import { useRouter } from "expo-router";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
-import Button from "../../components/common/Button";
-import Input from "../../components/common/Input";
 import { requestKakaoAccessToken } from "../../lib/kakao-login";
 import { useAuth } from "../providers/auth-provider";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { loginWithKakao } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [kakaoLoading, setKakaoLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!email) {
-      newErrors.email = "이메일을 입력해주세요";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "올바른 이메일 형식이 아니에요";
-    }
-    if (!password) {
-      newErrors.password = "비밀번호를 입력해주세요";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      const safeEmail = email.trim().toLowerCase();
-      if (!safeEmail || !password.trim()) {
-        Alert.alert("안내", "현재는 카카오 로그인만 지원합니다.");
-        return;
-      }
-      Alert.alert("안내", "현재는 카카오 로그인만 지원합니다.");
-    } catch {
-      Alert.alert("오류", "로그인에 실패했어요.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleKakaoLogin = async () => {
     setKakaoLoading(true);
@@ -79,7 +42,7 @@ export default function LoginScreen() {
         <View style={styles.header}>
           <Text style={styles.emoji}>🗺️</Text>
           <Text style={styles.title}>다시 만나서 반가워요!</Text>
-          <Text style={styles.subtitle}>TripMate에 로그인하세요</Text>
+          <Text style={styles.subtitle}>저장, 공유, 프리미엄 기능은 카카오 로그인으로 이어집니다</Text>
         </View>
 
         <View style={styles.socialArea}>
@@ -102,40 +65,14 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        <View style={styles.form}>
-          <Input
-            label="이메일"
-            icon="📧"
-            placeholder="example@email.com"
-            value={email}
-            onChangeText={setEmail}
-            error={errors.email}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <Input
-            label="비밀번호"
-            icon="🔒"
-            placeholder="비밀번호 입력"
-            value={password}
-            onChangeText={setPassword}
-            error={errors.password}
-            isPassword
-          />
-        </View>
-
         <View style={styles.buttonArea}>
-          <Button
-            title="이메일 로그인"
-            onPress={() => { void handleLogin(); }}
-            size="large"
-            loading={loading}
-            style={{ width: "100%" }}
-          />
+          <TouchableOpacity style={styles.guestButton} onPress={() => router.replace("/(tabs)")}>
+            <Text style={styles.guestButtonText}>로그인 없이 둘러보기</Text>
+          </TouchableOpacity>
           <View style={styles.signupRow}>
-            <Text style={styles.signupText}>아직 계정이 없으신가요? </Text>
+            <Text style={styles.signupText}>취향을 저장하고 시작하려면 </Text>
             <TouchableOpacity onPress={() => router.push("/auth/signup")}>
-              <Text style={styles.signupLink}>회원가입</Text>
+              <Text style={styles.signupLink}>게스트 프로필 만들기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -165,8 +102,17 @@ const styles = StyleSheet.create({
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.common.gray200 },
   dividerText: { marginHorizontal: 12, fontSize: 13, color: Colors.common.gray500 },
-  form: { paddingHorizontal: Spacing.screenPadding },
   buttonArea: { paddingHorizontal: Spacing.screenPadding, paddingTop: Spacing.xl, alignItems: "center" },
+  guestButton: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: Colors.common.gray200,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF"
+  },
+  guestButtonText: { fontSize: 16, fontWeight: "700", color: Colors.common.gray700 },
   signupRow: { flexDirection: "row", marginTop: 24 },
   signupText: { fontSize: 14, color: Colors.common.gray500 },
   signupLink: { fontSize: 14, color: Colors.young.primary, fontWeight: "700" },

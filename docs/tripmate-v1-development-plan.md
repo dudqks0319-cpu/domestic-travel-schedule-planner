@@ -2516,3 +2516,30 @@ Verification completed:
 Remaining risks:
 - Email/password account creation remains a product/UI placeholder; current authenticated release path is Kakao login.
 - Guest profile preferences are local to the device until the user logs in and the profile is merged through Kakao login.
+
+## Guest Auth UI Password Collection Result Record
+
+Plan:
+- Remove unsupported email/password login UI from the login screen.
+- Remove password and password confirmation collection from the guest profile setup entry screen.
+- Reposition the former signup route as guest profile setup until a real email authentication backend exists.
+- Add release contract and privacy checklist coverage so password collection cannot return silently before backend support exists.
+
+Completed:
+- Updated the login screen to show Kakao login, "로그인 없이 둘러보기", and a guest profile setup link instead of email/password login.
+- Updated the signup route copy to "게스트 프로필 만들기" and removed password/password confirmation state, validation, and input fields.
+- Kept guest profile setup collecting only email/nickname preferences before the multi-step preference flow.
+- Added release contract checks that reject password field copy/props in login and guest profile screens.
+- Added privacy checklist coverage for not collecting passwords without an email authentication backend.
+
+Verification completed:
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- A real email/password account system would require Worker endpoints, password hashing policy, reset flows, abuse prevention, and store/privacy copy before reintroducing password fields.
+- Device-level smoke should confirm the guest start, guest profile setup, and Kakao login paths route as expected.
