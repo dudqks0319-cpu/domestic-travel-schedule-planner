@@ -179,18 +179,30 @@ await step("planner generate and replan", async () => {
 });
 
 await step("route optimize", async () => {
+  const routePayload = {
+    mode: "driving",
+    points: [
+      { id: "a", name: "강릉역", lat: 37.7644, lng: 128.8995 },
+      { id: "b", name: "안목해변", lat: 37.7715, lng: 128.9489 }
+    ]
+  };
   const result = await request("POST", "/api/v1/routes/optimize", {
     auth: false,
-    json: {
-      mode: "driving",
-      points: [
-        { id: "a", name: "강릉역", lat: 37.7644, lng: 128.8995 },
-        { id: "b", name: "안목해변", lat: 37.7715, lng: 128.9489 }
-      ]
-    }
+    json: routePayload
   });
   assertOk(result, "POST /api/v1/routes/optimize");
   assert(result.body?.route?.provider === "fallback", "route optimize should return explicit fallback route");
+  assert(
+    result.body?.cacheStatus === "hit" || result.body?.cacheStatus === "miss",
+    "route optimize should return a stable cache status"
+  );
+
+  const cachedResult = await request("POST", "/api/v1/routes/optimize", {
+    auth: false,
+    json: routePayload
+  });
+  assertOk(cachedResult, "POST /api/v1/routes/optimize cached");
+  assert(cachedResult.body?.cacheStatus === "hit", "route optimize should return cacheStatus hit on repeated request");
 });
 
 await step("places search contract", async () => {

@@ -2802,3 +2802,32 @@ Verification completed:
 Remaining risks:
 - Live provider timeout behavior still needs preview smoke with real provider secrets and controlled slow/failure scenarios.
 - The timeout value may need tuning after observing real provider latency in production telemetry.
+
+## Route Optimize Cache Result Record
+
+Plan:
+- Use the existing D1 `route_cache` table for `/api/v1/routes/optimize`.
+- Build a stable hashed cache key from travel mode and normalized route coordinates.
+- Return `cacheStatus` so clients and smoke tests can distinguish cached responses.
+- Add smoke and release contract coverage for repeated route optimization cache hits.
+
+Completed:
+- Added `services/api-worker/src/db/route-cache.ts` with route cache key hashing, 6-hour TTL, D1 read, and D1 upsert helpers.
+- Updated `/api/v1/routes/optimize` to read cache before computing fallback summaries and write computed route summaries back to D1.
+- Added `cacheStatus: "hit" | "miss"` to route optimize responses.
+- Extended Worker smoke to call the same route request twice and assert the repeated request returns `cacheStatus: "hit"`.
+- Added release contract checks for route cache helper behavior, route usage, and smoke coverage.
+- Updated provider policy docs with the implemented route cache TTL.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health` initially failed on a local type import mismatch, then passed after importing `NormalizedRoute` from `providers/types`.
+- `npm run check:dev` initially failed on the same type import mismatch, then passed after the fix.
+
+Remaining risks:
+- Live route cache behavior still needs a Worker smoke run against local/preview D1.
+- Future real Naver/Kakao directions should use the same cache layer and may need provider-specific invalidation or TTL tuning.

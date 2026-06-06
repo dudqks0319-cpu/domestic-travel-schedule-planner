@@ -95,6 +95,7 @@ const sharePageRoutes = readText("services/api-worker/src/routes/share-page.ts")
 const workerTokens = readText("services/api-worker/src/auth/tokens.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
 const auditDb = readText("services/api-worker/src/db/audit.ts");
+const routeCacheDb = readText("services/api-worker/src/db/route-cache.ts");
 const plannerRoutes = readText("services/api-worker/src/routes/planner.ts");
 const placeRoutes = readText("services/api-worker/src/routes/places.ts");
 const routeRoutes = readText("services/api-worker/src/routes/routes.ts");
@@ -496,6 +497,65 @@ const rateLimitContracts = [
 for (const [content, expectedText, label] of rateLimitContracts) {
   if (!content.includes(expectedText)) {
     errors.push(`Missing rate limit contract: ${label}`);
+  }
+}
+
+const routeCacheContracts = [
+  [
+    routeCacheDb,
+    "ROUTE_CACHE_TTL_HOURS = 6",
+    "Route cache helper must define a bounded TTL"
+  ],
+  [
+    routeCacheDb,
+    "createRouteCacheKey",
+    "Route cache helper must expose stable cache key creation"
+  ],
+  [
+    routeCacheDb,
+    "crypto.subtle.digest(\"SHA-256\"",
+    "Route cache keys must be hashed instead of storing raw coordinate payloads in the key"
+  ],
+  [
+    routeCacheDb,
+    "getCachedRoute",
+    "Route cache helper must expose cache reads"
+  ],
+  [
+    routeCacheDb,
+    "upsertRouteCache",
+    "Route cache helper must expose cache writes"
+  ],
+  [
+    routeRoutes,
+    "const cachedRoute = await getCachedRoute(c.env.DB, routeCacheKey);",
+    "Route optimize must read from route_cache before computing"
+  ],
+  [
+    routeRoutes,
+    "await upsertRouteCache(c.env.DB",
+    "Route optimize must write computed route summaries to route_cache"
+  ],
+  [
+    routeRoutes,
+    'cacheStatus: "hit"',
+    "Route optimize must expose cache hits"
+  ],
+  [
+    routeRoutes,
+    'cacheStatus: "miss"',
+    "Route optimize must expose cache misses"
+  ],
+  [
+    workerSmokeScript,
+    "route optimize should return cacheStatus hit on repeated request",
+    "Worker smoke must verify route cache hit behavior"
+  ]
+];
+
+for (const [content, expectedText, label] of routeCacheContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing route cache contract: ${label}`);
   }
 }
 

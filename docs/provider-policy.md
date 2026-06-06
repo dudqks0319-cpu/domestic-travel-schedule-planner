@@ -34,7 +34,7 @@ All external provider HTTP calls must use the shared Worker provider fetch helpe
 ## Cache TTL
 
 - place search: 1 to 7 days depending on provider and query stability
-- route summaries: 1 to 24 hours
+- route summaries: 6 hours in D1 `route_cache`
 - festivals/events: expire based on event date
 
 ## Rate Limits

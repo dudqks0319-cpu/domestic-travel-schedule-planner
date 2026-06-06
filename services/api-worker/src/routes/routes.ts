@@ -2,9 +2,10 @@ import { Hono } from "hono";
 
 import type { AppBindings } from "../bindings";
 import { recordOperationalEvent } from "../db/operations";
+import { createRouteCacheKey, getCachedRoute, upsertRouteCache } from "../db/route-cache";
 import { errorResponse } from "../http/errors";
 import { rateLimit } from "../middleware/rate-limit";
-import type { TravelMode } from "../providers";
+import type { NormalizedRoute, TravelMode } from "../providers/types";
 
 export const routeRoutes = new Hono<AppBindings>();
 
@@ -77,6 +78,32 @@ routeRoutes.post("/optimize", async (c) => {
   }
 
   const selectedMode = mode(raw.mode);
+  const routeCacheKey = await createRouteCacheKey(selectedMode, points);
+  const cachedRoute = await getCachedRoute(c.env.DB, routeCacheKey);
+  if (cachedRoute) {
+    await recordOperationalEvent(c.env.DB, {
+      eventType: "route_optimize",
+      target: "routes.optimize",
+      status: cachedRoute.warnings.length ? "warning" : "success",
+      durationMs: Date.now() - startedAt,
+      requestId: c.get("requestId"),
+      metadata: {
+        cacheStatus: "hit",
+        mode: selectedMode,
+        pointCount: points.length,
+        segmentCount: cachedRoute.segments.length,
+        warningCount: cachedRoute.warnings.length
+      }
+    });
+
+    return c.json({
+      ok: true,
+      route: cachedRoute,
+      cacheStatus: "hit",
+      requestId: c.get("requestId")
+    });
+  }
+
   const segments = points.slice(0, -1).map((from, index) => {
     const to = points[index + 1] as RoutePointInput;
     const segmentDistanceKm = Math.round(distanceKm(from, to) * 1.2 * 10) / 10;
@@ -88,6 +115,19 @@ routeRoutes.post("/optimize", async (c) => {
       provider: "fallback" as const
     };
   });
+  const route: NormalizedRoute = {
+    provider: "fallback",
+    mode: selectedMode,
+    orderedPoints: points,
+    segments,
+    totalDistanceKm: Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10,
+    totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
+    warnings: ["실제 길찾기 provider 연결 전까지 직선 거리 기반 예상 이동시간을 반환합니다."]
+  };
+  await upsertRouteCache(c.env.DB, {
+    cacheKey: routeCacheKey,
+    route
+  });
   await recordOperationalEvent(c.env.DB, {
     eventType: "route_optimize",
     target: "routes.optimize",
@@ -95,6 +135,7 @@ routeRoutes.post("/optimize", async (c) => {
     durationMs: Date.now() - startedAt,
     requestId: c.get("requestId"),
     metadata: {
+      cacheStatus: "miss",
       mode: selectedMode,
       pointCount: points.length,
       segmentCount: segments.length,
@@ -104,15 +145,8 @@ routeRoutes.post("/optimize", async (c) => {
 
   return c.json({
     ok: true,
-    route: {
-      provider: "fallback",
-      mode: selectedMode,
-      orderedPoints: points,
-      segments,
-      totalDistanceKm: Math.round(segments.reduce((sum, segment) => sum + segment.distanceKm, 0) * 10) / 10,
-      totalDurationMin: segments.reduce((sum, segment) => sum + segment.durationMin, 0),
-      warnings: ["실제 길찾기 provider 연결 전까지 직선 거리 기반 예상 이동시간을 반환합니다."]
-    },
+    route,
+    cacheStatus: "miss",
     requestId: c.get("requestId")
   });
 });
