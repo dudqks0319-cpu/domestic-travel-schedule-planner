@@ -99,7 +99,7 @@ export default function ProfileScreen() {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
+    Alert.alert("로그아웃", "로그아웃하면 이 기기에 저장된 임시 일정과 경로 캐시도 함께 삭제됩니다.", [
       { text: "취소", style: "cancel" },
       {
         text: "로그아웃",

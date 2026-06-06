@@ -18,7 +18,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Share tokens are unguessable.
 - [ ] Public share pages use no-store/noindex/no-referrer headers and do not render share token fragments.
 - [ ] Public share JSON uses no-store/noindex/no-referrer headers and does not echo bearer share tokens.
-- [ ] Logout clears SecureStore tokens.
+- [ ] Logout clears SecureStore tokens, local trip drafts, and cached optimized routes.
 - [ ] Account deletion and data deletion flows are exposed or documented.
 - [ ] Account deletion revokes entitlements/exports and anonymizes ad and affiliate event ownership.
 - [ ] Account deletion deletes owned R2 export manifest and asset objects before DB ownership cleanup.

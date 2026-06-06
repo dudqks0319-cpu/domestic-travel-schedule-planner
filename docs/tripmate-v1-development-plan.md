@@ -1413,7 +1413,7 @@ Remaining risks:
 
 Plan:
 - Re-check the account deletion path after the Worker-side deletion and R2 export cleanup work.
-- Keep ordinary logout behavior unchanged, but clear user-owned local draft data after a successful account deletion.
+- Clear user-owned local draft data after account deletion; logout cleanup was later expanded to clear the same local trip draft and route cache.
 - Centralize the mobile `currentTrip` storage key so cleanup and itinerary screens cannot drift.
 
 Completed:
@@ -1432,7 +1432,7 @@ Verification completed:
 - `npm run check:dev`
 
 Remaining risks:
-- Ordinary logout intentionally preserves local trip drafts for continuation; only account deletion performs destructive local draft cleanup.
+- Ordinary logout later clears local trip drafts and cached optimized routes to prevent account-switch data exposure on shared devices.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
 
 ## Ops Retention Policy Result Record
@@ -2038,4 +2038,32 @@ Verification completed:
 Remaining risks:
 - A real AdMob rewarded-ad SDK integration is still required before free users can actually earn a one-time export.
 - Device-level smoke is still needed after SDK integration to verify ad load/show/earned/dismissed events.
+- `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.
+
+## Logout Local Privacy Cleanup Result Record
+
+Plan:
+- Prevent account-switch data exposure by clearing local trip drafts and optimized route cache on logout.
+- Reuse the same local cleanup path for logout, account deletion, and invalid-session cleanup.
+- Update user-facing logout copy so users know local temporary itinerary data is removed.
+- Add release contract checks for the mobile logout privacy cleanup path.
+
+Completed:
+- Added `clearLocalAuthState()` to centralize local auth/profile/trip/route cleanup in the mobile auth provider.
+- Updated `logout()` to clear SecureStore tokens, user profile, local `currentTrip`, and cached `optimizedRoute`.
+- Updated invalid-session cleanup to use the same local cleanup path.
+- Kept account deletion on the same cleanup path after the Worker-side deletion succeeds.
+- Updated profile logout confirmation copy and the privacy/security checklist.
+- Added release contract checks for mobile auth cleanup and local trip draft deletion.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Device-level smoke is still needed to confirm logout clears schedule/search/route state before another account logs in on the same device.
 - `npm run check:dev` still warns that local env files are missing and Cloudflare binding ids remain placeholders until preview/production setup.

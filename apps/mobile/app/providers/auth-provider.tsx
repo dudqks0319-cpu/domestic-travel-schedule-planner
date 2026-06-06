@@ -78,6 +78,15 @@ function mergeUserProfile(
   };
 }
 
+async function clearLocalAuthState(): Promise<void> {
+  await Promise.all([
+    clearAuthToken(),
+    clearSessionTokens(),
+    clearUserProfile(),
+    clearLocalTripDraftData()
+  ]);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<UserSignupProfile | null>(null);
@@ -96,19 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await authApi.logout().catch(() => undefined);
-    await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
+    await clearLocalAuthState();
     setUser(null);
     setStatus("unauthenticated");
   }, []);
 
   const deleteAccount = useCallback(async () => {
     await authApi.deleteMe();
-    await Promise.all([
-      clearAuthToken(),
-      clearSessionTokens(),
-      clearUserProfile(),
-      clearLocalTripDraftData()
-    ]);
+    await clearLocalAuthState();
     setUser(null);
     setStatus("unauthenticated");
   }, []);
@@ -179,7 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(mergedProfile ?? null);
           setStatus("authenticated");
         } catch {
-          await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
+          await clearLocalAuthState();
           if (!isActive) {
             return;
           }
