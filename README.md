@@ -1,14 +1,14 @@
 # TripMate
 
-Domestic-travel schedule planner for Korea. The MVP direction is a map-first workflow: choose a region, choose dates, choose a travel style, then generate a date-by-date itinerary and route view.
+Domestic-travel schedule planner for Korea. TripMate v1.0 is a map-first product: choose a Korean travel region, choose dates, choose a travel style, then generate a date-by-date itinerary, route summary, and shareable trip plan from server-side provider data.
 
 ## Workspace
 
 ```text
 apps/mobile       Expo Router mobile app
 packages/planner Shared route/planning primitives
-services/api      Current Express + Prisma + SQLite API
-services/api-worker Planned Cloudflare Workers + D1 API
+services/api      Reference Express + Prisma + SQLite API
+services/api-worker Production Cloudflare Workers + Hono + D1 API
 ```
 
 ## Local Commands
@@ -18,16 +18,23 @@ npm test
 npm run mobile:typecheck
 npm run api:build
 npm run planner:build
+npm run worker:typecheck
+npm run check:health
 npm run check:env
 ```
 
-`npm test` currently runs the planner package tests. Use `npm run check:health` for the broader type/build gate.
+`npm test` runs planner tests. `npm run check:health` runs mobile typecheck, Express API build, planner build, and Worker typecheck. `npm run check:dev` also runs `scripts/dev-readiness-check.mjs`, which currently expects a local `services/api/.env` for the reference API.
 
 ## Environment
 
-Copy `services/api/.env.example` to `services/api/.env` and set real values outside source control.
+Copy `services/api/.env.example` to `services/api/.env` only for the reference Express API. For the production Worker API, use Cloudflare secrets and bindings.
 
-Required local API keys:
+Mobile public variables:
+
+- `EXPO_PUBLIC_API_BASE_URL`
+- `EXPO_PUBLIC_MAP_PROVIDER`
+
+Reference Express API variables:
 
 - `DATABASE_URL`
 - `JWT_ACCESS_SECRET`
@@ -41,19 +48,31 @@ Provider keys stay server-side:
 - `KAKAO_REST_API_KEY`
 - `ODSAY_API_KEY`
 
-The mobile app reads `EXPO_PUBLIC_API_BASE_URL` from `apps/mobile/.env` when present. Do not put provider secrets in the mobile bundle.
+Never put provider secrets, JWT secrets, Apple shared secrets, or Google Play service-account JSON in the mobile bundle.
 
-## Deployment Direction
+## Production API
 
-The current API is Node/Express/Prisma and is not directly deployable to Cloudflare Workers. The target monetized MVP path is Cloudflare Workers Paid + D1 + KV + R2 through a new additive `services/api-worker` service.
+The production API lives in `services/api-worker`:
 
-See `docs/cloudflare-workers-mvp-plan.md`.
+- Cloudflare Workers + Hono
+- Cloudflare D1 for users, trips, shares, entitlements, ads, affiliates, sponsored places, and audit logs
+- Cloudflare KV for provider search cache
+- Cloudflare R2 binding for share thumbnails and future export files
+
+See:
+
+- `docs/deployment-cloudflare.md`
+- `docs/env.md`
+- `docs/provider-policy.md`
+- `docs/monetization-policy.md`
+- `docs/privacy-security-checklist.md`
 
 ## Monetization Policy
 
 - Digital premium features should use Apple/Google IAP.
 - External bookings such as lodging, tickets, rental cars, and insurance should use affiliate links or a separate physical-service payment flow.
 - Sponsored places must be clearly marked as ads or sponsored content.
+- Ad events are allowed after itinerary generation, share completion, or free export actions, not during itinerary generation.
 
 ## Production Safety
 

@@ -1,0 +1,9 @@
+JWT_ACCESS_SECRET=replace-with-local-secret
+JWT_REFRESH_SECRET=replace-with-local-secret
+NAVER_CLIENT_ID=replace-with-local-client-id
+NAVER_CLIENT_SECRET=replace-with-local-client-secret
+KAKAO_REST_API_KEY=replace-with-local-rest-api-key
+DATA_GO_KR_API_KEY=replace-with-local-data-go-kr-key
+ODSAY_API_KEY=replace-with-local-odsay-key
+APPLE_SHARED_SECRET=replace-with-local-apple-secret
+GOOGLE_PLAY_SERVICE_ACCOUNT_JSON=replace-with-local-json-string
