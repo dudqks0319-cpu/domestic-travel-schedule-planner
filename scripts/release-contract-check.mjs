@@ -1068,6 +1068,21 @@ const exportDownloadContracts = [
     "PDF export must generate print-ready HTML asset until binary renderer exists"
   ],
   [
+    tripRoutes,
+    "renderImageTripExport",
+    "Image export must generate an R2 SVG asset"
+  ],
+  [
+    tripRoutes,
+    'contentType: "image/svg+xml; charset=utf-8"',
+    "Image export asset must use SVG content type"
+  ],
+  [
+    tripRoutes,
+    'status: "ready"',
+    "Worker export creation must mark generated PDF and image assets ready"
+  ],
+  [
     workerSmokeScript,
     "premium trip export",
     "Worker smoke must exercise premium export creation"
@@ -1084,10 +1099,28 @@ const exportDownloadContracts = [
   ],
   [
     workerSmokeScript,
+    "premium image export should be ready immediately",
+    "Worker smoke must verify premium image exports are ready"
+  ],
+  [
+    workerSmokeScript,
+    "premium image export download should return SVG",
+    "Worker smoke must verify premium image export download content type"
+  ],
+  [
+    workerSmokeScript,
     "DELETE /api/v1/auth/me",
     "Worker smoke cleanup must delete the smoke account and owned R2 export objects"
   ]
 ];
+
+for (const staleText of [
+  "binary PDF/image rendering workers"
+]) {
+  if (apiWorkerReadme.includes(staleText)) {
+    errors.push(`API Worker README contains stale export implementation wording: ${staleText}`);
+  }
+}
 
 for (const [content, expectedText, label] of exportDownloadContracts) {
   if (!content.includes(expectedText)) {

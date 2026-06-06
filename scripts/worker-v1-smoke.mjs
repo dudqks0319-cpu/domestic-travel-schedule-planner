@@ -585,6 +585,29 @@ await step("premium trip export", async () => {
     typeof downloadedExport.body === "string" && downloadedExport.body.includes("TripMate"),
     "premium export download should return printable TripMate content"
   );
+
+  const createdImageExport = await request("POST", `/api/v1/trips/${tripId}/exports`, {
+    json: { format: "image" }
+  });
+  assertStatus(createdImageExport, 202, "POST /api/v1/trips/:tripId/exports image");
+  const imageExportId = createdImageExport.body?.export?.id ?? "";
+  assert(imageExportId, "premium image export should return export id");
+  assert(createdImageExport.body?.export?.format === "image", "premium image export should preserve requested image format");
+  assert(createdImageExport.body?.export?.status === "ready", "premium image export should be ready immediately");
+  assert(
+    typeof createdImageExport.body?.export?.downloadUrl === "string" &&
+      createdImageExport.body.export.downloadUrl.includes(`/api/v1/trips/${tripId}/exports/${imageExportId}/download`),
+    "premium image export should return owned download URL"
+  );
+
+  const downloadedImageExport = await request("GET", `/api/v1/trips/${tripId}/exports/${imageExportId}/download`);
+  assertOk(downloadedImageExport, "GET /api/v1/trips/:tripId/exports/:exportId/download image");
+  assertHeaderIncludes(downloadedImageExport, "content-type", "image/svg+xml", "premium image export download should return SVG");
+  assertHeaderIncludes(downloadedImageExport, "cache-control", "private", "premium image export download should be private");
+  assert(
+    typeof downloadedImageExport.body === "string" && downloadedImageExport.body.includes("TripMate"),
+    "premium image export download should return TripMate SVG content"
+  );
 });
 
 if (opsToken) {

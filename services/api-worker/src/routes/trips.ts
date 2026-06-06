@@ -204,6 +204,64 @@ function renderPrintableTripExport(input: {
 </html>`;
 }
 
+function renderImageTripExport(input: {
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  generatedAt: string;
+  days: Array<ReturnType<typeof toPublicTripDay> & { places: Array<ReturnType<typeof toPublicTripPlace>> }>;
+  unassignedPlaces: Array<ReturnType<typeof toPublicTripPlace>>;
+}): string {
+  const maxRows = 14;
+  const rows = [
+    ...input.days.flatMap((day) =>
+      day.places.length
+        ? day.places.map((place, index) => ({
+          label: `${day.dayNumber}일차 ${index + 1}. ${place.name}`,
+          meta: [place.category, place.startTime].filter(Boolean).join(" · ")
+        }))
+        : [{ label: `${day.dayNumber}일차`, meta: "담긴 장소가 없습니다." }]
+    ),
+    ...input.unassignedPlaces.map((place, index) => ({
+      label: `미배정 ${index + 1}. ${place.name}`,
+      meta: [place.category, place.address].filter(Boolean).join(" · ")
+    }))
+  ].slice(0, maxRows);
+  const extraCount = Math.max(
+    0,
+    input.days.reduce((sum, day) => sum + Math.max(1, day.places.length), 0) +
+      input.unassignedPlaces.length -
+      rows.length
+  );
+  const rowHeight = 50;
+  const height = 260 + rows.length * rowHeight + (extraCount ? 38 : 0);
+  const rowSvg = rows.map((row, index) => {
+    const y = 205 + index * rowHeight;
+    return `<g>
+      <circle cx="58" cy="${y - 4}" r="14" fill="#dbeafe" />
+      <text x="58" y="${y}" text-anchor="middle" font-size="12" font-weight="800" fill="#2563eb">${index + 1}</text>
+      <text x="88" y="${y - 8}" font-size="18" font-weight="800" fill="#111827">${escapeHtml(row.label)}</text>
+      <text x="88" y="${y + 16}" font-size="13" fill="#64748b">${escapeHtml(row.meta || "장소")}</text>
+    </g>`;
+  }).join("");
+  const extraSvg = extraCount
+    ? `<text x="40" y="${215 + rows.length * rowHeight}" font-size="14" font-weight="700" fill="#2563eb">외 ${extraCount}개 일정은 앱 또는 PDF 내보내기에서 확인하세요.</text>`
+    : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="${height}" viewBox="0 0 1080 ${height}" role="img" aria-label="TripMate itinerary export">
+  <rect width="1080" height="${height}" fill="#f8fafc" />
+  <rect x="28" y="28" width="1024" height="${height - 56}" rx="28" fill="#ffffff" stroke="#e5e7eb" />
+  <text x="40" y="76" font-size="24" font-weight="900" fill="#2563eb">TripMate</text>
+  <text x="40" y="122" font-size="42" font-weight="900" fill="#111827">${escapeHtml(input.title)}</text>
+  <text x="40" y="158" font-size="20" fill="#475569">${escapeHtml(input.destination)} · ${escapeHtml(input.startDate)} - ${escapeHtml(input.endDate)}</text>
+  <rect x="40" y="176" width="1000" height="1" fill="#e5e7eb" />
+  ${rowSvg || `<text x="40" y="218" font-size="18" fill="#64748b">표시할 일정이 없습니다.</text>`}
+  ${extraSvg}
+  <text x="40" y="${height - 52}" font-size="13" fill="#94a3b8">생성 시각: ${escapeHtml(input.generatedAt)} · 장소 좌표 원문은 이미지에 표시하지 않습니다.</text>
+</svg>`;
+}
+
 function parseTripInput(raw: Record<string, unknown>, existing?: Partial<TripInput>): TripInput | null {
   const title = stringValue(raw.title) ?? existing?.title;
   const destination = stringValue(raw.destination) ?? existing?.destination;
@@ -1040,7 +1098,7 @@ tripRoutes.post("/:tripId/exports", async (c) => {
   ]);
   const exportId = crypto.randomUUID();
   const manifestKey = `exports/${userId}/${tripId}/${exportId}.json`;
-  const assetKey = format === "pdf" ? `exports/${userId}/${tripId}/${exportId}.html` : undefined;
+  const assetKey = `exports/${userId}/${tripId}/${exportId}.${format === "pdf" ? "html" : "svg"}`;
   const expiresAt = sqliteDateTimeAfterDays(7);
   const publicPlaces = (places ?? []).map(toPublicTripPlace);
   const publicDays = (days ?? []).map((day) => {
@@ -1072,7 +1130,7 @@ tripRoutes.post("/:tripId/exports", async (c) => {
     httpMetadata: { contentType: "application/json; charset=utf-8" }
   });
 
-  if (assetKey) {
+  if (format === "pdf") {
     const printableHtml = renderPrintableTripExport({
       title: trip.title,
       destination: trip.destination,
@@ -1088,6 +1146,22 @@ tripRoutes.post("/:tripId/exports", async (c) => {
         contentDisposition: `inline; filename="tripmate-export-${exportId}.html"`
       }
     });
+  } else {
+    const imageSvg = renderImageTripExport({
+      title: trip.title,
+      destination: trip.destination,
+      startDate: trip.start_date,
+      endDate: trip.end_date,
+      generatedAt,
+      days: publicDays,
+      unassignedPlaces
+    });
+    await c.env.TRIPMATE_ASSETS.put(assetKey, imageSvg, {
+      httpMetadata: {
+        contentType: "image/svg+xml; charset=utf-8",
+        contentDisposition: `inline; filename="tripmate-export-${exportId}.svg"`
+      }
+    });
   }
 
   const exportRecord = await createTripExport(c.env.DB, {
@@ -1095,9 +1169,9 @@ tripRoutes.post("/:tripId/exports", async (c) => {
     userId,
     tripId,
     format,
-    status: assetKey ? "ready" : "queued",
+    status: "ready",
     manifestKey,
-    ...(assetKey ? { assetKey } : {}),
+    assetKey,
     expiresAt
   });
 

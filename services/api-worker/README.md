@@ -34,13 +34,14 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 - premium-gated trip export preparation endpoint
 - owned export download endpoint backed by R2 assets
 - authenticated print-ready HTML export assets with private cache headers
+- authenticated SVG image export assets with private cache headers
 - scheduled and manual operations retention cleanup
 - D1, KV, and R2 binding types
 - D1 schema and migrations
 
 ## Not Yet Implemented
 
-- binary PDF/image rendering workers
+- binary PDF rendering worker
 - public/shared export links for generated export assets
 - live strict provider smoke evidence from a configured preview Worker
 - mobile IAP receipt submission UI

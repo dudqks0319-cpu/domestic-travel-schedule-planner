@@ -3329,3 +3329,33 @@ Verification completed:
 
 Remaining risks:
 - Local static checks validate smoke coverage and syntax; executing the export path still requires a local or preview Worker with D1/KV/R2 bindings.
+
+## Worker Image Export Asset Result Record
+
+Plan:
+- Make Worker `image` export requests produce a ready R2 asset instead of a queued placeholder.
+- Use dependency-free SVG generation so v1.0 has a real server-side image export preparation path.
+- Extend Worker smoke to verify image export readiness, owned download URL, SVG content type, private cache headers, and TripMate content.
+- Update API Worker docs and release contract coverage.
+
+Completed:
+- Added `renderImageTripExport()` to generate a privacy-safe SVG itinerary image without exposing raw coordinates.
+- Changed Worker export creation so both `pdf` and `image` formats create an R2 asset and return `ready`.
+- Kept PDF export as print-ready HTML and image export as SVG.
+- Extended `scripts/worker-v1-smoke.mjs` to create and download a premium image export.
+- Updated `services/api-worker/README.md` to list SVG image exports as implemented.
+- Added release contract checks for SVG image export generation, content type, ready status, and smoke coverage.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- Image export is SVG-based preparation, not native platform share-sheet image capture; device-level sharing/export UX still needs visual/runtime validation.
