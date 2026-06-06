@@ -215,6 +215,7 @@ export default function SearchScreen() {
   const [activeCategory, setActiveCategory] = useState<CategoryKey>("all");
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [dayOptions, setDayOptions] = useState<DayOption[]>([{ dayNumber: 1, label: "1일차", dateLabel: "날짜 미정" }]);
@@ -260,6 +261,7 @@ export default function SearchScreen() {
     setLoading(true);
     setSearched(true);
     setWarnings([]);
+    setSearchErrorMessage(null);
 
     try {
       const category = categoryQuery(activeCategory);
@@ -274,7 +276,8 @@ export default function SearchScreen() {
       setWarnings(response.data.warnings ?? []);
     } catch {
       setResults([]);
-      setWarnings(["추천 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요."]);
+      setWarnings([]);
+      setSearchErrorMessage("추천 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
       setLoading(false);
     }
@@ -368,6 +371,7 @@ export default function SearchScreen() {
                   setResults([]);
                   setSearched(false);
                   setWarnings([]);
+                  setSearchErrorMessage(null);
                 }}
               >
                 <Text style={[styles.categoryChipText, active ? styles.categoryChipTextActive : null]}>
@@ -427,10 +431,19 @@ export default function SearchScreen() {
               searched ? (
                 <View style={styles.emptyWrap}>
                   <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={styles.emptyText}>추천 데이터를 불러오지 못했어요</Text>
-                  <TouchableOpacity style={styles.retryButton} onPress={() => { void handleSearch(); }}>
-                    <Text style={styles.retryButtonText}>추천 데이터를 다시 불러오기</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.emptyText}>
+                    {searchErrorMessage ?? "검색 결과가 없어요"}
+                  </Text>
+                  <Text style={styles.emptySubText}>
+                    {searchErrorMessage
+                      ? "네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+                      : "검색어를 바꾸거나 다른 카테고리를 선택해 주세요."}
+                  </Text>
+                  {searchErrorMessage ? (
+                    <TouchableOpacity style={styles.retryButton} onPress={() => { void handleSearch(); }}>
+                      <Text style={styles.retryButtonText}>추천 데이터를 다시 불러오기</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               ) : (
                 <View style={styles.emptyWrap}>
@@ -590,6 +603,13 @@ const styles = StyleSheet.create({
   emptyWrap: { alignItems: "center", marginTop: 80, paddingHorizontal: 24 },
   emptyEmoji: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 16, lineHeight: 22, color: Colors.common.gray500, textAlign: "center" },
+  emptySubText: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Colors.common.gray400,
+    textAlign: "center"
+  },
   retryButton: {
     marginTop: 14,
     borderRadius: 10,

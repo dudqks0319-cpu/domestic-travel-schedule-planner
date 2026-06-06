@@ -1190,6 +1190,40 @@ for (const [content, expectedText, label] of mobileDayLinkContracts) {
   }
 }
 
+const mobileSearchStateContracts = [
+  [
+    searchScreen,
+    "searchErrorMessage",
+    "Search screen must track provider/API failure separately from empty results"
+  ],
+  [
+    searchScreen,
+    "검색 결과가 없어요",
+    "Search screen must show a true empty-result state"
+  ],
+  [
+    searchScreen,
+    "네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+    "Search screen must show an actionable provider/API failure state"
+  ],
+  [
+    searchScreen,
+    "검색어를 바꾸거나 다른 카테고리를 선택해 주세요.",
+    "Search screen must guide users when a successful query has no results"
+  ],
+  [
+    searchScreen,
+    "searchErrorMessage ? (",
+    "Search screen retry CTA must be limited to provider/API failure state"
+  ]
+];
+
+for (const [content, expectedText, label] of mobileSearchStateContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing mobile search state contract: ${label}`);
+  }
+}
+
 const premiumStorageContracts = [
   [
     tripRoutes,

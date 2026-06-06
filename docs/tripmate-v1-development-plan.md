@@ -2973,3 +2973,30 @@ Verification completed:
 Remaining risks:
 - This adds an operations API, not a human-facing admin UI.
 - Live preview smoke still requires `OPS_ADMIN_TOKEN` and D1 write access in the preview Worker.
+
+## Search Empty/Error State Result Record
+
+Plan:
+- Confirm search already supports category filters and day selection for add-to-trip.
+- Separate successful empty search results from provider/API failure states.
+- Show retry only for recoverable provider/API failure, not for a valid empty result.
+- Add release contract coverage for the distinct search states.
+
+Completed:
+- Added `searchErrorMessage` to the mobile search screen.
+- Kept provider warnings separate from hard search failures.
+- Added a true empty-result state with guidance to change query/category.
+- Kept “추천 데이터를 다시 불러오기” retry CTA only for provider/API failure.
+- Added release contract checks for the separated search empty/error states.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:env`
+- `git diff --check`
+- `npm run check:health`
+- `npm run check:dev`
+
+Remaining risks:
+- This is a static/typechecked UI state pass; visual verification in Expo is still needed for exact spacing and text wrapping.
