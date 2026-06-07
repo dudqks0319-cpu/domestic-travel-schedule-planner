@@ -3339,6 +3339,11 @@ Verification completed:
 - `node --check scripts/release-contract-check.mjs`
 - `npm run check:release-contract`
 - `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+- `npm run check:release-contract`
+- `npm test`
 - `npm run check:env`
 - `git diff --check`
 - `npm run check:health`
@@ -4207,3 +4212,24 @@ Verification completed:
 
 Remaining risks:
 - Device-level visual smoke is still needed to inspect sponsored badge spacing in dense schedule cards on small screens.
+
+## Search Add-To-Trip Duplicate Guard Result Record
+
+Plan:
+- Prevent repeated search result taps from creating duplicate local route points or duplicate remote trip places.
+- Compare provider identifiers as well as local ids because search and saved trip records can use different ids for the same place.
+- Fall back to name plus coordinate matching for provider results without a stable provider place id.
+- Tell users when a place is already scheduled instead of silently writing again.
+
+Completed:
+- Added search-screen duplicate identity helpers for `id`, `tripPlaceId`, `providerPlaceId`, and legacy/current coordinate fields.
+- Updated add-to-trip logic to skip remote writes when `isSameScheduledPlace(item, place)` detects an existing scheduled place.
+- Added an explicit "already scheduled" alert that sends users to adjust date/order in the itinerary instead of adding another copy.
+- Updated release contract checks so providerPlaceId duplicate detection and duplicate user copy cannot be dropped silently.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+
+Remaining risks:
+- Full device-level interaction QA is still needed to confirm the duplicate alert copy and schedule navigation expectation feel right in the real mobile shell.

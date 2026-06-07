@@ -1875,6 +1875,21 @@ const mobileDayLinkContracts = [
     "Search add-to-trip must calculate sort order within the selected day"
   ],
   [
+    searchScreen,
+    "isSameScheduledPlace(item, place)",
+    "Search add-to-trip must prevent duplicate places before remote writes"
+  ],
+  [
+    searchScreen,
+    "value.providerPlaceId",
+    "Search add-to-trip duplicate detection must compare providerPlaceId"
+  ],
+  [
+    searchScreen,
+    "이미 담긴 장소예요",
+    "Search add-to-trip duplicate detection must tell users when a place is already scheduled"
+  ],
+  [
     scheduleScreen,
     "dayId?: string;",
     "Schedule editable trip points must carry canonical dayId"

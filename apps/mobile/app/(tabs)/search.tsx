@@ -133,6 +133,69 @@ function nextSortOrderForDay(routePoints: unknown[], dayNumber: number): number 
   return routePoints.filter((item) => routePointDayNumber(item) === dayNumber).length + 1;
 }
 
+function normalizedIdentityText(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function numericCoordinate(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function routePointCoordinate(value: Record<string, unknown>, primaryKey: "lat" | "lng"): number | null {
+  const legacyKey = primaryKey === "lat" ? "latitude" : "longitude";
+  return numericCoordinate(value[primaryKey]) ?? numericCoordinate(value[legacyKey]);
+}
+
+function coordinatesMatch(
+  existingLat: number | null,
+  existingLng: number | null,
+  place: NormalizedPlaceDto
+): boolean {
+  if (existingLat === null || existingLng === null) {
+    return false;
+  }
+
+  return Math.abs(existingLat - place.lat) <= 0.0001 && Math.abs(existingLng - place.lng) <= 0.0001;
+}
+
+function isSameScheduledPlace(item: unknown, place: NormalizedPlaceDto): boolean {
+  if (!item || typeof item !== "object") {
+    return false;
+  }
+
+  const value = item as Record<string, unknown>;
+  const placeId = normalizedIdentityText(place.id);
+  const providerPlaceId = normalizedIdentityText(place.providerPlaceId ?? place.id);
+  const existingId = normalizedIdentityText(value.id);
+  const existingProviderPlaceId = normalizedIdentityText(value.providerPlaceId);
+  const existingTripPlaceId = normalizedIdentityText(value.tripPlaceId);
+
+  if (placeId && (existingId === placeId || existingTripPlaceId === placeId)) {
+    return true;
+  }
+
+  if (providerPlaceId && existingProviderPlaceId && existingProviderPlaceId === providerPlaceId) {
+    return true;
+  }
+
+  const existingName = normalizedIdentityText(value.name);
+  const placeName = normalizedIdentityText(place.name);
+  return (
+    !!existingName &&
+    existingName === placeName &&
+    coordinatesMatch(routePointCoordinate(value, "lat"), routePointCoordinate(value, "lng"), place)
+  );
+}
+
 async function persistPlaceToRemoteTrip(
   currentTrip: Record<string, unknown>,
   place: NormalizedPlaceDto,
@@ -166,6 +229,7 @@ async function persistPlaceToRemoteTrip(
 async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: number): Promise<{
   count: number;
   remoteSaved: boolean;
+  alreadyAdded: boolean;
 }> {
   const rawTrip = await AsyncStorage.getItem(CURRENT_TRIP_STORAGE_KEY);
   const currentTrip =
@@ -180,11 +244,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
   const routePoints = Array.isArray(currentTrip.routePoints)
     ? [...currentTrip.routePoints]
     : [];
-  const alreadyAdded = routePoints.some((item) => {
-    if (!item || typeof item !== "object") return false;
-    const value = item as Record<string, unknown>;
-    return value.id === place.id;
-  });
+  const alreadyAdded = routePoints.some((item) => isSameScheduledPlace(item, place));
 
   const nextSortOrder = nextSortOrderForDay(routePoints, dayNumber);
   const remotePlace = alreadyAdded
@@ -214,7 +274,7 @@ async function addPlaceToCurrentTrip(place: NormalizedPlaceDto, dayNumber: numbe
     })
   );
 
-  return { count: routePoints.length, remoteSaved: !!remotePlace };
+  return { count: routePoints.length, remoteSaved: !!remotePlace, alreadyAdded };
 }
 
 export default function SearchScreen() {
@@ -295,6 +355,14 @@ export default function SearchScreen() {
       const result = await addPlaceToCurrentTrip(place, selectedDayNumber);
       const selectedDayLabel =
         dayOptions.find((option) => option.dayNumber === selectedDayNumber)?.label ?? `${selectedDayNumber}일차`;
+      if (result.alreadyAdded) {
+        Alert.alert(
+          "이미 담긴 장소예요",
+          `${place.name}은 이미 일정에 담겨 있습니다. 일정표에서 날짜나 순서를 조정해 주세요.`
+        );
+        return;
+      }
+
       Alert.alert(
         "일정에 담았어요",
         result.remoteSaved
