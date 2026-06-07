@@ -110,7 +110,8 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
         }}
         showsCompass
         showsScale
-        showsUserLocation
+        showsUserLocation={false}
+        showsMyLocationButton={false}
       >
         {route.segments.map((segment, index) => (
           <Polyline

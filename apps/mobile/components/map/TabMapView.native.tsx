@@ -129,7 +129,7 @@ export default function TabMapViewNative() {
             <ActivityIndicator size="large" color={Theme.colors.primary} />
           </View>
         ) : (
-          <MapView style={styles.map} initialRegion={INITIAL_REGION} showsUserLocation showsMyLocationButton>
+          <MapView style={styles.map} initialRegion={INITIAL_REGION} showsUserLocation={false} showsMyLocationButton={false}>
             {markers.map((marker) => (
               <Marker
                 key={marker.id}

@@ -4623,3 +4623,30 @@ Verification completed:
 
 Remaining risks:
 - Physical device QA is still needed to verify the exact OS-level SecureStore failure scenarios and alert copy.
+
+## Location Permission Minimization Result Record
+
+Plan:
+- Remove foreground location permission requests because TripMate v1.0 does not yet ship a user-triggered current-location feature.
+- Prevent native maps from automatically prompting for current-location access.
+- Keep background/always location permissions forbidden.
+- Update release contract and privacy/security checklist coverage for the permission-minimization policy.
+
+Completed:
+- Removed iOS `NSLocationWhenInUseUsageDescription` and Android foreground location permissions from `apps/mobile/app.json`.
+- Set native home map `showsUserLocation={false}` and `showsMyLocationButton={false}`.
+- Set native route map `showsUserLocation={false}` and `showsMyLocationButton={false}`.
+- Updated release contract checks to reject foreground/background location permissions until a reviewed current-location feature exists.
+- Updated the privacy/security checklist to reflect the v1.0 location permission boundary.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- If a current-location feature is added later, permissions must be reintroduced behind a user-triggered action with platform-specific copy and device QA.

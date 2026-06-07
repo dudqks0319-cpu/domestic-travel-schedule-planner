@@ -8,17 +8,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tripmate.app",
-      "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "현재 위치 기준 주변 여행지와 이동 동선을 보여주기 위해 위치 정보가 필요합니다."
-      }
+      "bundleIdentifier": "com.tripmate.app"
     },
     "android": {
-      "package": "com.tripmate.app",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "package": "com.tripmate.app"
     },
     "plugins": [
       "expo-router"

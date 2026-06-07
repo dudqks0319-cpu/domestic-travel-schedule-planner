@@ -35,7 +35,8 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 
 ## Location and Travel Data
 
-- [ ] Fine location permission copy is clear.
+- [ ] Foreground location permission is not requested until a current-location feature is implemented and reviewed.
+- [ ] If foreground location is introduced later, the permission copy is clear and user-triggered.
 - [ ] Background/Always location permission is not requested unless a background-location feature is implemented and reviewed.
 - [ ] Latitude and longitude are not shown directly in itinerary UI.
 - [ ] Detailed location history is not logged.

@@ -152,6 +152,7 @@ const localTripStorage = readText("apps/mobile/services/localTripStorage.ts");
 const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
 const routeDetailCard = readText("apps/mobile/components/map/RouteDetailCard.tsx");
+const nativeTabMapView = readText("apps/mobile/components/map/TabMapView.native.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
 const routeApi = readText("apps/mobile/services/routeApi.ts");
@@ -1553,9 +1554,13 @@ if (scheduleScreen.includes("개발 환경에서만 저장된 경유지")) {
 
 const mobileInfoPlist = mobileAppJson.expo?.ios?.infoPlist ?? {};
 const androidPermissions = mobileAppJson.expo?.android?.permissions ?? [];
+const requestsIosWhenInUseLocation = "NSLocationWhenInUseUsageDescription" in mobileInfoPlist;
+const requestsAndroidForegroundLocation =
+  androidPermissions.includes("ACCESS_FINE_LOCATION") ||
+  androidPermissions.includes("ACCESS_COARSE_LOCATION");
 
-if (!mobileInfoPlist.NSLocationWhenInUseUsageDescription) {
-  errors.push("Mobile app must include an iOS when-in-use location permission explanation.");
+if (requestsIosWhenInUseLocation && !mobileInfoPlist.NSLocationWhenInUseUsageDescription) {
+  errors.push("Mobile app must include an iOS when-in-use location permission explanation when requesting location.");
 }
 
 if ("NSLocationAlwaysUsageDescription" in mobileInfoPlist) {
@@ -1564,6 +1569,39 @@ if ("NSLocationAlwaysUsageDescription" in mobileInfoPlist) {
 
 if (androidPermissions.includes("ACCESS_BACKGROUND_LOCATION")) {
   errors.push("Mobile app must not request Android background location permission before a background-location feature exists.");
+}
+
+if (requestsIosWhenInUseLocation || requestsAndroidForegroundLocation) {
+  errors.push("TripMate v1.0 must not request foreground location permissions until a current-location feature is implemented.");
+}
+
+const locationPermissionMinimizationContracts = [
+  [
+    nativeTabMapView,
+    "showsUserLocation={false}",
+    "Home map must not trigger current-location permission prompts"
+  ],
+  [
+    nativeTabMapView,
+    "showsMyLocationButton={false}",
+    "Home map must not show current-location button before the feature exists"
+  ],
+  [
+    nativeRouteMapView,
+    "showsUserLocation={false}",
+    "Route map must not trigger current-location permission prompts"
+  ],
+  [
+    nativeRouteMapView,
+    "showsMyLocationButton={false}",
+    "Route map must not show current-location button before the feature exists"
+  ]
+];
+
+for (const [content, expectedText, label] of locationPermissionMinimizationContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing location permission minimization contract: ${label}`);
+  }
 }
 
 const exportDownloadContracts = [
