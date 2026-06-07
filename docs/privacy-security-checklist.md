@@ -16,7 +16,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Write APIs require authentication.
 - [ ] Trip reads and writes check `user_id` ownership.
 - [ ] Shared trip reads are read-only.
-- [ ] Share tokens are unguessable.
+- [ ] Share tokens are generated from at least 256 bits of cryptographic random bytes and are URL-safe.
 - [ ] Public share pages use no-store/noindex/no-referrer headers and do not render share token fragments.
 - [ ] Public share JSON uses no-store/noindex/no-referrer headers and does not echo bearer share tokens.
 - [ ] Mobile share fallback copy does not render bearer share URLs when clipboard/share APIs are unavailable.

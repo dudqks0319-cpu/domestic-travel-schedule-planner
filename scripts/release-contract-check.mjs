@@ -2050,6 +2050,26 @@ const publicShareApiPrivacyContracts = [
   ],
   [
     tripDb,
+    "export function generateShareToken()",
+    "Share link creation must use a dedicated token generator"
+  ],
+  [
+    tripDb,
+    "new Uint8Array(32)",
+    "Share link tokens must use at least 256 bits of randomness"
+  ],
+  [
+    tripDb,
+    "crypto.getRandomValues(bytes)",
+    "Share link tokens must use cryptographic random bytes"
+  ],
+  [
+    tripDb,
+    "return base64Url(bytes);",
+    "Share link tokens must be URL-safe"
+  ],
+  [
+    tripDb,
     "INSERT INTO share_links (id, trip_id, user_id, token, expires_at)",
     "Share link creation must persist an expiry timestamp"
   ],
@@ -2113,6 +2133,10 @@ for (const [content, expectedText, label] of publicShareApiPrivacyContracts) {
 
 if (tripRoutes.includes("token: sharedTrip.share_token")) {
   errors.push("Public share API must not echo sharedTrip.share_token.");
+}
+
+if (tripDb.includes('crypto.randomUUID().replaceAll("-", "")')) {
+  errors.push("Share link token generation must not rely on UUID string formatting.");
 }
 
 const mobileDayLinkContracts = [

@@ -4703,3 +4703,30 @@ Verification completed:
 
 Remaining risks:
 - Preview Worker smoke with live provider credentials is still needed to observe real quota/rate-limit events in D1 operational metrics.
+
+## Share Token Entropy Hardening Result Record
+
+Plan:
+- Strengthen public share tokens beyond UUID string formatting.
+- Use explicit 256-bit cryptographic random bytes and URL-safe encoding.
+- Preserve existing share link DB schema and public share route contracts.
+- Add release contract coverage to prevent token-generation regressions.
+
+Completed:
+- Added `generateShareToken()` backed by `crypto.getRandomValues(new Uint8Array(32))`.
+- Added base64url encoding for URL-safe public share tokens.
+- Updated share link creation to use the dedicated token generator.
+- Added release contract checks for 256-bit randomness, cryptographic random bytes, URL-safe output, and UUID-token regression prevention.
+- Updated the privacy/security checklist with the stronger share token requirement.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Existing share links keep their previous token format until they expire; new links use the stronger token generator.
