@@ -4758,3 +4758,29 @@ Verification completed:
 
 Remaining risks:
 - Production security posture still depends on strong `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values configured as Cloudflare secrets.
+
+## Refresh Token Reuse Guard Result Record
+
+Plan:
+- Treat reuse of a rotated refresh token as a compromised session signal.
+- Revoke the affected session when a signed refresh token has a valid `sid` but no longer matches the active refresh hash.
+- Write a privacy-safe audit event without storing raw refresh tokens or hashes.
+- Add release contract and privacy/security checklist coverage.
+
+Completed:
+- Updated `/api/v1/auth/refresh` to revoke `payload.sid` when refresh hash lookup fails or mismatches the signed session id.
+- Added `auth.refresh_reuse_detected` audit logging with only allowlisted `reason` and `status` metadata.
+- Preserved the user-facing `REFRESH_EXPIRED` response so clients continue clearing local auth safely.
+- Updated release contract checks and privacy/security checklist coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- A live smoke that intentionally reuses an already rotated refresh token would further prove the D1 session status transition.

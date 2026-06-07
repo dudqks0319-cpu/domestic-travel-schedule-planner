@@ -594,6 +594,21 @@ const authSecurityContracts = [
     "Refresh endpoint must be rate limited"
   ],
   [
+    authRoutes,
+    'revokeSession(c.env.DB, payload.sid, user.id)',
+    "Refresh token reuse must revoke the affected session"
+  ],
+  [
+    authRoutes,
+    'action: "auth.refresh_reuse_detected"',
+    "Refresh token reuse must create a privacy-safe audit log"
+  ],
+  [
+    authRoutes,
+    'reason: "refresh_token_reuse"',
+    "Refresh token reuse audit metadata must avoid raw token material"
+  ],
+  [
     kakaoAuth,
     'env.ENVIRONMENT === "local" || env.ENVIRONMENT === "preview"',
     "Kakao dev login tokens must be limited to local/preview"

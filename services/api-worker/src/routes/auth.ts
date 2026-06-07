@@ -109,6 +109,18 @@ authRoutes.post("/refresh", async (c) => {
     await sha256Hex(refreshToken)
   );
   if (!existing || existing.id !== payload.sid) {
+    await revokeSession(c.env.DB, payload.sid, user.id);
+    await createAuditLog(c.env.DB, {
+      userId: user.id,
+      action: "auth.refresh_reuse_detected",
+      entityType: "user_session",
+      entityId: payload.sid,
+      requestId: c.get("requestId") ?? "unknown",
+      metadata: {
+        reason: "refresh_token_reuse",
+        status: "revoked"
+      }
+    });
     return errorResponse(c, 401, "REFRESH_EXPIRED", "다시 로그인해주세요.");
   }
 
