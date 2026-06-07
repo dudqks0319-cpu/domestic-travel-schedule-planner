@@ -1832,6 +1832,11 @@ const publicShareApiPrivacyContracts = [
   ],
   [
     tripRoutes,
+    "공유 링크가 만료되었거나 삭제되었습니다.",
+    "Public share API not-found copy must explain expired or deleted links without disclosing token state"
+  ],
+  [
+    tripRoutes,
     "private, no-store",
     "Public share API must prevent shared itinerary caching"
   ],

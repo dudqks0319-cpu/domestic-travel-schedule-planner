@@ -1453,7 +1453,7 @@ shareRoutes.get("/:shareId", async (c) => {
 
   const sharedTrip = await getSharedTrip(c.env.DB, c.req.param("shareId"));
   if (!sharedTrip) {
-    return errorResponse(c, 404, "SHARE_NOT_FOUND", "공유 링크를 찾을 수 없습니다.");
+    return errorResponse(c, 404, "SHARE_NOT_FOUND", "공유 링크가 만료되었거나 삭제되었습니다.");
   }
 
   const shareId = c.req.param("shareId");

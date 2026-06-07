@@ -4336,3 +4336,27 @@ Verification completed:
 
 Remaining risks:
 - Device-level share-sheet QA is still needed to confirm the extra expiry line appears correctly on iOS and Android native share dialogs.
+
+## Public Share Expired Copy Consistency Result Record
+
+Plan:
+- Align the public share JSON API not-found copy with the HTML share page expired/deleted fallback.
+- Keep the response as a generic 404 so token validity is not disclosed.
+- Add release contract coverage for the safe expired/deleted copy.
+
+Completed:
+- Updated `GET /api/v1/share/:shareId` to return "공유 링크가 만료되었거나 삭제되었습니다." when no active shared trip is available.
+- Kept the error code as `SHARE_NOT_FOUND` and status as 404.
+- Added release contract coverage for the public share API not-found copy.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Client-side screens that consume the JSON share API still need live QA to confirm they render this safer message instead of a generic fallback.
