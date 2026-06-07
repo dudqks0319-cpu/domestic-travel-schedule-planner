@@ -4411,3 +4411,28 @@ Verification completed:
 
 Remaining risks:
 - Live Worker smoke with authenticated mobile traffic is still needed to verify the resulting `ad_events` rows in preview D1.
+
+## Share Completed Worker Smoke Result Record
+
+Plan:
+- Extend Worker v1 smoke so the `share_completed` ad placement is verified by the API, not only by static mobile contract checks.
+- Send the same `screen` and `tripId` metadata shape used by mobile share flows.
+- Keep the smoke non-production-only through the existing Worker smoke environment guard.
+- Add release contract coverage for the new smoke assertion.
+
+Completed:
+- Added a `POST /api/v1/monetization/ad-events` smoke call with `placement: "share_completed"`.
+- Included `screen` and `tripId` metadata in the smoke payload.
+- Updated release contract checks so the share-completed ad placement smoke cannot be removed silently.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- This local Phase verifies script syntax/static contract; full runtime evidence still requires `npm run worker:smoke:local` or preview smoke with D1 bindings.

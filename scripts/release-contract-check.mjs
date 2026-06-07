@@ -2185,6 +2185,11 @@ const rewardedExportContracts = [
     "Profile share success must log the share-completed monetization event"
   ],
   [
+    workerSmokeScript,
+    "POST /api/v1/monetization/ad-events share_completed",
+    "Worker smoke must verify the share-completed ad placement is accepted"
+  ],
+  [
     rewardedAds,
     "requestRewardedExportUnlock",
     "Mobile must expose a rewarded export unlock boundary"

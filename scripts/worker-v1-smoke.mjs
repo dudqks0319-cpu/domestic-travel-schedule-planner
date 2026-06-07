@@ -591,6 +591,17 @@ await step("monetization events and entitlement", async () => {
     "POST /api/v1/monetization/ad-events"
   );
   assertStatus(
+    await request("POST", "/api/v1/monetization/ad-events", {
+      json: {
+        placement: "share_completed",
+        eventType: "shown",
+        metadata: { screen: "worker-smoke-share", tripId }
+      }
+    }),
+    201,
+    "POST /api/v1/monetization/ad-events share_completed"
+  );
+  assertStatus(
     await request("POST", "/api/v1/monetization/affiliate-clicks", {
       json: {
         provider: "hotel",
