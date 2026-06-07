@@ -55,6 +55,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Request correlation id is returned as `x-request-id`.
 - [ ] Error responses hide internal details.
 - [ ] Provider calls have timeout and cache behavior.
+- [ ] Route optimization rejects invalid coordinates and point counts above provider policy.
 - [ ] Provider quota/rate-limit failures are tracked.
 - [ ] Audit logs avoid personal data and secrets.
 - [ ] Audit metadata is allowlisted and excludes tokens, receipts, raw provider payloads, and precise coordinates.

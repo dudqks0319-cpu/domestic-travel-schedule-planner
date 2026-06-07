@@ -11,6 +11,9 @@ import type { NormalizedRoute, RouteProviderKind, TravelMode } from "../provider
 
 export const routeRoutes = new Hono<AppBindings>();
 
+const MAX_ROUTE_OPTIMIZE_POINTS = 7;
+const MAX_ROUTE_POINT_LABEL_LENGTH = 120;
+
 routeRoutes.use("/optimize", rateLimit({
   keyPrefix: "routes_optimize",
   limit: 30,
@@ -50,21 +53,42 @@ function speed(modeValue: TravelMode): number {
   return 38;
 }
 
-function parsePoints(value: unknown): RoutePointInput[] {
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+function pointLabel(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const label = value.trim();
+  return label ? label.slice(0, MAX_ROUTE_POINT_LABEL_LENGTH) : undefined;
+}
+
+function parsePoints(value: unknown): RoutePointInput[] | null {
   if (!Array.isArray(value)) return [];
-  return value.flatMap((item, index) => {
-    if (!item || typeof item !== "object") return [];
+  const points: RoutePointInput[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") return null;
     const record = item as Record<string, unknown>;
     const lat = typeof record.lat === "number" ? record.lat : null;
     const lng = typeof record.lng === "number" ? record.lng : null;
-    if (lat === null || lng === null) return [];
-    return [{
-      ...(typeof record.id === "string" ? { id: record.id } : {}),
-      ...(typeof record.name === "string" ? { name: record.name } : {}),
+    if (lat === null || lng === null || !isValidCoordinate(lat, lng)) {
+      return null;
+    }
+
+    const id = pointLabel(record.id);
+    const name = pointLabel(record.name);
+    points.push({
+      ...(id ? { id } : {}),
+      ...(name ? { name } : {}),
       lat,
       lng
-    }];
-  });
+    });
+  }
+
+  return points;
 }
 
 function providerCacheScopes(env: AppBindings["Bindings"], selectedMode: TravelMode): RouteProviderKind[] {
@@ -136,7 +160,14 @@ routeRoutes.post("/optimize", async (c) => {
     return errorResponse(c, 400, "INVALID_JSON", "요청 본문을 확인해주세요.");
   }
 
+  if (Array.isArray(raw.points) && raw.points.length > MAX_ROUTE_OPTIMIZE_POINTS) {
+    return errorResponse(c, 400, "ROUTE_POINT_LIMIT_EXCEEDED", "한 번에 계산할 수 있는 장소 수를 초과했습니다.");
+  }
+
   const points = parsePoints(raw.points);
+  if (points === null) {
+    return errorResponse(c, 400, "INVALID_ROUTE_POINTS", "경로 좌표를 확인해주세요.");
+  }
   if (points.length < 2) {
     return errorResponse(c, 400, "ROUTE_POINTS_REQUIRED", "경로 계산에는 2개 이상의 장소가 필요합니다.");
   }

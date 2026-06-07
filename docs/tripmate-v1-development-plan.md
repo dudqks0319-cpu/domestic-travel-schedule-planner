@@ -4542,3 +4542,31 @@ Verification completed:
 
 Remaining risks:
 - Runtime smoke with deployed preview/prod `ALLOWED_ORIGINS` values is still needed after Cloudflare environment configuration.
+
+## Route Optimize Abuse Guard Result Record
+
+Plan:
+- Cap `/api/v1/routes/optimize` point count to the provider-supported route size.
+- Reject invalid, non-finite, or out-of-range coordinates instead of silently dropping them.
+- Bound route point labels used in cache keys and route summaries.
+- Add Worker smoke and release contract coverage for invalid coordinate and point-count abuse cases.
+
+Completed:
+- Added `MAX_ROUTE_OPTIMIZE_POINTS = 7` and `MAX_ROUTE_POINT_LABEL_LENGTH = 120`.
+- Added route coordinate validation with `Number.isFinite`, latitude range, and longitude range checks.
+- Returned stable `INVALID_ROUTE_POINTS` and `ROUTE_POINT_LIMIT_EXCEEDED` errors for bad route requests.
+- Added Worker smoke checks for invalid coordinates and point limit enforcement.
+- Updated release contract and privacy/security checklist coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Live preview smoke should still be run with real provider credentials to confirm provider-specific waypoint behavior.

@@ -1133,6 +1133,50 @@ for (const [content, expectedText, label] of rateLimitContracts) {
   }
 }
 
+const routeOptimizeAbuseContracts = [
+  [
+    routeRoutes,
+    "const MAX_ROUTE_OPTIMIZE_POINTS = 7;",
+    "Route optimize must cap request point count to provider policy"
+  ],
+  [
+    routeRoutes,
+    "Number.isFinite(lat) && Number.isFinite(lng)",
+    "Route optimize must reject non-finite coordinates"
+  ],
+  [
+    routeRoutes,
+    "lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180",
+    "Route optimize must reject out-of-range coordinates"
+  ],
+  [
+    routeRoutes,
+    '"INVALID_ROUTE_POINTS"',
+    "Route optimize must return a stable invalid coordinate error code"
+  ],
+  [
+    routeRoutes,
+    '"ROUTE_POINT_LIMIT_EXCEEDED"',
+    "Route optimize must return a stable point limit error code"
+  ],
+  [
+    workerSmokeScript,
+    "route optimize should reject invalid coordinate ranges",
+    "Worker smoke must cover invalid route coordinates"
+  ],
+  [
+    workerSmokeScript,
+    "route optimize should reject point counts above provider policy",
+    "Worker smoke must cover route optimize point count abuse"
+  ]
+];
+
+for (const [content, expectedText, label] of routeOptimizeAbuseContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing route optimize abuse contract: ${label}`);
+  }
+}
+
 const routeCacheContracts = [
   [
     routeCacheDb,

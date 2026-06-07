@@ -312,6 +312,40 @@ await step("route optimize", async () => {
   assertOk(cachedResult, "POST /api/v1/routes/optimize cached");
   assert(cachedResult.body?.cacheStatus === "hit", "route optimize should return cacheStatus hit on repeated request");
   assertRequiredProvider(cachedResult.body?.route?.provider, "cached route optimize should return required provider route");
+
+  const invalidCoordinateResult = await request("POST", "/api/v1/routes/optimize", {
+    auth: false,
+    json: {
+      mode: "driving",
+      points: [
+        { id: "a", name: "강릉역", lat: 37.7644, lng: 128.8995 },
+        { id: "invalid", name: "잘못된 좌표", lat: 999, lng: 128.9489 }
+      ]
+    }
+  });
+  assertStatus(invalidCoordinateResult, 400, "POST /api/v1/routes/optimize invalid coordinates");
+  assert(
+    invalidCoordinateResult.body?.error?.code === "INVALID_ROUTE_POINTS",
+    "route optimize should reject invalid coordinate ranges"
+  );
+
+  const tooManyPointsResult = await request("POST", "/api/v1/routes/optimize", {
+    auth: false,
+    json: {
+      mode: "driving",
+      points: Array.from({ length: 8 }, (_, index) => ({
+        id: `limit-${index + 1}`,
+        name: `경로 제한 검증 ${index + 1}`,
+        lat: 37.7 + index * 0.001,
+        lng: 128.8 + index * 0.001
+      }))
+    }
+  });
+  assertStatus(tooManyPointsResult, 400, "POST /api/v1/routes/optimize point limit");
+  assert(
+    tooManyPointsResult.body?.error?.code === "ROUTE_POINT_LIMIT_EXCEEDED",
+    "route optimize should reject point counts above provider policy"
+  );
 });
 
 await step("places search contract", async () => {
