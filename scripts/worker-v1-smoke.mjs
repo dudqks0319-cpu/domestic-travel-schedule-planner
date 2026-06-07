@@ -526,6 +526,24 @@ await step("trip, day, place, and share CRUD", async () => {
   assertHeaderIncludes(publicShare, "cache-control", "no-store", "public share read should prevent caching");
   assertHeaderIncludes(publicShare, "x-robots-tag", "noindex", "public share read should prevent indexing");
   assertHeaderIncludes(publicShare, "referrer-policy", "no-referrer", "public share read should avoid referrer leaks");
+
+  const publicSharePage = await request("GET", `/share/${shareToken}`, { auth: false });
+  assertOk(publicSharePage, "GET /share/:shareId");
+  assertHeaderIncludes(publicSharePage, "cache-control", "no-store", "public share page smoke should prevent caching");
+  assertHeaderIncludes(publicSharePage, "x-robots-tag", "noindex", "public share page smoke should prevent indexing");
+  assertHeaderIncludes(publicSharePage, "referrer-policy", "no-referrer", "public share page smoke should avoid referrer leaks");
+  assert(
+    typeof publicSharePage.body === "string" &&
+      publicSharePage.body.includes("장소 좌표 원문은 표시하지 않습니다."),
+    "public share page smoke should disclose that raw coordinates are not shown"
+  );
+  assert(
+    typeof publicSharePage.body === "string" &&
+      !publicSharePage.body.includes(shareToken) &&
+      !publicSharePage.body.includes("37.7715") &&
+      !publicSharePage.body.includes("128.9489"),
+    "public share page smoke should not render the share token or raw coordinates"
+  );
 });
 
 await step("free saved trip limit", async () => {

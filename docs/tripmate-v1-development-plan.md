@@ -4129,3 +4129,29 @@ Verification completed:
 
 Remaining risks:
 - Preview/production checks now intentionally fail while `EXPO_PUBLIC_IAP_STATUS=disabled`; native Apple/Google purchase bridge integration is still required before those release gates can pass.
+
+## Public Share Page Runtime Privacy Smoke Result Record
+
+Plan:
+- Extend the Worker v1 smoke beyond JSON share API checks to the public `/share/:token` HTML page.
+- Verify the public share page returns no-store/noindex/no-referrer headers at runtime.
+- Verify the HTML page discloses that raw coordinates are not shown.
+- Verify the HTML page does not render the bearer share token or raw coordinate values immediately after share creation.
+
+Completed:
+- Added a `GET /share/:shareId` smoke step immediately after share creation in `scripts/worker-v1-smoke.mjs`.
+- Added runtime assertions for `cache-control`, `x-robots-tag`, and `referrer-policy` on the public share page.
+- Added body assertions for coordinate disclosure copy, share-token redaction, and raw coordinate redaction.
+- Updated release contract checks so the new public share page smoke assertions cannot be dropped silently.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- The smoke assertions still require an actual local/preview Worker run for live D1 evidence; this Phase adds deterministic runtime assertions to the smoke script and static release contract coverage.

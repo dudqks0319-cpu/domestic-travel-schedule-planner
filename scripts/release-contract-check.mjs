@@ -1619,6 +1619,31 @@ const exportDownloadContracts = [
   ],
   [
     workerSmokeScript,
+    "public share page smoke should prevent caching",
+    "Worker smoke must verify public share page no-store headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share page smoke should prevent indexing",
+    "Worker smoke must verify public share page noindex headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share page smoke should avoid referrer leaks",
+    "Worker smoke must verify public share page referrer-policy headers"
+  ],
+  [
+    workerSmokeScript,
+    "public share page smoke should disclose that raw coordinates are not shown",
+    "Worker smoke must verify public share page coordinate disclosure copy"
+  ],
+  [
+    workerSmokeScript,
+    "public share page smoke should not render the share token or raw coordinates",
+    "Worker smoke must verify public share page token and raw coordinate redaction"
+  ],
+  [
+    workerSmokeScript,
     "premium image export should be ready immediately",
     "Worker smoke must verify premium image exports are ready"
   ],
