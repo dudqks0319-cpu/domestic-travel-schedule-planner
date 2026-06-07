@@ -1284,6 +1284,21 @@ const sponsoredPlaceContracts = [
     "Place search route must apply sponsored disclosures before saving or returning results"
   ],
   [
+    searchScreen,
+    "SponsoredBadge",
+    "Search screen must show sponsored places with the shared SponsoredBadge"
+  ],
+  [
+    scheduleScreen,
+    "SponsoredBadge",
+    "Schedule screen must show saved sponsored places with the shared SponsoredBadge"
+  ],
+  [
+    scheduleScreen,
+    'point.sponsorLabel ?? "스폰서"',
+    "Schedule screen must preserve explicit sponsored disclosure labels"
+  ],
+  [
     placeRoutes,
     "sponsoredCount",
     "Place search operational events must count sponsored results"

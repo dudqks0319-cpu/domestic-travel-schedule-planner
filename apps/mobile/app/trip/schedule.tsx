@@ -7,6 +7,7 @@ import { captureRef } from "react-native-view-shot";
 import Button from "../../components/common/Button";
 import Header from "../../components/common/Header";
 import AdPlacement from "../../components/monetization/AdPlacement";
+import SponsoredBadge from "../../components/monetization/SponsoredBadge";
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Theme from "../../constants/Theme";
@@ -1445,7 +1446,7 @@ export default function ScheduleScreen() {
                 {[point.category ?? "방문 장소", point.address].filter(Boolean).join(" · ") || "방문 장소"}
               </Text>
               {point.isSponsored ? (
-                <Text style={styles.sponsoredDisclosure}>{point.sponsorLabel ?? "스폰서"}</Text>
+                <SponsoredBadge label={point.sponsorLabel ?? "스폰서"} />
               ) : null}
               <View style={styles.placeEditPanel}>
                 <View style={styles.timeEditRow}>
@@ -2156,12 +2157,6 @@ const styles = StyleSheet.create({
     ...Typography.normal.caption,
     color: Theme.colors.textSecondary,
     marginTop: 4
-  },
-  sponsoredDisclosure: {
-    ...Typography.normal.caption,
-    color: "#8A5D00",
-    fontWeight: "800",
-    marginTop: 6
   },
   placeEditPanel: {
     gap: 8,

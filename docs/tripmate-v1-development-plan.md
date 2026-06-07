@@ -4181,3 +4181,29 @@ Verification completed:
 
 Remaining risks:
 - Device-level visual smoke is still needed to inspect route segment card wrapping on small screens with long Korean place names.
+
+## Schedule Sponsored Badge Consistency Result Record
+
+Plan:
+- Make saved sponsored places in the schedule use the same sponsored disclosure UI as search results.
+- Avoid rendering sponsored schedule places as plain text that can blend into organic itinerary metadata.
+- Preserve explicit sponsor labels returned by the provider/ops campaign layer.
+- Add release contract coverage for mobile sponsored disclosure consistency.
+
+Completed:
+- Imported and used the shared `SponsoredBadge` component in `apps/mobile/app/trip/schedule.tsx`.
+- Replaced the schedule-specific sponsored text with `SponsoredBadge label={point.sponsorLabel ?? "스폰서"}`.
+- Removed the now-unused `sponsoredDisclosure` schedule style.
+- Updated release contract checks so search and schedule screens must use the shared sponsored badge and preserve sponsor labels.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Device-level visual smoke is still needed to inspect sponsored badge spacing in dense schedule cards on small screens.
