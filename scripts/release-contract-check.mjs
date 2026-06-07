@@ -97,6 +97,7 @@ for (const file of [
   "services/api-worker/migrations/0002_trip_exports.sql",
   "services/api-worker/migrations/0003_operational_events.sql",
   "services/api-worker/migrations/0004_user_profile_image.sql",
+  "services/api-worker/migrations/0005_share_link_expiry.sql",
   "scripts/check-cloudflare-secrets.mjs",
   "scripts/d1-migrate.mjs",
   "scripts/preview-release-gate.mjs",
@@ -107,6 +108,7 @@ for (const file of [
 }
 
 const tripRoutes = readText("services/api-worker/src/routes/trips.ts");
+const shareLinkExpiryMigration = readText("services/api-worker/migrations/0005_share_link_expiry.sql");
 const sharePageRoutes = readText("services/api-worker/src/routes/share-page.ts");
 const workerTokens = readText("services/api-worker/src/auth/tokens.ts");
 const tripDb = readText("services/api-worker/src/db/trips.ts");
@@ -1835,6 +1837,21 @@ const publicShareApiPrivacyContracts = [
     tripDb,
     "INSERT INTO share_links (id, trip_id, user_id, token, expires_at)",
     "Share link creation must persist an expiry timestamp"
+  ],
+  [
+    shareLinkExpiryMigration,
+    "WHERE expires_at IS NULL",
+    "Share link expiry migration must backfill missing expiry timestamps"
+  ],
+  [
+    shareLinkExpiryMigration,
+    "created_at, datetime('now')), '+30 days'",
+    "Share link expiry migration must backfill from creation time"
+  ],
+  [
+    shareLinkExpiryMigration,
+    "SET status = 'expired'",
+    "Share link expiry migration must mark already expired active links"
   ],
   [
     workerSmokeScript,

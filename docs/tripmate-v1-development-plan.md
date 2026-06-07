@@ -4284,4 +4284,29 @@ Verification completed:
 - `git diff --check`
 
 Remaining risks:
-- Existing share links created before this change may still have `expires_at = NULL`; a production data migration or cleanup policy should be chosen before public launch if any real links already exist.
+- Existing share links created before this change require the share-link expiry migration to be applied to the target D1 database before public launch.
+
+## Share Link Expiry Migration Result Record
+
+Plan:
+- Add a D1 migration for existing share links that were created before bounded expiry was introduced.
+- Backfill NULL `expires_at` values from each link's `created_at` timestamp plus the 30-day share TTL.
+- Mark already elapsed active links as `expired` so operational state matches public access behavior.
+- Lock the migration into release contract checks.
+
+Completed:
+- Added `services/api-worker/migrations/0005_share_link_expiry.sql`.
+- Backfilled `share_links.expires_at` where it is missing and the row is not deleted.
+- Marked active share links with elapsed expiry timestamps as `expired`.
+- Updated release contract checks to require the new migration file and its key backfill/status SQL.
+
+Verification completed:
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- The migration has not been applied to preview or production D1 in this local Phase; run `npm run d1:plan:preview` and `npm run d1:migrate:preview` after real Cloudflare bindings are configured.
