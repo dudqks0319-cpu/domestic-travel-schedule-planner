@@ -4462,3 +4462,30 @@ Verification completed:
 
 Remaining risks:
 - Native device QA is still needed because `Linking.canOpenURL()` behavior can differ by platform and scheme configuration.
+
+## Affiliate Placement Allowlist Result Record
+
+Plan:
+- Prevent arbitrary affiliate click placement values from entering D1 analytics.
+- Align Worker smoke with the mobile `schedule_bottom` affiliate placement.
+- Keep provider allowlisting and HTTPS target validation unchanged.
+- Add release contract coverage for placement allowlisting.
+
+Completed:
+- Added `ALLOWED_AFFILIATE_PLACEMENTS` to the Worker monetization route.
+- Updated `POST /api/v1/monetization/affiliate-clicks` to reject unsupported placement values.
+- Updated Worker v1 smoke to send `placement: "schedule_bottom"` for affiliate clicks.
+- Updated release contract checks to require the Worker placement allowlist and smoke placement.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Additional affiliate placements should be explicitly added to the allowlist when new UI surfaces are introduced.

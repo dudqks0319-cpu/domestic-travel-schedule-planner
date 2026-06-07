@@ -2205,6 +2205,21 @@ const rewardedExportContracts = [
     "Schedule affiliate flow must distinguish opened links from failed click logging"
   ],
   [
+    monetizationRoutes,
+    "ALLOWED_AFFILIATE_PLACEMENTS",
+    "Worker affiliate click endpoint must allowlist placement values"
+  ],
+  [
+    monetizationRoutes,
+    "ALLOWED_AFFILIATE_PLACEMENTS.has(placement)",
+    "Worker affiliate click endpoint must reject unsupported placements"
+  ],
+  [
+    workerSmokeScript,
+    'placement: "schedule_bottom"',
+    "Worker smoke must use the mobile schedule affiliate placement"
+  ],
+  [
     rewardedAds,
     "requestRewardedExportUnlock",
     "Mobile must expose a rewarded export unlock boundary"

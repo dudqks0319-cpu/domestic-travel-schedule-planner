@@ -605,7 +605,7 @@ await step("monetization events and entitlement", async () => {
     await request("POST", "/api/v1/monetization/affiliate-clicks", {
       json: {
         provider: "hotel",
-        placement: "schedule",
+        placement: "schedule_bottom",
         targetUrl: "https://example.com/tripmate-smoke",
         tripId
       }

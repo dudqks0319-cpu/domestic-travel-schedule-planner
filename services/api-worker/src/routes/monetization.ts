@@ -31,6 +31,7 @@ const ALLOWED_AFFILIATE_PROVIDERS = new Set([
   "insurance",
   "local_tour"
 ]);
+const ALLOWED_AFFILIATE_PLACEMENTS = new Set(["schedule_bottom"]);
 const ALLOWED_ENTITLEMENT_PLATFORMS = new Set<EntitlementPlatform>(["apple", "google", "manual"]);
 const ALLOWED_ENTITLEMENT_STATUSES = new Set<EntitlementStatus>([
   "active",
@@ -192,8 +193,8 @@ monetizationRoutes.post("/affiliate-clicks", async (c) => {
     return errorResponse(c, 400, "INVALID_AFFILIATE_PROVIDER", "지원하지 않는 제휴 유형입니다.");
   }
 
-  if (!placement) {
-    return errorResponse(c, 400, "INVALID_AFFILIATE_PLACEMENT", "제휴 클릭 위치가 필요합니다.");
+  if (!placement || !ALLOWED_AFFILIATE_PLACEMENTS.has(placement)) {
+    return errorResponse(c, 400, "INVALID_AFFILIATE_PLACEMENT", "지원하지 않는 제휴 클릭 위치입니다.");
   }
 
   if (!targetUrl || !/^https:\/\//.test(targetUrl)) {
