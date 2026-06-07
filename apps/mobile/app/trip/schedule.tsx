@@ -1076,6 +1076,14 @@ export default function ScheduleScreen() {
     }
 
     setAffiliateNotice(null);
+    const canOpen = await Linking.canOpenURL(offer.targetUrl);
+    if (!canOpen) {
+      setAffiliateNotice("외부 예약 링크를 열 수 없어요. 링크 설정을 확인해 주세요.");
+      return;
+    }
+
+    await Linking.openURL(offer.targetUrl);
+
     try {
       await logAffiliateClick({
         provider: offer.provider,
@@ -1084,14 +1092,7 @@ export default function ScheduleScreen() {
         ...(currentServerTripId() ? { tripId: currentServerTripId() ?? undefined } : {})
       });
     } catch {
-      setAffiliateNotice("클릭 기록은 실패했지만 외부 예약 서비스는 열어드릴게요.");
-    }
-
-    const canOpen = await Linking.canOpenURL(offer.targetUrl);
-    if (canOpen) {
-      await Linking.openURL(offer.targetUrl);
-    } else {
-      setAffiliateNotice("외부 예약 링크를 열 수 없어요. 링크 설정을 확인해 주세요.");
+      setAffiliateNotice("외부 예약 서비스는 열었지만 클릭 기록은 실패했어요.");
     }
   };
 

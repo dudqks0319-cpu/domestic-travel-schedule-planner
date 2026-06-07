@@ -4436,3 +4436,29 @@ Verification completed:
 
 Remaining risks:
 - This local Phase verifies script syntax/static contract; full runtime evidence still requires `npm run worker:smoke:local` or preview smoke with D1 bindings.
+
+## Affiliate Click Open Guard Result Record
+
+Plan:
+- Avoid recording affiliate clicks for links that the app cannot open.
+- Keep external booking flows separate from digital premium purchases.
+- Preserve the external handoff even if click logging fails after a link opens.
+- Add release contract coverage for the openability guard and failure copy.
+
+Completed:
+- Moved `Linking.canOpenURL()` before `logAffiliateClick()` in the schedule affiliate flow.
+- Opened the external booking URL before recording the affiliate click.
+- Updated the logging-failure message to clarify that the external booking service already opened.
+- Updated release contract checks to require the affiliate openability guard, external open call, and failure copy.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Native device QA is still needed because `Linking.canOpenURL()` behavior can differ by platform and scheme configuration.

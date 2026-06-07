@@ -2190,6 +2190,21 @@ const rewardedExportContracts = [
     "Worker smoke must verify the share-completed ad placement is accepted"
   ],
   [
+    scheduleScreen,
+    "const canOpen = await Linking.canOpenURL(offer.targetUrl);",
+    "Schedule affiliate flow must check external link openability before logging clicks"
+  ],
+  [
+    scheduleScreen,
+    "await Linking.openURL(offer.targetUrl);",
+    "Schedule affiliate flow must open the external booking link"
+  ],
+  [
+    scheduleScreen,
+    "외부 예약 서비스는 열었지만 클릭 기록은 실패했어요.",
+    "Schedule affiliate flow must distinguish opened links from failed click logging"
+  ],
+  [
     rewardedAds,
     "requestRewardedExportUnlock",
     "Mobile must expose a rewarded export unlock boundary"
