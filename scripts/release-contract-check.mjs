@@ -428,6 +428,21 @@ const workerLocalSmokeContracts = [
   ],
   [
     workerLocalSmokeScript,
+    "schema_migrations",
+    "Local Worker smoke gate must use a local migration ledger"
+  ],
+  [
+    workerLocalSmokeScript,
+    "skip already applied",
+    "Local Worker smoke gate must skip ledger-recorded migrations"
+  ],
+  [
+    workerLocalSmokeScript,
+    "INSERT OR IGNORE INTO",
+    "Local Worker smoke gate must record applied migrations idempotently"
+  ],
+  [
+    workerLocalSmokeScript,
     "pragma_table_info('users')",
     "Local Worker smoke gate must detect already-applied profile image migration"
   ],

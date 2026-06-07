@@ -4015,3 +4015,30 @@ Verification completed:
 
 Remaining risks:
 - Repeated local smoke runs still rely on targeted idempotency handling for historical non-idempotent migrations such as `0004_user_profile_image.sql`.
+
+## Local Worker Smoke Migration Ledger Result Record
+
+Plan:
+- Add a local D1 `schema_migrations` ledger to `worker:smoke:local`.
+- Skip already recorded local migrations instead of re-running every SQL file.
+- Record both newly applied migrations and targeted legacy skips idempotently.
+- Keep migration discovery and fail-fast behavior from the previous Phase.
+
+Completed:
+- Added local `schema_migrations` creation before local D1 migration application.
+- Added applied migration discovery and `skip already applied` behavior to `scripts/worker-local-smoke.mjs`.
+- Added idempotent `INSERT OR IGNORE` recording after each applied migration and after the `0004_user_profile_image.sql` legacy skip.
+- Updated release contract checks, Cloudflare deployment docs, and API Worker README for the local migration ledger behavior.
+
+Verification completed:
+- `node --check scripts/worker-local-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:smoke:local -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Existing local databases that were migrated before ledger adoption will record idempotent migrations on the next smoke run; the historical `0004_user_profile_image.sql` skip still handles its non-idempotent `ALTER TABLE`.

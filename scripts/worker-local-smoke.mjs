@@ -13,6 +13,7 @@ const repoRoot = path.resolve(path.dirname(currentFile), "..");
 const workerRoot = path.join(repoRoot, "services", "api-worker");
 const migrationsDir = path.join(workerRoot, "migrations");
 const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
+const migrationLedgerTable = "schema_migrations";
 
 function readArg(name, fallback) {
   const prefix = `${name}=`;
@@ -37,7 +38,7 @@ Usage:
   npm run worker:smoke:local -- --base-url http://127.0.0.1:8787
 
 What it does:
-  1. Applies every local D1 migration from services/api-worker/migrations in filename order.
+  1. Applies pending local D1 migrations from services/api-worker/migrations in filename order.
   2. Starts wrangler dev --local through npm run worker:dev.
   3. Waits for /health.
   4. Runs npm run worker:smoke against the local Worker.
@@ -129,6 +130,63 @@ async function hasUserProfileImageColumn() {
   return output.includes('"name": "profile_image"');
 }
 
+async function ensureMigrationLedger() {
+  await runCommand(
+    `ensure local D1 ${migrationLedgerTable}`,
+    npmBin,
+    [
+      "exec",
+      "--",
+      "wrangler",
+      "d1",
+      "execute",
+      "tripmate-local",
+      "--local",
+      `--command=CREATE TABLE IF NOT EXISTS ${migrationLedgerTable} (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')));`
+    ],
+    { cwd: workerRoot }
+  );
+}
+
+async function listAppliedMigrations() {
+  const output = await runCommandCapture(
+    `read local D1 ${migrationLedgerTable}`,
+    npmBin,
+    [
+      "exec",
+      "--",
+      "wrangler",
+      "d1",
+      "execute",
+      "tripmate-local",
+      "--local",
+      `--command=SELECT name FROM ${migrationLedgerTable} ORDER BY name;`
+    ],
+    { cwd: workerRoot }
+  );
+
+  return new Set(Array.from(output.matchAll(/"name"\s*:\s*"([^"]+)"/g)).map((match) => match[1]));
+}
+
+async function recordMigration(migration) {
+  const escapedMigration = migration.replaceAll("'", "''");
+  await runCommand(
+    `record local D1 migration ${migration}`,
+    npmBin,
+    [
+      "exec",
+      "--",
+      "wrangler",
+      "d1",
+      "execute",
+      "tripmate-local",
+      "--local",
+      `--command=INSERT OR IGNORE INTO ${migrationLedgerTable} (name) VALUES ('${escapedMigration}');`
+    ],
+    { cwd: workerRoot }
+  );
+}
+
 function discoverMigrations() {
   const migrations = fs.readdirSync(migrationsDir)
     .filter((entry) => /^\d{4}_.+\.sql$/.test(entry))
@@ -142,9 +200,18 @@ function discoverMigrations() {
 }
 
 async function applyMigrations() {
+  await ensureMigrationLedger();
+  const appliedMigrations = await listAppliedMigrations();
+
   for (const migration of discoverMigrations()) {
+    if (appliedMigrations.has(migration)) {
+      console.log(`[worker:smoke:local] skip already applied ${migration}`);
+      continue;
+    }
+
     if (migration === "0004_user_profile_image.sql" && await hasUserProfileImageColumn()) {
       console.log("[worker:smoke:local] skip 0004_user_profile_image.sql; users.profile_image already exists");
+      await recordMigration(migration);
       continue;
     }
 
@@ -163,6 +230,7 @@ async function applyMigrations() {
       ],
       { cwd: workerRoot }
     );
+    await recordMigration(migration);
   }
 }
 
