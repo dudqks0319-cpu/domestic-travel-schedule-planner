@@ -2569,7 +2569,7 @@ const mobileAuthPrivacyContracts = [
   ],
   [
     secureStorage,
-    'throw new Error("SecureStore is required for auth token storage.")',
+    "SECURE_STORE_REQUIRED_MESSAGE",
     "Mobile native auth tokens must not fall back to AsyncStorage when SecureStore fails"
   ],
   [
@@ -2581,6 +2581,16 @@ const mobileAuthPrivacyContracts = [
     secureStorage,
     "await AsyncStorage.removeItem(key);",
     "Mobile secure storage must clear legacy AsyncStorage token fallback values"
+  ],
+  [
+    authProvider,
+    'await clearLocalAuthState("invalid-session");',
+    "Mobile AuthProvider must clear partial local session storage when secure token persistence fails"
+  ],
+  [
+    authProvider,
+    "기기 잠금 설정을 확인한 뒤 다시 시도해주세요.",
+    "Mobile AuthProvider must surface a user-safe SecureStore failure message"
   ]
 ];
 

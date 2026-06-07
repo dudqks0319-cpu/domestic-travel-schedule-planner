@@ -15,6 +15,7 @@ import {
   getAuthToken,
   getRefreshToken,
   getUserProfile,
+  SECURE_STORE_REQUIRED_MESSAGE,
   setAccessToken,
   setAuthToken,
   setRefreshToken,
@@ -82,12 +83,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserSignupProfile | null>(null);
 
   const setSession = useCallback(async (session: AuthSession) => {
-    await Promise.all([
-      setAuthToken(session.authToken),
-      setAccessToken(session.accessToken),
-      setRefreshToken(session.refreshToken),
-      setUserProfile(session.user)
-    ]);
+    try {
+      await Promise.all([
+        setAuthToken(session.authToken),
+        setAccessToken(session.accessToken),
+        setRefreshToken(session.refreshToken),
+        setUserProfile(session.user)
+      ]);
+    } catch {
+      await clearLocalAuthState("invalid-session");
+      throw new Error(`${SECURE_STORE_REQUIRED_MESSAGE} 기기 잠금 설정을 확인한 뒤 다시 시도해주세요.`);
+    }
 
     setUser(session.user);
     setStatus("authenticated");

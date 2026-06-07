@@ -6,6 +6,7 @@ export const AUTH_TOKEN_STORAGE_KEY = "userToken";
 export const USER_PROFILE_STORAGE_KEY = "userData";
 export const ACCESS_TOKEN_STORAGE_KEY = "accessToken";
 export const REFRESH_TOKEN_STORAGE_KEY = "refreshToken";
+export const SECURE_STORE_REQUIRED_MESSAGE = "보안 저장소를 사용할 수 없어 로그인 정보를 안전하게 저장하지 못했어요.";
 
 const SENSITIVE_TOKEN_KEYS = new Set([
   AUTH_TOKEN_STORAGE_KEY,
@@ -31,7 +32,7 @@ async function setItem(key: string, value: string): Promise<void> {
       return;
     } catch {
       if (!canUseAsyncStorageFallback(key)) {
-        throw new Error("SecureStore is required for auth token storage.");
+        throw new Error(SECURE_STORE_REQUIRED_MESSAGE);
       }
     }
   }

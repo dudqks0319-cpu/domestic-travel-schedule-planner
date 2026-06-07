@@ -4597,3 +4597,29 @@ Verification completed:
 
 Remaining risks:
 - Native device QA is still needed to verify SecureStore availability and user-facing login error handling on physical iOS/Android devices.
+
+## SecureStore Failure UX Guard Result Record
+
+Plan:
+- Avoid exposing internal SecureStore implementation errors directly in the Kakao login alert.
+- Clear any partially written local auth/session/profile data when secure token persistence fails.
+- Keep native AsyncStorage token fallback blocked.
+- Add release contract coverage for cleanup and user-safe failure copy.
+
+Completed:
+- Added `SECURE_STORE_REQUIRED_MESSAGE` as the shared secure storage failure copy.
+- Wrapped session persistence in `AuthProvider` with cleanup on storage failure.
+- Re-threw a Korean user-facing message that tells users to check device security settings.
+- Updated release contract coverage for partial-session cleanup and user-safe SecureStore failure copy.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Physical device QA is still needed to verify the exact OS-level SecureStore failure scenarios and alert copy.
