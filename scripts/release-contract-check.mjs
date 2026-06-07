@@ -1827,6 +1827,21 @@ const publicShareApiPrivacyContracts = [
     "Worker smoke must use the generated public share token"
   ],
   [
+    tripDb,
+    "SHARE_LINK_TTL_DAYS = 30",
+    "Share links must have a bounded default TTL"
+  ],
+  [
+    tripDb,
+    "INSERT INTO share_links (id, trip_id, user_id, token, expires_at)",
+    "Share link creation must persist an expiry timestamp"
+  ],
+  [
+    workerSmokeScript,
+    "share create should return public expiry",
+    "Worker smoke must verify share creation returns an expiry"
+  ],
+  [
     workerSmokeScript,
     "public share read should not echo the bearer token",
     "Worker smoke must verify public share token redaction"

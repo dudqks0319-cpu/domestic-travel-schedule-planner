@@ -4258,3 +4258,30 @@ Verification completed:
 
 Remaining risks:
 - Local/preview Worker smoke still needs a running Worker with D1/R2 bindings to execute these assertions end to end.
+
+## Bounded Share Link Expiry Result Record
+
+Plan:
+- Stop creating public share links without an expiry timestamp.
+- Use a conservative default TTL so bearer-style itinerary links do not remain valid indefinitely.
+- Keep the existing public share read filters and page footer expiry display working from real data.
+- Lock share expiry creation into Worker smoke and release contract checks.
+
+Completed:
+- Added `SHARE_LINK_TTL_DAYS = 30` to the Worker trip DB layer.
+- Updated `createShareLink()` to insert `expires_at` when a share link is created.
+- Added Worker smoke coverage that asserts share creation returns `expiresAt`.
+- Updated release contract checks so bounded TTL, `expires_at` persistence, and smoke expiry coverage cannot be removed silently.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Existing share links created before this change may still have `expires_at = NULL`; a production data migration or cleanup policy should be chosen before public launch if any real links already exist.

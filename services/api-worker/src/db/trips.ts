@@ -37,6 +37,13 @@ export interface SharedTripRecord extends TripRecord {
   share_expires_at: string | null;
 }
 
+export const SHARE_LINK_TTL_DAYS = 30;
+
+function sqliteDateTimeAfterDays(days: number): string {
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return expiresAt.toISOString().slice(0, 19).replace("T", " ");
+}
+
 export interface TripDayRecord {
   id: string;
   trip_id: string;
@@ -285,12 +292,13 @@ export async function createShareLink(
 
   const id = crypto.randomUUID();
   const token = crypto.randomUUID().replaceAll("-", "");
+  const expiresAt = sqliteDateTimeAfterDays(SHARE_LINK_TTL_DAYS);
   await db
     .prepare(
-      `INSERT INTO share_links (id, trip_id, user_id, token)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO share_links (id, trip_id, user_id, token, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
     )
-    .bind(id, tripId, userId, token)
+    .bind(id, tripId, userId, token, expiresAt)
     .run();
 
   return db

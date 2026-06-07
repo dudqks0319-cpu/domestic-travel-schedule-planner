@@ -520,6 +520,7 @@ await step("trip, day, place, and share CRUD", async () => {
   assertStatus(share, 201, "POST /api/v1/trips/:tripId/share");
   shareToken = share.body?.share?.token ?? "";
   assert(shareToken, "share create should return public token");
+  assert(share.body?.share?.expiresAt, "share create should return public expiry");
   const publicShare = await request("GET", `/api/v1/share/${shareToken}`, { auth: false });
   assertOk(publicShare, "GET /api/v1/share/:shareId");
   assert(!publicShare.body?.share?.token, "public share read should not echo the bearer token");
