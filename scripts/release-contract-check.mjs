@@ -145,6 +145,7 @@ const tripHydration = readText("apps/mobile/services/tripHydration.ts");
 const localTripStorage = readText("apps/mobile/services/localTripStorage.ts");
 const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
 const routeMapScreen = readText("apps/mobile/app/trip/route-map.tsx");
+const routeDetailCard = readText("apps/mobile/components/map/RouteDetailCard.tsx");
 const nativeRouteMapView = readText("apps/mobile/components/map/RouteMapView.native.tsx");
 const webRouteMapView = readText("apps/mobile/components/map/RouteMapView.web.tsx");
 const routeApi = readText("apps/mobile/services/routeApi.ts");
@@ -1179,6 +1180,11 @@ const mobileRouteProviderContracts = [
     "Route map source labels must include Naver provider copy"
   ],
   [
+    routeDetailCard,
+    "네이버 경로",
+    "Route detail segment cards must show Naver provider copy"
+  ],
+  [
     routeMapScreen,
     "네이버 실시간 경로 계산이 불안정해 대체 경로로 표시했어요.",
     "Route map warning copy must identify Naver provider failures"
@@ -1187,6 +1193,16 @@ const mobileRouteProviderContracts = [
     routeMapScreen,
     "카카오 길찾기",
     "Route map source labels must include Kakao provider copy"
+  ],
+  [
+    routeDetailCard,
+    "카카오 경로",
+    "Route detail segment cards must show Kakao provider copy"
+  ],
+  [
+    routeDetailCard,
+    "대중교통 경로",
+    "Route detail segment cards must show ODSAY/transit provider copy"
   ],
   [
     scheduleScreen,
@@ -1202,6 +1218,11 @@ const mobileRouteProviderContracts = [
     scheduleScreen,
     "예상 이동",
     "Schedule timeline must label fallback provider as expected movement"
+  ],
+  [
+    routeDetailCard,
+    "예상 이동",
+    "Route detail segment cards must label fallback provider as expected movement"
   ]
 ];
 

@@ -25,18 +25,26 @@ function getTransportIcon(mode: RouteTransportMode): string {
 }
 
 function getProviderLabel(provider: RouteSegmentEstimate["provider"]): string {
+  if (provider === "naver") {
+    return "네이버 경로";
+  }
+
   if (provider === "kakao") {
-    return "Kakao";
+    return "카카오 경로";
   }
 
   if (provider === "odsay") {
-    return "ODSAY";
+    return "대중교통 경로";
   }
 
-  return "Fallback";
+  return "예상 이동";
 }
 
 function getProviderColor(provider: RouteSegmentEstimate["provider"]): string {
+  if (provider === "naver") {
+    return Colors.common.info;
+  }
+
   if (provider === "kakao") {
     return Colors.young.primary;
   }

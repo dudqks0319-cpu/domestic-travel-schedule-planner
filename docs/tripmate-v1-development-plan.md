@@ -4155,3 +4155,29 @@ Verification completed:
 
 Remaining risks:
 - The smoke assertions still require an actual local/preview Worker run for live D1 evidence; this Phase adds deterministic runtime assertions to the smoke script and static release contract coverage.
+
+## Route Detail Provider Label Result Record
+
+Plan:
+- Ensure route segment cards do not display Naver provider segments as generic fallback.
+- Replace raw/English provider labels with user-facing Korean copy.
+- Keep fallback route segments clearly labeled as expected movement.
+- Lock the route detail provider labels into release contract checks.
+
+Completed:
+- Updated `RouteDetailCard` to show `네이버 경로` for Naver segments.
+- Updated Kakao, ODSAY, and fallback segment labels to `카카오 경로`, `대중교통 경로`, and `예상 이동`.
+- Added a Naver-specific provider color for route segment badges.
+- Updated release contract checks to read `RouteDetailCard` and require Naver/Kakao/ODSAY/fallback segment labels.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Device-level visual smoke is still needed to inspect route segment card wrapping on small screens with long Korean place names.
