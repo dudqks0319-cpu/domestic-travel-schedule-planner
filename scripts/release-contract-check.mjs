@@ -413,13 +413,18 @@ const workerLocalSmokeContracts = [
   ],
   [
     workerLocalSmokeScript,
-    "0001_initial.sql",
-    "Local Worker smoke gate must apply the initial D1 migration"
+    "fs.readdirSync(migrationsDir)",
+    "Local Worker smoke gate must discover D1 migrations from the migrations directory"
   ],
   [
     workerLocalSmokeScript,
-    "0004_user_profile_image.sql",
-    "Local Worker smoke gate must apply the latest D1 migration"
+    "/^\\d{4}_.+\\.sql$/.test(entry)",
+    "Local Worker smoke gate must filter migration SQL filenames"
+  ],
+  [
+    workerLocalSmokeScript,
+    "No D1 migrations found",
+    "Local Worker smoke gate must fail when no migrations are discovered"
   ],
   [
     workerLocalSmokeScript,

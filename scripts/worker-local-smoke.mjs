@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
@@ -10,13 +11,8 @@ const DEFAULT_BASE_URL = "http://127.0.0.1:8787";
 const currentFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(currentFile), "..");
 const workerRoot = path.join(repoRoot, "services", "api-worker");
+const migrationsDir = path.join(workerRoot, "migrations");
 const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
-const migrations = [
-  "0001_initial.sql",
-  "0002_trip_exports.sql",
-  "0003_operational_events.sql",
-  "0004_user_profile_image.sql"
-];
 
 function readArg(name, fallback) {
   const prefix = `${name}=`;
@@ -41,7 +37,7 @@ Usage:
   npm run worker:smoke:local -- --base-url http://127.0.0.1:8787
 
 What it does:
-  1. Applies local D1 migrations.
+  1. Applies every local D1 migration from services/api-worker/migrations in filename order.
   2. Starts wrangler dev --local through npm run worker:dev.
   3. Waits for /health.
   4. Runs npm run worker:smoke against the local Worker.
@@ -133,8 +129,20 @@ async function hasUserProfileImageColumn() {
   return output.includes('"name": "profile_image"');
 }
 
+function discoverMigrations() {
+  const migrations = fs.readdirSync(migrationsDir)
+    .filter((entry) => /^\d{4}_.+\.sql$/.test(entry))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (migrations.length === 0) {
+    throw new Error(`No D1 migrations found in ${migrationsDir}`);
+  }
+
+  return migrations;
+}
+
 async function applyMigrations() {
-  for (const migration of migrations) {
+  for (const migration of discoverMigrations()) {
     if (migration === "0004_user_profile_image.sql" && await hasUserProfileImageColumn()) {
       console.log("[worker:smoke:local] skip 0004_user_profile_image.sql; users.profile_image already exists");
       continue;

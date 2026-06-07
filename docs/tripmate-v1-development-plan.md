@@ -3988,3 +3988,30 @@ Verification completed:
 
 Remaining risks:
 - Live Kakao auth smoke still requires a valid short-lived Kakao test account access token in the local shell or GitHub repository secrets.
+
+## Local Worker Smoke Migration Discovery Result Record
+
+Plan:
+- Remove hardcoded local D1 migration lists from `worker:smoke:local`.
+- Apply all SQL migrations in `services/api-worker/migrations` in filename order.
+- Keep the existing idempotent skip for the already-applied `users.profile_image` column.
+- Lock the migration discovery behavior into release contract checks and docs.
+
+Completed:
+- Updated `scripts/worker-local-smoke.mjs` to discover `NNNN_*.sql` files from the Worker migrations directory.
+- Added a fail-fast error when no local D1 migrations are discovered.
+- Updated release contract checks so future local smoke gates must use directory discovery instead of a stale hardcoded list.
+- Updated Cloudflare deployment docs and API Worker README to describe automatic local migration discovery.
+
+Verification completed:
+- `node --check scripts/worker-local-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:smoke:local -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Repeated local smoke runs still rely on targeted idempotency handling for historical non-idempotent migrations such as `0004_user_profile_image.sql`.

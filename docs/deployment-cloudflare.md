@@ -19,14 +19,10 @@ npm run worker:typecheck
 npm run worker:smoke:local
 ```
 
-Apply local D1 migrations before endpoint smoke tests:
+`worker:smoke:local` discovers and applies every SQL file in `services/api-worker/migrations` in filename order before it starts the local Worker. Use it as the default local runtime gate instead of maintaining a separate hand-run migration list.
 
 ```sh
-cd services/api-worker
-npx wrangler d1 execute tripmate-local --local --file=./migrations/0001_initial.sql
-npx wrangler d1 execute tripmate-local --local --file=./migrations/0002_trip_exports.sql
-npx wrangler d1 execute tripmate-local --local --file=./migrations/0003_operational_events.sql
-npx wrangler d1 execute tripmate-local --local --file=./migrations/0004_user_profile_image.sql
+npm run worker:smoke:local
 ```
 
 ## Preview Deploy
