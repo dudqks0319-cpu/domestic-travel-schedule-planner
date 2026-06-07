@@ -24,7 +24,7 @@ npm run worker:smoke -- --base-url https://<preview-worker> --kakao-access-token
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
-`worker:smoke:local` is the preferred local runtime gate. It discovers every SQL file in `services/api-worker/migrations`, records applied files in local D1 `schema_migrations`, applies only pending migrations in filename order, starts `wrangler dev --local`, runs the full v1 write smoke, and stops the Worker process.
+`worker:smoke:local` is the preferred local runtime gate. It discovers every SQL file in `services/api-worker/migrations`, records applied files in local D1 `schema_migrations`, applies only pending migrations in filename order, verifies that every discovered migration has a ledger entry, starts `wrangler dev --local`, runs the full v1 write smoke, and stops the Worker process.
 
 `release:preview:gate` is the preferred preview handoff gate. It runs preview env readiness, Cloudflare secret-name checks, release contract checks, planner tests, build/typecheck health checks, and strict provider smoke against the deployed preview Worker.
 

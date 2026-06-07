@@ -39,10 +39,11 @@ Usage:
 
 What it does:
   1. Applies pending local D1 migrations from services/api-worker/migrations in filename order.
-  2. Starts wrangler dev --local through npm run worker:dev.
-  3. Waits for /health.
-  4. Runs npm run worker:smoke against the local Worker.
-  5. Stops the local Worker process.
+  2. Verifies every discovered migration is recorded in local D1 schema_migrations.
+  3. Starts wrangler dev --local through npm run worker:dev.
+  4. Waits for /health.
+  5. Runs npm run worker:smoke against the local Worker.
+  6. Stops the local Worker process.
 `);
 }
 
@@ -234,6 +235,18 @@ async function applyMigrations() {
   }
 }
 
+async function verifyMigrationLedger() {
+  const migrations = discoverMigrations();
+  const appliedMigrations = await listAppliedMigrations();
+  const missingMigrations = migrations.filter((migration) => !appliedMigrations.has(migration));
+
+  if (missingMigrations.length > 0) {
+    throw new Error(`missing local D1 migration ledger entries: ${missingMigrations.join(", ")}`);
+  }
+
+  console.log(`[worker:smoke:local] verified local D1 migration ledger: ${migrations.length} migrations recorded`);
+}
+
 function startWorker() {
   console.log("\n[worker:smoke:local] start local Worker");
 
@@ -303,6 +316,7 @@ async function stopWorker() {
 
 async function main() {
   await applyMigrations();
+  await verifyMigrationLedger();
   const worker = startWorker();
 
   try {

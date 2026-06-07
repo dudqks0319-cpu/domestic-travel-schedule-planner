@@ -19,7 +19,7 @@ npm run worker:typecheck
 npm run worker:smoke:local
 ```
 
-`worker:smoke:local` discovers every SQL file in `services/api-worker/migrations`, records applied files in the local D1 `schema_migrations` ledger, and applies only pending migrations in filename order before it starts the local Worker. Use it as the default local runtime gate instead of maintaining a separate hand-run migration list.
+`worker:smoke:local` discovers every SQL file in `services/api-worker/migrations`, records applied files in the local D1 `schema_migrations` ledger, applies only pending migrations in filename order, and verifies that every discovered migration has a ledger entry before it starts the local Worker. Use it as the default local runtime gate instead of maintaining a separate hand-run migration list.
 
 ```sh
 npm run worker:smoke:local

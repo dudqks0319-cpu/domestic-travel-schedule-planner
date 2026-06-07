@@ -4042,3 +4042,31 @@ Verification completed:
 
 Remaining risks:
 - Existing local databases that were migrated before ledger adoption will record idempotent migrations on the next smoke run; the historical `0004_user_profile_image.sql` skip still handles its non-idempotent `ALTER TABLE`.
+
+## Local Worker Smoke Ledger Verification Result Record
+
+Plan:
+- Verify that `worker:smoke:local` does not only apply migrations, but also proves the local D1 migration ledger is complete before starting runtime smoke.
+- Fail the local gate with explicit missing filenames when any discovered migration is not recorded in `schema_migrations`.
+- Preserve migration discovery, pending-only application, and historical `0004_user_profile_image.sql` compatibility behavior.
+- Update release contracts and local deployment docs so this verification boundary cannot be dropped silently.
+
+Completed:
+- Added `verifyMigrationLedger()` to `scripts/worker-local-smoke.mjs`.
+- The local smoke script now rereads `schema_migrations` after applying pending migrations and fails on missing ledger entries.
+- The help output now documents ledger verification as a distinct local smoke step.
+- Updated release contract checks for `verifyMigrationLedger`, missing ledger entry failure, and successful ledger verification reporting.
+- Updated README, API Worker README, and Cloudflare deployment docs to describe local ledger verification.
+
+Verification completed:
+- `node --check scripts/worker-local-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:smoke:local -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- `worker:smoke:local` was verified through syntax, help output, release contract, and full build/test gates in this Phase; a full local Worker runtime smoke still depends on Wrangler's local D1 runtime and active local port availability.

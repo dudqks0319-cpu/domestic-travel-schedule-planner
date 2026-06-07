@@ -443,6 +443,21 @@ const workerLocalSmokeContracts = [
   ],
   [
     workerLocalSmokeScript,
+    "verifyMigrationLedger",
+    "Local Worker smoke gate must verify migration ledger entries before runtime smoke"
+  ],
+  [
+    workerLocalSmokeScript,
+    "missing local D1 migration ledger entries",
+    "Local Worker smoke gate must fail on missing migration ledger entries"
+  ],
+  [
+    workerLocalSmokeScript,
+    "verified local D1 migration ledger",
+    "Local Worker smoke gate must report successful migration ledger verification"
+  ],
+  [
+    workerLocalSmokeScript,
     "pragma_table_info('users')",
     "Local Worker smoke gate must detect already-applied profile image migration"
   ],
