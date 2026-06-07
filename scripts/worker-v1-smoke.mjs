@@ -194,6 +194,26 @@ await step("health endpoints", async () => {
   assertOk(rootHealth, "GET /health");
   const v1Health = await request("GET", "/api/v1/health", { auth: false });
   assertOk(v1Health, "GET /api/v1/health");
+  const safeRequestId = "worker-smoke:health-1";
+  const requestIdEcho = await request("GET", "/api/v1/health", {
+    auth: false,
+    headers: { "x-request-id": safeRequestId }
+  });
+  assertOk(requestIdEcho, "GET /api/v1/health request id echo");
+  assert(
+    requestIdEcho.response.headers.get("x-request-id") === safeRequestId,
+    "safe request id should be echoed in x-request-id"
+  );
+  const unsafeRequestId = "unsafe request id with spaces";
+  const requestIdSanitized = await request("GET", "/api/v1/health", {
+    auth: false,
+    headers: { "x-request-id": unsafeRequestId }
+  });
+  assertOk(requestIdSanitized, "GET /api/v1/health sanitized request id");
+  assert(
+    requestIdSanitized.response.headers.get("x-request-id") !== unsafeRequestId,
+    "unsafe request id should not be echoed in x-request-id"
+  );
 
   workerEnvironment = v1Health.body?.environment ?? rootHealth.body?.environment ?? "";
   assert(workerEnvironment, "health response should include environment before write smoke");

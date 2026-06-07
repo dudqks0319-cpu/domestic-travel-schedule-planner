@@ -131,6 +131,7 @@ const tourProvider = readText("services/api-worker/src/providers/tour.ts");
 const providerHttp = readText("services/api-worker/src/providers/http.ts");
 const userDb = readText("services/api-worker/src/db/users.ts");
 const rateLimitMiddleware = readText("services/api-worker/src/middleware/rate-limit.ts");
+const requestIdMiddleware = readText("services/api-worker/src/middleware/request-id.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
 const loginScreen = readText("apps/mobile/app/auth/login.tsx");
@@ -542,6 +543,40 @@ const routeContracts = [
 for (const [content, routeText, label] of routeContracts) {
   if (!content.includes(routeText)) {
     errors.push(`Missing Worker route contract: ${label}`);
+  }
+}
+
+const requestIdContracts = [
+  [
+    requestIdMiddleware,
+    "REQUEST_ID_PATTERN",
+    "Request id middleware must validate incoming request id format"
+  ],
+  [
+    requestIdMiddleware,
+    "{1,80}",
+    "Request id middleware must bound incoming request id length"
+  ],
+  [
+    requestIdMiddleware,
+    "safeRequestId(c.req.header(\"x-request-id\")) ?? crypto.randomUUID()",
+    "Request id middleware must generate a new id when the incoming value is unsafe"
+  ],
+  [
+    workerSmokeScript,
+    "safe request id should be echoed in x-request-id",
+    "Worker smoke must verify safe request id echo"
+  ],
+  [
+    workerSmokeScript,
+    "unsafe request id should not be echoed in x-request-id",
+    "Worker smoke must verify unsafe request ids are not echoed"
+  ]
+];
+
+for (const [content, expectedText, label] of requestIdContracts) {
+  if (!content.includes(expectedText)) {
+    errors.push(`Missing request id contract: ${label}`);
   }
 }
 

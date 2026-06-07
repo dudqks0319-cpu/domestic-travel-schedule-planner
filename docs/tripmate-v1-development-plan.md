@@ -4489,3 +4489,30 @@ Verification completed:
 
 Remaining risks:
 - Additional affiliate placements should be explicitly added to the allowlist when new UI surfaces are introduced.
+
+## Request Id Sanitization Result Record
+
+Plan:
+- Prevent arbitrary incoming `x-request-id` values from being reflected into responses and logs.
+- Preserve safe client-provided correlation ids for debugging.
+- Generate a new UUID when the incoming request id is empty, too long, or contains unsupported characters.
+- Add Worker smoke and release contract coverage for safe and unsafe request id behavior.
+
+Completed:
+- Added `REQUEST_ID_PATTERN` and `safeRequestId()` to the Worker request id middleware.
+- Limited accepted request ids to 1-80 characters from an explicit safe character set.
+- Updated Worker v1 smoke to verify safe request id echo and unsafe request id replacement.
+- Updated release contract checks to require request id validation, length bounding, fallback generation, and smoke coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Runtime smoke with the deployed preview Worker is still needed to verify edge response headers through Cloudflare infrastructure.
