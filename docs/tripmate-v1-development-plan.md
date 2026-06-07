@@ -4676,3 +4676,30 @@ Verification completed:
 
 Remaining risks:
 - Live Apple/Google receipt validation remains future work; this Phase only limits and safely stores submitted verification evidence.
+
+## Provider Failure Classification Result Record
+
+Plan:
+- Track provider quota/rate-limit and server failures without logging provider URLs, response bodies, secrets, or precise query payloads.
+- Convert provider non-OK HTTP responses into typed errors while preserving existing fallback behavior through the provider orchestrator.
+- Store only safe operational metadata: provider, failure kind, provider status code, counts, and latency.
+- Add release contract coverage for provider failure classification and metadata allowlisting.
+
+Completed:
+- Added `ProviderHttpError`, `ProviderFailureKind`, `providerHttpError()`, and `classifyProviderError()` to the provider HTTP helper.
+- Classified 429 as `rate_limited`, 5xx as `server_error`, 4xx as `client_error`, AbortError as `timeout`, and TypeError as `network_error`.
+- Updated Naver, Kakao, and Tour adapters to throw typed provider HTTP errors on non-OK responses.
+- Updated provider operational events to include `failureKind` and `providerStatusCode` on failures.
+- Added safe metadata allowlist entries and release contract coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Preview Worker smoke with live provider credentials is still needed to observe real quota/rate-limit events in D1 operational metrics.

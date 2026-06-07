@@ -59,7 +59,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Error responses hide internal details.
 - [ ] Provider calls have timeout and cache behavior.
 - [ ] Route optimization rejects invalid coordinates and point counts above provider policy.
-- [ ] Provider quota/rate-limit failures are tracked.
+- [ ] Provider quota/rate-limit failures are tracked with safe failure kind and HTTP status metadata only.
 - [ ] Audit logs avoid personal data and secrets.
 - [ ] Audit metadata is allowlisted and excludes tokens, receipts, raw provider payloads, and precise coordinates.
 - [ ] Trip, trip day, trip place, share link, export, and entitlement write operations create audit records.

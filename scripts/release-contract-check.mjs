@@ -884,6 +884,51 @@ const providerTimeoutContracts = [
     providerIndex,
     "warnings.push(`${result.value.provider} returned no places`)",
     "Provider search must surface empty provider results as warnings"
+  ],
+  [
+    providerHttp,
+    "ProviderHttpError",
+    "Provider HTTP helper must expose typed provider HTTP errors"
+  ],
+  [
+    providerHttp,
+    "statusCode === 429",
+    "Provider HTTP helper must classify quota and rate-limit failures"
+  ],
+  [
+    providerHttp,
+    "failureKind: \"timeout\"",
+    "Provider HTTP helper must classify timeout failures"
+  ],
+  [
+    providerIndex,
+    "classifyProviderError(error)",
+    "Provider orchestrator must classify provider failures for operations tracking"
+  ],
+  [
+    operationsDb,
+    '"failureKind"',
+    "Operational event metadata must allow provider failure kind"
+  ],
+  [
+    operationsDb,
+    '"providerStatusCode"',
+    "Operational event metadata must allow provider HTTP status code"
+  ],
+  [
+    naverProvider,
+    "throw providerHttpError(response)",
+    "Naver provider must report non-OK provider HTTP status"
+  ],
+  [
+    kakaoProvider,
+    "throw providerHttpError(response)",
+    "Kakao provider must report non-OK provider HTTP status"
+  ],
+  [
+    tourProvider,
+    "throw providerHttpError(response)",
+    "Tour provider must report non-OK provider HTTP status"
   ]
 ];
 

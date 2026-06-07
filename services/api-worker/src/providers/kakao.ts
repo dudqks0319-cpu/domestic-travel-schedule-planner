@@ -1,5 +1,5 @@
 import type { Env } from "../bindings";
-import { fetchProvider } from "./http";
+import { fetchProvider, providerHttpError } from "./http";
 import { safeTags, toNumber } from "./normalization";
 import type {
   NormalizedPlace,
@@ -107,7 +107,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
-    if (!response.ok) return [];
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<KakaoKeywordResponse>();
     return (data.documents ?? []).flatMap((item, index) => {
@@ -145,7 +145,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<KakaoAddressResponse>();
     const first = data.documents?.[0];
@@ -168,7 +168,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<KakaoReverseAddressResponse>();
     const first = data.documents?.[0];
@@ -206,7 +206,7 @@ export class KakaoPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: { Authorization: `KakaoAK ${this.env.KAKAO_REST_API_KEY}` }
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<KakaoDirectionsResponse>();
     const route = data.routes?.[0];

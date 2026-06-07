@@ -4,6 +4,7 @@ import { dedupePlaces } from "./normalization";
 import { KakaoPlaceAdapter } from "./kakao";
 import { NaverPlaceAdapter } from "./naver";
 import { TourPlaceAdapter } from "./tour";
+import { classifyProviderError } from "./http";
 import type {
   NormalizedRoute,
   PlaceProviderAdapter,
@@ -82,6 +83,7 @@ async function searchAdapter(
       places
     };
   } catch (error) {
+    const providerError = classifyProviderError(error);
     await recordOperationalEvent(env.DB, {
       eventType: "provider_adapter_search",
       target: `provider.${adapter.provider}`,
@@ -89,6 +91,7 @@ async function searchAdapter(
       durationMs: Date.now() - startedAt,
       metadata: {
         provider: adapter.provider,
+        ...providerError,
         placeCount: 0,
         warningCount: 1
       }
@@ -113,6 +116,7 @@ async function geocodeAdapter(env: Env, adapter: PlaceProviderAdapter, address: 
     });
     return result;
   } catch (error) {
+    const providerError = classifyProviderError(error);
     await recordOperationalEvent(env.DB, {
       eventType: "provider_geocode",
       target: `provider.${adapter.provider}`,
@@ -120,6 +124,7 @@ async function geocodeAdapter(env: Env, adapter: PlaceProviderAdapter, address: 
       durationMs: Date.now() - startedAt,
       metadata: {
         provider: adapter.provider,
+        ...providerError,
         warningCount: 1
       }
     });
@@ -147,6 +152,7 @@ async function reverseGeocodeAdapter(
     });
     return result;
   } catch (error) {
+    const providerError = classifyProviderError(error);
     await recordOperationalEvent(env.DB, {
       eventType: "provider_reverse_geocode",
       target: `provider.${adapter.provider}`,
@@ -154,6 +160,7 @@ async function reverseGeocodeAdapter(
       durationMs: Date.now() - startedAt,
       metadata: {
         provider: adapter.provider,
+        ...providerError,
         warningCount: 1
       }
     });
@@ -187,6 +194,7 @@ async function directionsAdapter(
     });
     return route;
   } catch (error) {
+    const providerError = classifyProviderError(error);
     await recordOperationalEvent(env.DB, {
       eventType: "provider_directions",
       target: `provider.${adapter.provider}`,
@@ -194,6 +202,7 @@ async function directionsAdapter(
       durationMs: Date.now() - startedAt,
       metadata: {
         provider: adapter.provider,
+        ...providerError,
         mode: input.mode,
         pointCount: input.points.length,
         segmentCount: 0,

@@ -1,5 +1,5 @@
 import type { Env } from "../bindings";
-import { fetchProvider } from "./http";
+import { fetchProvider, providerHttpError } from "./http";
 import { safeTags, stripHtml, toNumber } from "./normalization";
 import type {
   NormalizedPlace,
@@ -207,7 +207,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
         "X-Naver-Client-Secret": clientSecret
       }
     });
-    if (!response.ok) return [];
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<NaverLocalResponse>();
     return (data.items ?? []).flatMap((item, index) => {
@@ -246,7 +246,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: naverCloudHeaders(this.env)
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<NaverGeocodeResponse>();
     if (data.status && data.status !== "OK") {
@@ -274,7 +274,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: naverCloudHeaders(this.env)
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<NaverReverseGeocodeResponse>();
     if (data.status?.code !== undefined && data.status.code !== 0) {
@@ -317,7 +317,7 @@ export class NaverPlaceAdapter implements PlaceProviderAdapter {
     const response = await fetchProvider(url, {
       headers: naverCloudHeaders(this.env)
     });
-    if (!response.ok) return null;
+    if (!response.ok) throw providerHttpError(response);
 
     const data = await response.json<NaverDirectionsResponse>();
     if (data.code !== undefined && data.code !== 0) {
