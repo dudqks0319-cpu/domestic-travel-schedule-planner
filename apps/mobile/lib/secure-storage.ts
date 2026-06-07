@@ -7,17 +7,32 @@ export const USER_PROFILE_STORAGE_KEY = "userData";
 export const ACCESS_TOKEN_STORAGE_KEY = "accessToken";
 export const REFRESH_TOKEN_STORAGE_KEY = "refreshToken";
 
+const SENSITIVE_TOKEN_KEYS = new Set([
+  AUTH_TOKEN_STORAGE_KEY,
+  ACCESS_TOKEN_STORAGE_KEY,
+  REFRESH_TOKEN_STORAGE_KEY
+]);
+
 function canUseSecureStore(): boolean {
   return Platform.OS !== "web";
+}
+
+function canUseAsyncStorageFallback(key: string): boolean {
+  return Platform.OS === "web" || !SENSITIVE_TOKEN_KEYS.has(key);
 }
 
 async function setItem(key: string, value: string): Promise<void> {
   if (canUseSecureStore()) {
     try {
       await SecureStore.setItemAsync(key, value);
+      if (SENSITIVE_TOKEN_KEYS.has(key)) {
+        await AsyncStorage.removeItem(key);
+      }
       return;
     } catch {
-      // SecureStore is unavailable on some simulators/dev environments.
+      if (!canUseAsyncStorageFallback(key)) {
+        throw new Error("SecureStore is required for auth token storage.");
+      }
     }
   }
 
@@ -29,10 +44,20 @@ async function getItem(key: string): Promise<string | null> {
     try {
       const value = await SecureStore.getItemAsync(key);
       if (value !== null) {
+        if (SENSITIVE_TOKEN_KEYS.has(key)) {
+          await AsyncStorage.removeItem(key);
+        }
         return value;
       }
     } catch {
-      // Fallback to AsyncStorage for compatibility.
+      if (!canUseAsyncStorageFallback(key)) {
+        return null;
+      }
+    }
+
+    if (!canUseAsyncStorageFallback(key)) {
+      await AsyncStorage.removeItem(key);
+      return null;
     }
   }
 

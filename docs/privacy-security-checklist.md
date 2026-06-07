@@ -20,6 +20,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Public share pages use no-store/noindex/no-referrer headers and do not render share token fragments.
 - [ ] Public share JSON uses no-store/noindex/no-referrer headers and does not echo bearer share tokens.
 - [ ] Mobile share fallback copy does not render bearer share URLs when clipboard/share APIs are unavailable.
+- [ ] Native auth/access/refresh tokens do not fall back to AsyncStorage when SecureStore is unavailable.
 - [ ] Logout clears SecureStore tokens, local trip drafts, and cached optimized routes.
 - [ ] Expired sessions clear SecureStore tokens, local profile data, local trip drafts, and cached optimized routes.
 - [ ] Expired-session cleanup updates AuthProvider state to unauthenticated without requiring an app restart.

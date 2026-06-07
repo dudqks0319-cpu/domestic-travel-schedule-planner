@@ -134,6 +134,7 @@ const rateLimitMiddleware = readText("services/api-worker/src/middleware/rate-li
 const requestIdMiddleware = readText("services/api-worker/src/middleware/request-id.ts");
 const authProvider = readText("apps/mobile/app/providers/auth-provider.tsx");
 const authCleanup = readText("apps/mobile/services/authCleanup.ts");
+const secureStorage = readText("apps/mobile/lib/secure-storage.ts");
 const loginScreen = readText("apps/mobile/app/auth/login.tsx");
 const signupScreen = readText("apps/mobile/app/auth/signup.tsx");
 const profileSetupScreen = readText("apps/mobile/app/auth/profile-setup.tsx");
@@ -2560,6 +2561,26 @@ const mobileAuthPrivacyContracts = [
     mobileApi,
     "await clearLocalAuthState(\"expired-session\");",
     "Mobile API interceptor must clear local auth/profile/trip state when refresh cannot recover"
+  ],
+  [
+    secureStorage,
+    "const SENSITIVE_TOKEN_KEYS = new Set",
+    "Mobile secure storage must identify sensitive auth token keys"
+  ],
+  [
+    secureStorage,
+    'throw new Error("SecureStore is required for auth token storage.")',
+    "Mobile native auth tokens must not fall back to AsyncStorage when SecureStore fails"
+  ],
+  [
+    secureStorage,
+    "Platform.OS === \"web\" || !SENSITIVE_TOKEN_KEYS.has(key)",
+    "Mobile AsyncStorage fallback must exclude sensitive native token keys"
+  ],
+  [
+    secureStorage,
+    "await AsyncStorage.removeItem(key);",
+    "Mobile secure storage must clear legacy AsyncStorage token fallback values"
   ]
 ];
 

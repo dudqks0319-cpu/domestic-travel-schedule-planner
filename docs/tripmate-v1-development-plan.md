@@ -4570,3 +4570,30 @@ Verification completed:
 
 Remaining risks:
 - Live preview smoke should still be run with real provider credentials to confirm provider-specific waypoint behavior.
+
+## Native Token SecureStore Guard Result Record
+
+Plan:
+- Prevent native auth/access/refresh tokens from being written to AsyncStorage when SecureStore is unavailable.
+- Keep web QA fallback separate from native mobile token storage policy.
+- Clear legacy AsyncStorage token fallback values after successful SecureStore reads/writes.
+- Add release contract coverage for the native token storage boundary.
+
+Completed:
+- Added `SENSITIVE_TOKEN_KEYS` for auth, access, and refresh token storage keys.
+- Restricted AsyncStorage fallback to web or non-token keys.
+- Made native token writes fail if SecureStore is unavailable instead of persisting tokens insecurely.
+- Removed legacy AsyncStorage token values after successful SecureStore token reads/writes and when native SecureStore has no token.
+- Updated release contract and privacy/security checklist coverage.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Native device QA is still needed to verify SecureStore availability and user-facing login error handling on physical iOS/Android devices.
