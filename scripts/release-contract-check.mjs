@@ -3124,6 +3124,31 @@ const workerJwtSecretContracts = [
     workerTokens,
     "Missing JWT_${kind.toUpperCase()}_SECRET.",
     "Worker JWT secret failure must be explicit when non-local secrets are missing"
+  ],
+  [
+    workerTokens,
+    "MAX_JWT_LENGTH = 4096",
+    "Worker JWT verification must reject oversized tokens"
+  ],
+  [
+    workerTokens,
+    'JWT_HEADER = { alg: "HS256", typ: "JWT" }',
+    "Worker JWT signing and verification must pin the expected header"
+  ],
+  [
+    workerTokens,
+    "isExpectedHeader(header)",
+    "Worker JWT verification must validate alg and typ"
+  ],
+  [
+    workerTokens,
+    "timingSafeEqual(signature, expectedSignature)",
+    "Worker JWT verification must use timing-safe signature comparison"
+  ],
+  [
+    workerTokens,
+    "leftBytes.length ^ rightBytes.length",
+    "Worker JWT timing-safe comparison must account for length differences"
   ]
 ];
 

@@ -12,6 +12,8 @@ export interface SignedTokenPayload {
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+const MAX_JWT_LENGTH = 4096;
+const JWT_HEADER = { alg: "HS256", typ: "JWT" };
 
 function base64UrlEncode(input: ArrayBuffer | Uint8Array | string): string {
   const bytes =
@@ -31,6 +33,42 @@ function base64UrlDecode(input: string): string {
   const normalized = input.replaceAll("-", "+").replaceAll("_", "/");
   const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
   return atob(padded);
+}
+
+function parseJsonObject(input: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(input);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeJsonObject(input: string): Record<string, unknown> | null {
+  try {
+    return parseJsonObject(base64UrlDecode(input));
+  } catch {
+    return null;
+  }
+}
+
+function isExpectedHeader(header: Record<string, unknown> | null): boolean {
+  return header?.alg === JWT_HEADER.alg && header.typ === JWT_HEADER.typ;
+}
+
+function timingSafeEqual(left: string, right: string): boolean {
+  const leftBytes = new TextEncoder().encode(left);
+  const rightBytes = new TextEncoder().encode(right);
+  const maxLength = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+
+  for (let index = 0; index < maxLength; index += 1) {
+    diff |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+
+  return diff === 0;
 }
 
 function secretFor(env: Env, kind: TokenKind): string {
@@ -77,8 +115,7 @@ export async function signToken(
     exp: now + ttl,
     ...(input.sessionId ? { sid: input.sessionId } : {})
   };
-  const header = { alg: "HS256", typ: "JWT" };
-  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedHeader = base64UrlEncode(JSON.stringify(JWT_HEADER));
   const encodedPayload = base64UrlEncode(JSON.stringify(payload));
   const signingInput = `${encodedHeader}.${encodedPayload}`;
   const signature = await hmacSha256(signingInput, secretFor(env, input.kind));
@@ -90,6 +127,10 @@ export async function verifyToken(
   token: string,
   expectedKind: TokenKind
 ): Promise<SignedTokenPayload | null> {
+  if (token.length > MAX_JWT_LENGTH) {
+    return null;
+  }
+
   const parts = token.split(".");
   if (parts.length !== 3) {
     return null;
@@ -100,9 +141,14 @@ export async function verifyToken(
     return null;
   }
 
+  const header = decodeJsonObject(encodedHeader);
+  if (!isExpectedHeader(header)) {
+    return null;
+  }
+
   const signingInput = `${encodedHeader}.${encodedPayload}`;
   const expectedSignature = await hmacSha256(signingInput, secretFor(env, expectedKind));
-  if (signature !== expectedSignature) {
+  if (!timingSafeEqual(signature, expectedSignature)) {
     return null;
   }
 

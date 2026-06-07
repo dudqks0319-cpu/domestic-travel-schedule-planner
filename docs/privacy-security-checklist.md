@@ -7,6 +7,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Provider keys are Cloudflare secrets only.
 - [ ] JWT secrets are Cloudflare secrets only.
 - [ ] JWT fallback secrets are allowed only for `ENVIRONMENT=local`, never preview or production.
+- [ ] JWT verification pins `alg`/`typ`, rejects oversized tokens, and compares signatures without early exit.
 - [ ] Apple and Google purchase verification secrets are server-only.
 - [ ] Mobile env contains only `EXPO_PUBLIC_*` values.
 - [ ] gitleaks pre-commit and pre-push hooks pass.

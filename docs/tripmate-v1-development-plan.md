@@ -4730,3 +4730,31 @@ Verification completed:
 
 Remaining risks:
 - Existing share links keep their previous token format until they expire; new links use the stronger token generator.
+
+## JWT Verification Hardening Result Record
+
+Plan:
+- Pin JWT header verification to the supported `HS256` and `JWT` values.
+- Reject oversized JWT strings before parsing or signing work.
+- Replace direct signature string comparison with a timing-safe comparison helper.
+- Add release contract and privacy/security checklist coverage.
+
+Completed:
+- Added `MAX_JWT_LENGTH = 4096` and `JWT_HEADER` constants.
+- Added safe JSON/header decoding helpers and `isExpectedHeader()` validation.
+- Added `timingSafeEqual()` that compares encoded signatures without early exit and accounts for length differences.
+- Updated `signToken()` to use the pinned header constant.
+- Updated `verifyToken()` to reject oversized tokens, invalid headers, invalid signatures, and expired/wrong-type payloads.
+- Updated release contract and privacy/security checklist coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Production security posture still depends on strong `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values configured as Cloudflare secrets.
