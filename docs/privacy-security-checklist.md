@@ -49,6 +49,7 @@ Use this checklist before preview deploy, production deploy, and app-store submi
 - [ ] Sponsored places show "광고" or "스폰서".
 - [ ] Affiliate URLs are hashed before logging.
 - [ ] Raw purchase receipts are hashed or discarded after validation.
+- [ ] Store receipt, transaction id, product id, and expiry inputs are length-limited before hashing or persistence.
 - [ ] Premium digital purchases use Apple/Google billing policy.
 
 ## Operations

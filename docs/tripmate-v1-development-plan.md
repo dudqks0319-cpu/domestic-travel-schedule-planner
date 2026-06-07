@@ -4650,3 +4650,29 @@ Verification completed:
 
 Remaining risks:
 - If a current-location feature is added later, permissions must be reintroduced behind a user-triggered action with platform-specific copy and device QA.
+
+## Entitlement Input Size Guard Result Record
+
+Plan:
+- Keep raw Apple/Google receipt and transaction submissions transient and hash-only in D1.
+- Reject oversized entitlement verification inputs before hashing or persistence.
+- Add stable error code and release contract coverage for input-size abuse.
+- Update the security checklist for receipt/input size limits.
+
+Completed:
+- Added entitlement verification limits for product id, receipt, transaction id, and expiry input lengths.
+- Returned `ENTITLEMENT_INPUT_TOO_LARGE` for oversized entitlement verification requests.
+- Preserved existing pending-only store validation behavior and hash-only receipt persistence.
+- Updated release contract checks and privacy/security checklist coverage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Live Apple/Google receipt validation remains future work; this Phase only limits and safely stores submitted verification evidence.

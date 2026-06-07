@@ -39,6 +39,10 @@ const ALLOWED_ENTITLEMENT_STATUSES = new Set<EntitlementStatus>([
   "revoked",
   "pending"
 ]);
+const MAX_ENTITLEMENT_PRODUCT_ID_LENGTH = 120;
+const MAX_ENTITLEMENT_RECEIPT_LENGTH = 8000;
+const MAX_ENTITLEMENT_TRANSACTION_ID_LENGTH = 256;
+const MAX_ENTITLEMENT_EXPIRES_AT_LENGTH = 64;
 
 async function optionalUserId(c: Context<AppBindings>): Promise<string | undefined> {
   const authorization = c.req.header("authorization");
@@ -58,6 +62,10 @@ function stringValue(value: unknown): string | undefined {
 
   const trimmed = value.trim();
   return trimmed.length ? trimmed : undefined;
+}
+
+function tooLong(value: string | undefined, maxLength: number): boolean {
+  return Boolean(value && value.length > maxLength);
 }
 
 function sanitizeMetadata(value: unknown): Record<string, unknown> {
@@ -233,6 +241,15 @@ monetizationRoutes.post("/entitlements/verify", requireAuth, async (c) => {
 
   if (!productId) {
     return errorResponse(c, 400, "INVALID_PRODUCT", "상품 ID가 필요합니다.");
+  }
+
+  if (
+    tooLong(productId, MAX_ENTITLEMENT_PRODUCT_ID_LENGTH) ||
+    tooLong(receipt, MAX_ENTITLEMENT_RECEIPT_LENGTH) ||
+    tooLong(transactionId, MAX_ENTITLEMENT_TRANSACTION_ID_LENGTH) ||
+    tooLong(expiresAt, MAX_ENTITLEMENT_EXPIRES_AT_LENGTH)
+  ) {
+    return errorResponse(c, 400, "ENTITLEMENT_INPUT_TOO_LARGE", "결제 검증 요청 값이 너무 깁니다.");
   }
 
   if (!ALLOWED_ENTITLEMENT_STATUSES.has(requestedStatus)) {

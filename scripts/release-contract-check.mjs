@@ -2442,6 +2442,26 @@ const entitlementVerificationContracts = [
     "Entitlement verify response must expose whether store validation is still required"
   ],
   [
+    monetizationRoutes,
+    "MAX_ENTITLEMENT_PRODUCT_ID_LENGTH",
+    "Entitlement verify must bound product id size"
+  ],
+  [
+    monetizationRoutes,
+    "MAX_ENTITLEMENT_RECEIPT_LENGTH",
+    "Entitlement verify must bound raw receipt submission size"
+  ],
+  [
+    monetizationRoutes,
+    "MAX_ENTITLEMENT_TRANSACTION_ID_LENGTH",
+    "Entitlement verify must bound transaction id size"
+  ],
+  [
+    monetizationRoutes,
+    '"ENTITLEMENT_INPUT_TOO_LARGE"',
+    "Entitlement verify must return a stable oversized input error code"
+  ],
+  [
     workerSmokeScript,
     "store entitlement should remain pending until live validation is implemented",
     "Worker smoke must verify store entitlement requests remain pending before live validation"
