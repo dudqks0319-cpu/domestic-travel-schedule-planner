@@ -4310,3 +4310,29 @@ Verification completed:
 
 Remaining risks:
 - The migration has not been applied to preview or production D1 in this local Phase; run `npm run d1:plan:preview` and `npm run d1:migrate:preview` after real Cloudflare bindings are configured.
+
+## Mobile Share Expiry Notice Result Record
+
+Plan:
+- Surface the Worker share-link expiry timestamp in mobile sharing UX.
+- Use the same expiry copy in schedule and profile share flows.
+- Include expiry guidance in native share messages as well as in-app notices.
+- Add release contract coverage so `expiresAt` is not ignored by mobile share flows.
+
+Completed:
+- Added `apps/mobile/services/shareLinks.ts` with shared expiry date formatting and notice copy.
+- Updated schedule sharing to include `shareExpiryNotice(response.data.share.expiresAt)` in native share text and UI notices.
+- Updated profile trip sharing to include the same expiry notice.
+- Updated release contract checks to require the shared helper and both mobile share flows to consume `expiresAt`.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Device-level share-sheet QA is still needed to confirm the extra expiry line appears correctly on iOS and Android native share dialogs.

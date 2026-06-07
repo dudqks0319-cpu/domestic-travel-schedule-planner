@@ -13,6 +13,7 @@ import {
 } from "../../services/monetization";
 import { restorePremiumPurchase, startPremiumPurchase, submitStoreVerification } from "../../services/iap";
 import { clearLocalTripDraftDataForTrip } from "../../services/localTripStorage";
+import { shareExpiryNotice } from "../../services/shareLinks";
 import { useAuth } from "../providers/auth-provider";
 
 const EARN_ITEMS = [
@@ -211,19 +212,20 @@ export default function ProfileScreen() {
     try {
       const response = await tripsApi.createShare(trip.id);
       const shareUrl = buildTripShareUrl(response.data.share.token);
-      const message = `${trip.title}\n${shareUrl}`;
+      const expiryNotice = shareExpiryNotice(response.data.share.expiresAt);
+      const message = `${trip.title}\n${shareUrl}\n${expiryNotice}`;
       if (Platform.OS === "web") {
         const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
           .navigator?.clipboard;
         if (clipboard) {
           await clipboard.writeText(shareUrl);
-          setTripNotice("공유 링크를 클립보드에 복사했어요.");
+          setTripNotice(`공유 링크를 클립보드에 복사했어요. ${expiryNotice}`);
         } else {
-          setTripNotice("공유 링크는 생성됐지만 브라우저 클립보드 권한이 없어 복사하지 못했어요. 클립보드 권한을 허용한 뒤 다시 시도해 주세요.");
+          setTripNotice(`공유 링크는 생성됐지만 브라우저 클립보드 권한이 없어 복사하지 못했어요. ${expiryNotice} 클립보드 권한을 허용한 뒤 다시 시도해 주세요.`);
         }
       } else {
         await Share.share({ title: trip.title, message, url: shareUrl });
-        setTripNotice("공유 링크를 만들었어요.");
+        setTripNotice(`공유 링크를 만들었어요. ${expiryNotice}`);
       }
     } catch {
       setTripNotice("공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");

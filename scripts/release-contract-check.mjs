@@ -98,6 +98,7 @@ for (const file of [
   "services/api-worker/migrations/0003_operational_events.sql",
   "services/api-worker/migrations/0004_user_profile_image.sql",
   "services/api-worker/migrations/0005_share_link_expiry.sql",
+  "apps/mobile/services/shareLinks.ts",
   "scripts/check-cloudflare-secrets.mjs",
   "scripts/d1-migrate.mjs",
   "scripts/preview-release-gate.mjs",
@@ -143,6 +144,7 @@ const scheduleScreen = readText("apps/mobile/app/trip/schedule.tsx");
 const searchScreen = readText("apps/mobile/app/(tabs)/search.tsx");
 const mobileApi = readText("apps/mobile/services/api.ts");
 const mobileIap = readText("apps/mobile/services/iap.ts");
+const mobileShareLinks = readText("apps/mobile/services/shareLinks.ts");
 const tripHydration = readText("apps/mobile/services/tripHydration.ts");
 const localTripStorage = readText("apps/mobile/services/localTripStorage.ts");
 const rewardedAds = readText("apps/mobile/services/rewardedAds.ts");
@@ -1775,6 +1777,21 @@ if (sharePageRoutes.includes("공유 토큰:") || sharePageRoutes.includes("shar
 }
 
 const mobileShareUrlPrivacyContracts = [
+  [
+    mobileShareLinks,
+    "공유 링크는 ${dateLabel}까지 열람할 수 있어요.",
+    "Mobile share helper must format public share expiry notices"
+  ],
+  [
+    scheduleScreen,
+    "shareExpiryNotice(response.data.share.expiresAt)",
+    "Schedule share flow must include the returned expiry in user notices"
+  ],
+  [
+    profileScreen,
+    "shareExpiryNotice(response.data.share.expiresAt)",
+    "Profile share flow must include the returned expiry in user notices"
+  ],
   [
     scheduleScreen,
     "브라우저 클립보드 권한이 없어 복사하지 못했어요",

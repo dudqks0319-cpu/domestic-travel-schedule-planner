@@ -36,6 +36,7 @@ import {
   type RoutePoint
 } from "../../services/routeApi";
 import { CURRENT_TRIP_STORAGE_KEY, subscribeLocalTripDraftDataCleared } from "../../services/localTripStorage";
+import { shareExpiryNotice } from "../../services/shareLinks";
 
 interface TripMeta {
   destination: string;
@@ -1035,20 +1036,21 @@ export default function ScheduleScreen() {
     try {
       const response = await tripsApi.createShare(tripId);
       const shareUrl = buildTripShareUrl(response.data.share.token);
-      const message = `${tripMeta.destination} 여행 일정표\n${shareUrl}`;
+      const expiryNotice = shareExpiryNotice(response.data.share.expiresAt);
+      const message = `${tripMeta.destination} 여행 일정표\n${shareUrl}\n${expiryNotice}`;
 
       if (Platform.OS === "web") {
         const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
           .navigator?.clipboard;
         if (clipboard) {
           await clipboard.writeText(shareUrl);
-          setShareNotice("공유 링크를 클립보드에 복사했어요.");
+          setShareNotice(`공유 링크를 클립보드에 복사했어요. ${expiryNotice}`);
         } else {
-          setShareNotice("공유 링크는 생성됐지만 브라우저 클립보드 권한이 없어 복사하지 못했어요. 클립보드 권한을 허용한 뒤 다시 시도해 주세요.");
+          setShareNotice(`공유 링크는 생성됐지만 브라우저 클립보드 권한이 없어 복사하지 못했어요. ${expiryNotice} 클립보드 권한을 허용한 뒤 다시 시도해 주세요.`);
         }
       } else {
         await Share.share({ message, url: shareUrl, title: `${tripMeta.destination} 여행 일정표` });
-        setShareNotice("공유 링크를 만들었어요.");
+        setShareNotice(`공유 링크를 만들었어요. ${expiryNotice}`);
       }
     } catch {
       const message = "공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.";
