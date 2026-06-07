@@ -4516,3 +4516,29 @@ Verification completed:
 
 Remaining risks:
 - Runtime smoke with the deployed preview Worker is still needed to verify edge response headers through Cloudflare infrastructure.
+
+## Worker CORS Allowlist Hardening Result Record
+
+Plan:
+- Keep explicit CORS origin matching for configured preview/production browser origins.
+- Preserve local-only empty allowlist behavior for development.
+- Ignore unsafe `ALLOWED_ORIGINS` entries such as wildcard, null, malformed, non-HTTP(S), or path/query/hash origins.
+- Add release contract coverage so the allowlist parser cannot regress silently.
+
+Completed:
+- Added `safeAllowedOrigin()` to normalize and validate Worker CORS allowlist entries.
+- Filtered wildcard, `null`, malformed, non-HTTP(S), and path/query/hash origins before CORS matching.
+- Updated the release contract check to require the CORS parser safeguards.
+- Updated the privacy/security checklist with the stricter CORS requirement.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm test`
+- `npm run check:release-contract`
+- `npm run check:health`
+- `git diff --check`
+- `npm run check:dev`
+
+Remaining risks:
+- Runtime smoke with deployed preview/prod `ALLOWED_ORIGINS` values is still needed after Cloudflare environment configuration.

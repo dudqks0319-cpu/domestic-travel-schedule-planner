@@ -10,11 +10,31 @@ import { healthRoutes } from "./routes/health";
 import { sharePageRoutes } from "./routes/share-page";
 import { v1Routes } from "./routes/v1";
 
+function safeAllowedOrigin(rawOrigin: string): string | null {
+  const origin = rawOrigin.trim();
+  if (!origin || origin === "*" || origin === "null") {
+    return null;
+  }
+
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return null;
+    }
+    if (url.pathname !== "/" || url.search || url.hash) {
+      return null;
+    }
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 function allowedOrigins(rawOrigins: string | undefined): string[] {
   return (rawOrigins ?? "")
     .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+    .map(safeAllowedOrigin)
+    .filter((origin): origin is string => Boolean(origin));
 }
 
 const app = new Hono<AppBindings>();

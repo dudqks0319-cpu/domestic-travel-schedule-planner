@@ -1390,6 +1390,26 @@ const workerCorsContracts = [
     indexRoutes,
     "return allowed.includes(origin) ? origin : \"\";",
     "Worker CORS must require explicit origin membership when allowlist is configured"
+  ],
+  [
+    indexRoutes,
+    'origin === "*" || origin === "null"',
+    "Worker CORS must ignore wildcard and null origins in ALLOWED_ORIGINS"
+  ],
+  [
+    indexRoutes,
+    'url.protocol !== "https:" && url.protocol !== "http:"',
+    "Worker CORS must ignore non-HTTP browser origins"
+  ],
+  [
+    indexRoutes,
+    'url.pathname !== "/" || url.search || url.hash',
+    "Worker CORS must ignore allowlist entries with path, query, or hash"
+  ],
+  [
+    indexRoutes,
+    "return url.origin;",
+    "Worker CORS must normalize explicit allowed origins"
   ]
 ];
 
