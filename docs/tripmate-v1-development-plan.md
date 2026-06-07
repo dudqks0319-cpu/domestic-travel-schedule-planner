@@ -4385,3 +4385,29 @@ Verification completed:
 
 Remaining risks:
 - Live browser QA is still needed to confirm the footer wraps cleanly on narrow mobile viewports.
+
+## Share Completed Monetization Event Result Record
+
+Plan:
+- Connect successful mobile sharing flows to the existing `share_completed` monetization placement.
+- Keep ad-event logging non-blocking so share success UX does not fail if analytics logging fails.
+- Cover both schedule-screen sharing and saved-trip sharing from the profile tab.
+- Add release contract coverage for the share-completed event.
+
+Completed:
+- Added non-blocking `logAdEvent({ placement: "share_completed", eventType: "shown" })` after schedule share success.
+- Added the same share-completed event after profile saved-trip share success.
+- Included screen and trip id metadata in both event calls.
+- Updated release contract checks so both share flows must log the share-completed monetization event.
+
+Verification completed:
+- `npm run mobile:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Live Worker smoke with authenticated mobile traffic is still needed to verify the resulting `ad_events` rows in preview D1.

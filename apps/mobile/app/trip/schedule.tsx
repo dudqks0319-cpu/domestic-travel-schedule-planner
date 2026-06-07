@@ -1052,6 +1052,12 @@ export default function ScheduleScreen() {
         await Share.share({ message, url: shareUrl, title: `${tripMeta.destination} 여행 일정표` });
         setShareNotice(`공유 링크를 만들었어요. ${expiryNotice}`);
       }
+
+      await logAdEvent({
+        placement: "share_completed",
+        eventType: "shown",
+        metadata: { screen: "trip_schedule", tripId }
+      }).catch(() => undefined);
     } catch {
       const message = "공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해 주세요.";
       setShareNotice(message);

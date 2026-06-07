@@ -9,6 +9,7 @@ import { hydrateCurrentTripFromServerTrip } from "../../services/tripHydration";
 import {
   DEFAULT_FREE_ENTITLEMENT,
   loadEntitlementState,
+  logAdEvent,
   type PremiumEntitlementState
 } from "../../services/monetization";
 import { restorePremiumPurchase, startPremiumPurchase, submitStoreVerification } from "../../services/iap";
@@ -227,6 +228,11 @@ export default function ProfileScreen() {
         await Share.share({ title: trip.title, message, url: shareUrl });
         setTripNotice(`공유 링크를 만들었어요. ${expiryNotice}`);
       }
+      await logAdEvent({
+        placement: "share_completed",
+        eventType: "shown",
+        metadata: { screen: "profile_trips", tripId: trip.id }
+      }).catch(() => undefined);
     } catch {
       setTripNotice("공유 링크를 만들지 못했어요. 로그인 상태나 네트워크를 확인해주세요.");
     } finally {

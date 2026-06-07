@@ -2175,6 +2175,16 @@ for (const [content, expectedText, label] of premiumStorageContracts) {
 
 const rewardedExportContracts = [
   [
+    scheduleScreen,
+    'placement: "share_completed"',
+    "Schedule share success must log the share-completed monetization event"
+  ],
+  [
+    profileScreen,
+    'placement: "share_completed"',
+    "Profile share success must log the share-completed monetization event"
+  ],
+  [
     rewardedAds,
     "requestRewardedExportUnlock",
     "Mobile must expose a rewarded export unlock boundary"
