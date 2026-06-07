@@ -609,6 +609,21 @@ const authSecurityContracts = [
     "Refresh token reuse audit metadata must avoid raw token material"
   ],
   [
+    workerSmokeScript,
+    "refresh should rotate the refresh token before reuse smoke",
+    "Worker smoke must prove refresh tokens rotate before reuse detection"
+  ],
+  [
+    workerSmokeScript,
+    "POST /api/v1/auth/refresh reused token",
+    "Worker smoke must exercise refresh token reuse"
+  ],
+  [
+    workerSmokeScript,
+    "reused refresh token should revoke the active session",
+    "Worker smoke must prove reused refresh tokens revoke active sessions"
+  ],
+  [
     kakaoAuth,
     'env.ENVIRONMENT === "local" || env.ENVIRONMENT === "preview"',
     "Kakao dev login tokens must be limited to local/preview"
@@ -3149,6 +3164,11 @@ const workerJwtSecretContracts = [
     workerTokens,
     'JWT_HEADER = { alg: "HS256", typ: "JWT" }',
     "Worker JWT signing and verification must pin the expected header"
+  ],
+  [
+    workerTokens,
+    "jti: crypto.randomUUID()",
+    "Worker JWT signing must include a per-token unique id so refresh rotation changes token hashes"
   ],
   [
     workerTokens,

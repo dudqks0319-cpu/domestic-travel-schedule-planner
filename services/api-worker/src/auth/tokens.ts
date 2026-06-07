@@ -5,6 +5,7 @@ export type TokenKind = "access" | "refresh";
 export interface SignedTokenPayload {
   sub: string;
   typ: TokenKind;
+  jti: string;
   iat: number;
   exp: number;
   sid?: string;
@@ -111,6 +112,7 @@ export async function signToken(
   const payload: SignedTokenPayload = {
     sub: input.userId,
     typ: input.kind,
+    jti: crypto.randomUUID(),
     iat: now,
     exp: now + ttl,
     ...(input.sessionId ? { sid: input.sessionId } : {})

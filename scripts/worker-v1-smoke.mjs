@@ -95,9 +95,10 @@ function buildLongExportPlaces() {
 }
 
 async function loginWithDevKakao(label) {
+  const kakaoAccessToken = label.startsWith("dev:") ? label : `dev:${smokeName(label)}`;
   const result = await request("POST", "/api/v1/auth/login/kakao", {
     auth: false,
-    json: { kakaoAccessToken: `dev:${smokeName(label)}` }
+    json: { kakaoAccessToken }
   });
   assertOk(result, "POST /api/v1/auth/login/kakao");
   accessToken = result.body?.accessToken ?? "";
@@ -409,10 +410,12 @@ await step("places geocode contract", async () => {
 });
 
 await step("kakao dev login and session", async () => {
-  await loginWithDevKakao("worker-smoke");
+  const smokeKakaoAccessToken = `dev:${smokeName("worker-smoke")}`;
+  await loginWithDevKakao(smokeKakaoAccessToken);
 
   assertOk(await request("GET", "/api/v1/auth/me"), "GET /api/v1/auth/me");
 
+  const originalRefreshToken = refreshToken;
   const refreshed = await request("POST", "/api/v1/auth/refresh", {
     auth: false,
     json: { refreshToken }
@@ -420,9 +423,29 @@ await step("kakao dev login and session", async () => {
   assertOk(refreshed, "POST /api/v1/auth/refresh");
   accessToken = refreshed.body?.accessToken ?? accessToken;
   refreshToken = refreshed.body?.refreshToken ?? refreshToken;
-  assertOk(await request("POST", "/api/v1/auth/logout"), "POST /api/v1/auth/logout");
+  assert(
+    refreshToken && refreshToken !== originalRefreshToken,
+    "refresh should rotate the refresh token before reuse smoke"
+  );
 
-  await loginWithDevKakao("worker-smoke-relogin");
+  const reusedRefresh = await request("POST", "/api/v1/auth/refresh", {
+    auth: false,
+    json: { refreshToken: originalRefreshToken }
+  });
+  assertStatus(reusedRefresh, 401, "POST /api/v1/auth/refresh reused token");
+  assert(
+    reusedRefresh.body?.error?.code === "REFRESH_EXPIRED",
+    "reused refresh token should return REFRESH_EXPIRED"
+  );
+  assertStatus(
+    await request("GET", "/api/v1/auth/me"),
+    401,
+    "reused refresh token should revoke the active session"
+  );
+
+  accessToken = "";
+  refreshToken = "";
+  await loginWithDevKakao(smokeKakaoAccessToken);
 });
 
 await step("trip, day, place, and share CRUD", async () => {

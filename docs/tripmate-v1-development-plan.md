@@ -4784,3 +4784,31 @@ Verification completed:
 
 Remaining risks:
 - A live smoke that intentionally reuses an already rotated refresh token would further prove the D1 session status transition.
+
+## Refresh Token Reuse Smoke Result Record
+
+Plan:
+- Extend the Worker v1 smoke so refresh-token reuse is exercised against a real local/preview Worker runtime.
+- Confirm that a normal refresh rotates the token before the reuse check.
+- Submit the old refresh token again and require `REFRESH_EXPIRED`.
+- Confirm the currently active access-token session is rejected after reuse detection.
+- Lock the smoke assertions into release contract checks.
+
+Completed:
+- Updated `scripts/worker-v1-smoke.mjs` to keep a stable dev Kakao smoke user across the reuse check.
+- Added a refresh rotation assertion before replaying the old refresh token.
+- Added a reused-refresh assertion for `401` and `REFRESH_EXPIRED`.
+- Added a follow-up `/api/v1/auth/me` assertion proving the active session was revoked.
+- Added a per-token JWT `jti` so refresh rotation changes the refresh token hash even within the same second.
+- Updated `scripts/release-contract-check.mjs` so the smoke coverage cannot be removed silently.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `npm run worker:typecheck`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run worker:smoke:local`
+
+Remaining risks:
+- Preview smoke should still be run against Cloudflare preview before release because local Wrangler bindings do not prove remote secret or provider configuration.
