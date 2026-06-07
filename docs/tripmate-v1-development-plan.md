@@ -4360,3 +4360,28 @@ Verification completed:
 
 Remaining risks:
 - Client-side screens that consume the JSON share API still need live QA to confirm they render this safer message instead of a generic fallback.
+
+## Public Share Expiry Display Result Record
+
+Plan:
+- Avoid showing raw D1 timestamp strings in the public share page footer.
+- Format share expiry timestamps into a compact user-facing date.
+- Keep the existing read-only/footer token redaction contract intact.
+- Add release contract coverage for the formatted expiry path.
+
+Completed:
+- Added `formatShareExpiry()` to the public share page route.
+- Updated the public share page footer to render `YYYY.M.D` expiry labels instead of raw timestamp strings.
+- Added release contract checks that require the formatted share expiry helper and footer usage.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Live browser QA is still needed to confirm the footer wraps cleanly on narrow mobile viewports.

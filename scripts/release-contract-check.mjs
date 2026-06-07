@@ -1763,6 +1763,16 @@ const sharePagePrivacyContracts = [
     sharePageRoutes,
     "TripMate 읽기 전용 공유 일정",
     "Public share page footer must not render share token fragments"
+  ],
+  [
+    sharePageRoutes,
+    "function formatShareExpiry",
+    "Public share page must format share expiry timestamps for users"
+  ],
+  [
+    sharePageRoutes,
+    "const shareExpiryLabel = formatShareExpiry(input.shareExpiresAt);",
+    "Public share page footer must use the formatted share expiry label"
   ]
 ];
 

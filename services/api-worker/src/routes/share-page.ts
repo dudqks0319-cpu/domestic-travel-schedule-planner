@@ -42,6 +42,21 @@ function formatDate(value: unknown): string {
   return text;
 }
 
+function formatShareExpiry(value: unknown): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return null;
+  }
+
+  const normalized = text.includes("T") ? text : text.replace(" ", "T");
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return `${parsed.getFullYear()}.${parsed.getMonth() + 1}.${parsed.getDate()}`;
+}
+
 function renderNotFoundPage(): string {
   return `<!doctype html>
 <html lang="ko">
@@ -150,6 +165,7 @@ function renderSharePage(input: {
         </div>
       </section>`
     : "";
+  const shareExpiryLabel = formatShareExpiry(input.shareExpiresAt);
 
   return `<!doctype html>
 <html lang="ko">
@@ -201,7 +217,7 @@ function renderSharePage(input: {
     ${exportSection}
     ${daySections || `<section class="day"><div class="empty-place">표시할 일정이 없습니다.</div></section>`}
     ${unassignedSection}
-    <footer>TripMate 읽기 전용 공유 일정${input.shareExpiresAt ? ` · 만료: ${escapeHtml(input.shareExpiresAt)}` : ""}</footer>
+    <footer>TripMate 읽기 전용 공유 일정${shareExpiryLabel ? ` · 만료: ${escapeHtml(shareExpiryLabel)}` : ""}</footer>
   </main>
 </body>
 </html>`;
