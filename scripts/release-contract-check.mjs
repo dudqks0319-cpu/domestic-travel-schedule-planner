@@ -1845,6 +1845,16 @@ const publicShareApiPrivacyContracts = [
     workerSmokeScript,
     "public share read should avoid referrer leaks",
     "Worker smoke must verify public share referrer-policy headers"
+  ],
+  [
+    workerSmokeScript,
+    "deleted trip share JSON should be inaccessible",
+    "Worker smoke must verify deleted trip share JSON access is blocked"
+  ],
+  [
+    workerSmokeScript,
+    "deleted trip share page should be inaccessible",
+    "Worker smoke must verify deleted trip share page access is blocked"
   ]
 ];
 

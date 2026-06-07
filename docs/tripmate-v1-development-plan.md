@@ -4233,3 +4233,28 @@ Verification completed:
 
 Remaining risks:
 - Full device-level interaction QA is still needed to confirm the duplicate alert copy and schedule navigation expectation feel right in the real mobile shell.
+
+## Deleted Share Link Access Smoke Result Record
+
+Plan:
+- Extend Worker smoke coverage so public share links are verified after their owning trip is deleted.
+- Ensure the JSON read-only share API does not expose deleted or inactive trips.
+- Ensure the public HTML share page also returns the expired/deleted fallback status.
+- Lock the deleted-share smoke assertions into release contract checks.
+
+Completed:
+- Added cleanup-stage smoke assertions for `GET /api/v1/share/:shareToken` after trip deletion.
+- Added cleanup-stage smoke assertions for `GET /share/:shareToken` after trip deletion.
+- Updated release contract checks to require deleted trip share JSON and page access-block assertions.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Local/preview Worker smoke still needs a running Worker with D1/R2 bindings to execute these assertions end to end.

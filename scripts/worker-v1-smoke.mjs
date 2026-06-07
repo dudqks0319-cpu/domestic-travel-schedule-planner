@@ -825,6 +825,18 @@ await step("cleanup smoke trip and account", async () => {
   if (tripId) {
     assertOk(await request("DELETE", `/api/v1/trips/${tripId}`), "DELETE trip");
   }
+  if (shareToken) {
+    assertStatus(
+      await request("GET", `/api/v1/share/${shareToken}`, { auth: false }),
+      404,
+      "deleted trip share JSON should be inaccessible"
+    );
+    assertStatus(
+      await request("GET", `/share/${shareToken}`, { auth: false }),
+      404,
+      "deleted trip share page should be inaccessible"
+    );
+  }
   assertOk(await request("DELETE", "/api/v1/auth/me"), "DELETE /api/v1/auth/me");
 });
 
