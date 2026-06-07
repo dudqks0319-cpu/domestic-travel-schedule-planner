@@ -31,6 +31,8 @@ Free users can keep up to 3 active saved trips. The limit is enforced by the Wor
 
 Digital premium purchases must use Apple IAP or Google Play Billing. The Worker endpoint `/api/v1/monetization/entitlements/verify` stores entitlement state and is ready for store validation integration. Do not route digital premium purchases through an external PG inside the mobile app.
 
+Mobile builds must declare `EXPO_PUBLIC_IAP_STATUS`. `disabled` is allowed for local development and keeps the purchase CTA unavailable with explicit copy. Preview and production release checks require `sdk-configured` so a build cannot be handed off as release-ready while native purchase/receipt capture is still missing.
+
 The mobile client must not decide premium status by itself. Apple/Google verification requests may submit a store receipt or transaction id to the Worker, but the Worker stores only a hash and returns `pending` until live store validation is implemented. Manual active entitlements are allowed only outside production for operations/testing.
 
 Production must not treat a submitted Apple/Google receipt, transaction id, or requested `active` status as premium until live store validation confirms it. Until that integration exists, store-platform verification responses must remain `pending` and must not unlock premium benefits.

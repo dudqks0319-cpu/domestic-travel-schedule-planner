@@ -10,6 +10,7 @@ import {
 export const TRIPMATE_PREMIUM_PRODUCT_ID = "tripmate_premium_monthly";
 
 export type StorePlatform = "apple" | "google";
+export type IapIntegrationStatus = "disabled" | "sdk-configured";
 
 export interface StoreVerificationPayload {
   productId?: string;
@@ -47,6 +48,18 @@ export function resolveStorePlatform(): StorePlatform | null {
   return null;
 }
 
+export function readIapIntegrationStatus(): IapIntegrationStatus {
+  const maybeProcess = (
+    globalThis as {
+      process?: {
+        env?: Record<string, string | undefined>;
+      };
+    }
+  ).process;
+  const value = maybeProcess?.env?.EXPO_PUBLIC_IAP_STATUS?.trim();
+  return value === "sdk-configured" ? "sdk-configured" : "disabled";
+}
+
 function storeVerificationMessage(verification: VerifyEntitlementResult): string {
   if (verification.premium && verification.canUnlockPremium) {
     return "프리미엄 권한이 활성화됐어요.";
@@ -71,6 +84,7 @@ function storeVerificationMessage(verification: VerifyEntitlementResult): string
 
 export async function startPremiumPurchase(): Promise<PremiumPurchaseResult> {
   const platform = resolveStorePlatform();
+  const iapStatus = readIapIntegrationStatus();
   if (!platform) {
     return {
       status: "unavailable",
@@ -78,9 +92,16 @@ export async function startPremiumPurchase(): Promise<PremiumPurchaseResult> {
     };
   }
 
+  if (iapStatus === "disabled") {
+    return {
+      status: "unavailable",
+      message: "현재 빌드는 스토어 결제 SDK가 비활성화되어 있어 구매를 시작할 수 없어요."
+    };
+  }
+
   return {
     status: "unavailable",
-    message: "프리미엄 구매는 스토어 결제 SDK 연결 후 사용할 수 있어요. 현재 빌드는 구매 복원과 서버 권한 확인만 지원합니다."
+    message: "스토어 결제 SDK 상태는 활성으로 설정됐지만 native purchase bridge가 아직 연결되지 않았어요."
   };
 }
 

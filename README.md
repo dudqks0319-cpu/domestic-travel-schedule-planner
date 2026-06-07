@@ -55,8 +55,10 @@ Mobile public variables:
 
 - `EXPO_PUBLIC_API_BASE_URL`
 - `EXPO_PUBLIC_MAP_PROVIDER`
+- `EXPO_PUBLIC_IAP_STATUS`
 
 `EXPO_PUBLIC_API_BASE_URL` may be the Worker origin or a Worker `/api/v1` URL. The mobile app normalizes it to the v1 API and defaults to `http://localhost:8787/api/v1` for local Worker development.
+`EXPO_PUBLIC_IAP_STATUS` is `disabled` until a native Apple/Google purchase bridge is connected. Preview and production env checks require `sdk-configured` before release handoff.
 
 Reference Express API variables:
 

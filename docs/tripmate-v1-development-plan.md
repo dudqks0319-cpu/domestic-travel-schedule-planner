@@ -4099,3 +4099,33 @@ Verification completed:
 
 Remaining risks:
 - Live Apple/Google purchase SDK capture and real store receipt validation are still outside this Phase; the current contract prevents those pending submissions from unlocking premium prematurely.
+
+## Mobile IAP Release Readiness Gate Result Record
+
+Plan:
+- Add a public mobile IAP integration status so purchase availability is explicit per build profile.
+- Keep local builds honest by showing an SDK-disabled purchase message instead of a fake purchase flow.
+- Fail preview/production readiness when the EAS profile still declares IAP as disabled.
+- Document the `disabled` versus `sdk-configured` boundary for release handoff.
+
+Completed:
+- Added `EXPO_PUBLIC_IAP_STATUS=disabled` to the mobile env example and EAS development/preview/production profiles.
+- Added `readIapIntegrationStatus()` to the mobile IAP service and used it to block purchase start while the SDK is disabled.
+- Updated `scripts/dev-readiness-check.mjs` to validate allowed IAP status values and to require `sdk-configured` for preview/production release checks.
+- Updated release contract checks so the IAP status env key, mobile service boundary, and readiness gate cannot be dropped silently.
+- Updated README, env docs, and monetization policy with the IAP release readiness boundary.
+
+Verification completed:
+- `node --check scripts/dev-readiness-check.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run mobile:typecheck`
+- `npm run check:env`
+- `npm run check:env:production` failed as expected with `EAS production EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds`.
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Preview/production checks now intentionally fail while `EXPO_PUBLIC_IAP_STATUS=disabled`; native Apple/Google purchase bridge integration is still required before those release gates can pass.

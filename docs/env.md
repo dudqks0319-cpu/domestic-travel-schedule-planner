@@ -9,6 +9,7 @@ Allowed in `apps/mobile/.env`:
 ```sh
 EXPO_PUBLIC_API_BASE_URL=http://localhost:8787/api/v1
 EXPO_PUBLIC_MAP_PROVIDER=mock
+EXPO_PUBLIC_IAP_STATUS=disabled
 EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY=
 EXPO_PUBLIC_AFFILIATE_HOTEL_URL=
 EXPO_PUBLIC_AFFILIATE_RENTAL_CAR_URL=
@@ -23,6 +24,8 @@ The same rule applies to `apps/mobile/eas.json` build profile `env` blocks. EAS 
 Allowed map provider values are currently `mock`, `naver`, and `kakao`. The app must not read provider API secrets from public env.
 `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY` is only for Kakao's web map JavaScript SDK and must be domain-restricted in the Kakao console. It is not a replacement for `KAKAO_REST_API_KEY`, which remains server-only.
 Preview and production checks fail when `EXPO_PUBLIC_MAP_PROVIDER=kakao` is configured without `EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY`.
+
+`EXPO_PUBLIC_IAP_STATUS` must be `disabled` or `sdk-configured`. Use `disabled` until a native Apple/Google purchase bridge is actually connected. Preview and production checks fail unless the target EAS profile sets `EXPO_PUBLIC_IAP_STATUS=sdk-configured`, so a release build cannot pass while premium purchase capture is still intentionally unavailable.
 Affiliate URLs must be HTTPS external booking URLs. They are public routing targets, not secrets. Leave them empty until a real affiliate contract/link is ready.
 
 ## Reference Express API Env

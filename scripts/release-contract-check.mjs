@@ -2135,6 +2135,21 @@ const entitlementVerificationContracts = [
   ],
   [
     mobileIap,
+    "readIapIntegrationStatus",
+    "Mobile IAP service must read the public IAP integration status"
+  ],
+  [
+    mobileIap,
+    "EXPO_PUBLIC_IAP_STATUS",
+    "Mobile IAP service must use EXPO_PUBLIC_IAP_STATUS as the SDK readiness boundary"
+  ],
+  [
+    mobileIap,
+    "현재 빌드는 스토어 결제 SDK가 비활성화",
+    "Mobile IAP service must not present disabled SDK builds as purchasable"
+  ],
+  [
+    mobileIap,
     "storeVerificationMessage",
     "Mobile IAP service must map Worker verification reasons to user-safe copy"
   ],
@@ -2389,6 +2404,7 @@ const mobileEasConfig = readText("apps/mobile/eas.json");
 for (const key of [
   "EXPO_PUBLIC_API_BASE_URL",
   "EXPO_PUBLIC_MAP_PROVIDER",
+  "EXPO_PUBLIC_IAP_STATUS",
   "EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY",
   "EXPO_PUBLIC_AFFILIATE_HOTEL_URL",
   "EXPO_PUBLIC_AFFILIATE_RENTAL_CAR_URL",
@@ -2407,7 +2423,7 @@ for (const key of ["development", "preview", "production"]) {
   }
 }
 
-for (const key of ["EXPO_PUBLIC_API_BASE_URL", "EXPO_PUBLIC_MAP_PROVIDER"]) {
+for (const key of ["EXPO_PUBLIC_API_BASE_URL", "EXPO_PUBLIC_MAP_PROVIDER", "EXPO_PUBLIC_IAP_STATUS"]) {
   if (!mobileEasConfig.includes(key)) {
     errors.push(`Missing EAS public env key: ${key}`);
   }
@@ -2448,7 +2464,8 @@ for (const text of [
   "apps/mobile/eas.json",
   "EAS env keys must start with EXPO_PUBLIC_",
   "EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL",
-  "EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY"
+  "EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY",
+  "EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds"
 ]) {
   if (!devReadinessCheck.includes(text)) {
     errors.push(`dev-readiness-check must validate EAS mobile env boundaries: ${text}`);

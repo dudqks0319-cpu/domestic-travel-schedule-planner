@@ -76,6 +76,7 @@ const warnings = [];
 if (targetError) {
   errors.push(targetError);
 }
+const allowedIapStatuses = new Set(["disabled", "sdk-configured"]);
 
 const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10);
 if (!Number.isFinite(nodeMajor) || nodeMajor < 20) {
@@ -162,6 +163,11 @@ function checkMobileEnvFile(filePath) {
     warnings.push(`${label} selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
   }
 
+  const iapStatus = mobileEnv.get("EXPO_PUBLIC_IAP_STATUS");
+  if (hasNonEmptyValue(iapStatus) && !allowedIapStatuses.has(iapStatus)) {
+    errors.push(`${label} has unsupported EXPO_PUBLIC_IAP_STATUS: ${iapStatus}. Use disabled or sdk-configured.`);
+  }
+
   for (const key of mobileEnv.keys()) {
     if (!key.startsWith("EXPO_PUBLIC_")) {
       errors.push(`Forbidden non-public key in ${label}: ${key}. Mobile env keys must start with EXPO_PUBLIC_.`);
@@ -221,6 +227,11 @@ function checkMobilePublicEnvMap(label, envMap) {
     warnings.push(`${label} selects Kakao map provider without EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
   }
 
+  const iapStatus = envMap.EXPO_PUBLIC_IAP_STATUS;
+  if (typeof iapStatus === "string" && !allowedIapStatuses.has(iapStatus)) {
+    errors.push(`${label} has unsupported EXPO_PUBLIC_IAP_STATUS: ${iapStatus}. Use disabled or sdk-configured.`);
+  }
+
   for (const key of Object.keys(envMap)) {
     if (!key.startsWith("EXPO_PUBLIC_")) {
       errors.push(`Forbidden non-public key in ${label}: ${key}. EAS env keys must start with EXPO_PUBLIC_.`);
@@ -259,6 +270,10 @@ if (!fs.existsSync(easConfigPath)) {
           !hasNonEmptyValue(targetBuildEnv.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY)
         ) {
           errors.push(`EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY for web map rendering.`);
+        }
+
+        if (targetBuildEnv.EXPO_PUBLIC_IAP_STATUS !== "sdk-configured") {
+          errors.push(`EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds.`);
         }
       }
     } else {
