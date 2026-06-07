@@ -274,6 +274,8 @@ monetizationRoutes.post("/entitlements/verify", requireAuth, async (c) => {
     data: {
       entitlement: toPublicEntitlement(entitlement),
       premium: entitlement.status === "active",
+      canUnlockPremium: entitlement.status === "active",
+      verificationRequired: verification.verificationMode !== "manual-non-production",
       verificationMode: verification.verificationMode,
       reason: verification.reason
     }

@@ -2099,9 +2099,24 @@ const entitlementVerificationContracts = [
     "Entitlement verify response must derive premium only from persisted active status"
   ],
   [
+    monetizationRoutes,
+    'canUnlockPremium: entitlement.status === "active"',
+    "Entitlement verify response must expose explicit premium unlock state from persisted status"
+  ],
+  [
+    monetizationRoutes,
+    'verificationRequired: verification.verificationMode !== "manual-non-production"',
+    "Entitlement verify response must expose whether store validation is still required"
+  ],
+  [
     workerSmokeScript,
     "store entitlement should remain pending until live validation is implemented",
     "Worker smoke must verify store entitlement requests remain pending before live validation"
+  ],
+  [
+    workerSmokeScript,
+    "store entitlement should explicitly require live validation before premium unlock",
+    "Worker smoke must verify store entitlement responses expose validation-required state"
   ],
   [
     workerSmokeScript,
@@ -2109,9 +2124,29 @@ const entitlementVerificationContracts = [
     "Worker smoke must verify manual active entitlement is non-production only"
   ],
   [
+    workerSmokeScript,
+    "manual non-production entitlement smoke should explicitly allow premium unlock without store verification",
+    "Worker smoke must verify manual non-production entitlement responses do not require store validation"
+  ],
+  [
     mobileIap,
     "submitStoreVerification",
     "Mobile IAP service must expose a store receipt or transaction submission boundary"
+  ],
+  [
+    mobileIap,
+    "storeVerificationMessage",
+    "Mobile IAP service must map Worker verification reasons to user-safe copy"
+  ],
+  [
+    mobileIap,
+    "live_store_validation_not_yet_implemented",
+    "Mobile IAP service must clearly explain pending status before live store validation"
+  ],
+  [
+    mobileIap,
+    "store_validation_secret_missing",
+    "Mobile IAP service must explain server store validation setup gaps"
   ],
   [
     profileScreen,

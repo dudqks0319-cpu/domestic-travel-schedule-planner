@@ -46,6 +46,8 @@ export interface VerifyEntitlementInput {
 export interface VerifyEntitlementResult {
   entitlement: NonNullable<PremiumEntitlementState["entitlements"]>[number];
   premium: boolean;
+  canUnlockPremium: boolean;
+  verificationRequired: boolean;
   verificationMode: "store-validation-ready" | "store-validation-pending" | "manual-non-production";
   reason: string;
 }

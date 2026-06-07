@@ -47,6 +47,28 @@ export function resolveStorePlatform(): StorePlatform | null {
   return null;
 }
 
+function storeVerificationMessage(verification: VerifyEntitlementResult): string {
+  if (verification.premium && verification.canUnlockPremium) {
+    return "프리미엄 권한이 활성화됐어요.";
+  }
+
+  if (verification.reason === "missing_store_receipt") {
+    return "스토어 거래 ID 또는 영수증이 필요해요. 결제 SDK가 반환한 값을 제출해주세요.";
+  }
+
+  if (verification.reason === "store_validation_secret_missing") {
+    return "스토어 검증 서버 설정이 아직 완료되지 않아 권한이 대기 상태로 저장됐어요.";
+  }
+
+  if (verification.reason === "live_store_validation_not_yet_implemented") {
+    return "스토어 구매 정보는 접수됐지만 실제 스토어 검증 연동 전까지 권한은 대기 상태입니다.";
+  }
+
+  return verification.verificationRequired
+    ? "스토어 구매 정보가 서버에 접수됐고 검증 대기 상태입니다."
+    : "프리미엄 권한 상태를 확인했어요.";
+}
+
 export async function startPremiumPurchase(): Promise<PremiumPurchaseResult> {
   const platform = resolveStorePlatform();
   if (!platform) {
@@ -103,8 +125,6 @@ export async function submitStoreVerification(
   return {
     status: verification.premium ? "active" : "pending",
     verification,
-    message: verification.premium
-      ? "프리미엄 권한이 활성화됐어요."
-      : "스토어 구매 정보가 서버에 접수됐고 검증 대기 상태입니다."
+    message: storeVerificationMessage(verification)
   };
 }

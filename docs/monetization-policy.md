@@ -35,6 +35,8 @@ The mobile client must not decide premium status by itself. Apple/Google verific
 
 Production must not treat a submitted Apple/Google receipt, transaction id, or requested `active` status as premium until live store validation confirms it. Until that integration exists, store-platform verification responses must remain `pending` and must not unlock premium benefits.
 
+Entitlement verification responses must keep two states separate: `canUnlockPremium` reflects the persisted active entitlement state, while `verificationRequired` tells the client whether Apple/Google store validation is still required. The mobile app should show reason-specific pending copy for `missing_store_receipt`, `store_validation_secret_missing`, and `live_store_validation_not_yet_implemented` instead of implying that a submitted receipt has activated premium.
+
 ## Affiliate Links
 
 Allowed affiliate categories:

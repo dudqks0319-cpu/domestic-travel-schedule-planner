@@ -4070,3 +4070,32 @@ Verification completed:
 
 Remaining risks:
 - `worker:smoke:local` was verified through syntax, help output, release contract, and full build/test gates in this Phase; a full local Worker runtime smoke still depends on Wrangler's local D1 runtime and active local port availability.
+
+## Store Entitlement Verification State Result Record
+
+Plan:
+- Keep Apple/Google store entitlement submissions pending until live store validation is implemented.
+- Make the Worker response explicitly separate premium unlock state from store validation requirement state.
+- Make the mobile IAP boundary map Worker verification reasons to user-safe copy.
+- Lock this behavior into release contract checks and monetization policy docs.
+
+Completed:
+- Added `canUnlockPremium` and `verificationRequired` to `POST /api/v1/monetization/entitlements/verify` responses.
+- Updated Worker smoke assertions so manual non-production entitlements explicitly unlock without store validation, while Apple/Google store submissions explicitly require live validation before unlock.
+- Updated mobile entitlement result types and IAP copy mapping for `missing_store_receipt`, `store_validation_secret_missing`, and `live_store_validation_not_yet_implemented`.
+- Updated release contract checks for the new Worker response fields, smoke assertions, and mobile reason mapping.
+- Updated `docs/monetization-policy.md` to document the unlock/verification state split.
+
+Verification completed:
+- `npm run worker:typecheck`
+- `npm run mobile:typecheck`
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Live Apple/Google purchase SDK capture and real store receipt validation are still outside this Phase; the current contract prevents those pending submissions from unlocking premium prematurely.

@@ -599,6 +599,10 @@ await step("monetization events and entitlement", async () => {
     entitlement.body?.data?.premium === true,
     "manual entitlement smoke should activate premium only outside production"
   );
+  assert(
+    entitlement.body?.data?.canUnlockPremium === true && entitlement.body?.data?.verificationRequired === false,
+    "manual non-production entitlement smoke should explicitly allow premium unlock without store verification"
+  );
   const storeEntitlement = await request("POST", "/api/v1/monetization/entitlements/verify", {
     json: {
       platform: "apple",
@@ -615,6 +619,10 @@ await step("monetization events and entitlement", async () => {
   assert(
     storeEntitlement.body?.data?.premium === false,
     "store entitlement should not unlock premium until live validation is implemented"
+  );
+  assert(
+    storeEntitlement.body?.data?.canUnlockPremium === false && storeEntitlement.body?.data?.verificationRequired === true,
+    "store entitlement should explicitly require live validation before premium unlock"
   );
   assertOk(await request("GET", "/api/v1/monetization/entitlements/me"), "GET /api/v1/monetization/entitlements/me");
 });
