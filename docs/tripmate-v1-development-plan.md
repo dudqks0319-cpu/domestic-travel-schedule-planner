@@ -4812,3 +4812,30 @@ Verification completed:
 
 Remaining risks:
 - Preview smoke should still be run against Cloudflare preview before release because local Wrangler bindings do not prove remote secret or provider configuration.
+
+## IAP Release Gate Honesty Result Record
+
+Plan:
+- Prevent preview/production release checks from passing when `EXPO_PUBLIC_IAP_STATUS=sdk-configured` is set without an actual native IAP bridge dependency.
+- Keep the current `disabled` local behavior intact.
+- Avoid adding a production dependency without explicit approval.
+- Lock the readiness check into the release contract.
+
+Completed:
+- Added `supportedIapBridgeDependencies` to `scripts/dev-readiness-check.mjs`.
+- Added `hasSupportedIapBridgeDependency()` to inspect `apps/mobile/package.json`.
+- Extended preview/production EAS env checks so `sdk-configured` also requires a supported native IAP bridge dependency.
+- Updated `scripts/release-contract-check.mjs` so this release-gate honesty check cannot be removed silently.
+
+Verification completed:
+- `node --check scripts/dev-readiness-check.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:dev`
+- `npm run check:env:preview` failed as expected on unresolved preview release configuration.
+- `npm run check:env:production` failed as expected on unresolved production release configuration.
+- `git diff --check`
+
+Remaining risks:
+- Actual Apple/Google purchase capture still requires adding and wiring a native IAP SDK after dependency approval.

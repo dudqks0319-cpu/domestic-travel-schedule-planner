@@ -2947,7 +2947,10 @@ for (const text of [
   "EAS env keys must start with EXPO_PUBLIC_",
   "EAS ${checkTarget} EXPO_PUBLIC_API_BASE_URL must point to a real ${checkTarget} Worker URL",
   "EAS ${checkTarget} Kakao map provider requires EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY",
-  "EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds"
+  "EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds",
+  "supportedIapBridgeDependencies",
+  "hasSupportedIapBridgeDependency",
+  "has no supported native IAP bridge dependency"
 ]) {
   if (!devReadinessCheck.includes(text)) {
     errors.push(`dev-readiness-check must validate EAS mobile env boundaries: ${text}`);

@@ -120,6 +120,8 @@ if (fs.existsSync(apiEnvPath)) {
 }
 
 const mobileEnvPath = fromRoot("apps", "mobile", ".env");
+const mobilePackagePath = fromRoot("apps", "mobile", "package.json");
+const supportedIapBridgeDependencies = ["expo-iap", "react-native-iap"];
 const forbiddenMobileKeys = [
   "NAVER_CLIENT_ID",
   "NAVER_CLIENT_SECRET",
@@ -147,6 +149,25 @@ function listMobileRuntimeEnvFiles() {
     .filter((entry) => entry === ".env" || entry.startsWith(".env."))
     .filter((entry) => !entry.endsWith(".example"))
     .map((entry) => path.join(mobileDir, entry));
+}
+
+function hasSupportedIapBridgeDependency() {
+  if (!fs.existsSync(mobilePackagePath)) {
+    return false;
+  }
+
+  try {
+    const mobilePackage = JSON.parse(fs.readFileSync(mobilePackagePath, "utf8"));
+    const dependencies = {
+      ...(mobilePackage.dependencies ?? {}),
+      ...(mobilePackage.devDependencies ?? {})
+    };
+    return supportedIapBridgeDependencies.some((dependency) =>
+      Object.prototype.hasOwnProperty.call(dependencies, dependency)
+    );
+  } catch {
+    return false;
+  }
 }
 
 function checkMobileEnvFile(filePath) {
@@ -274,6 +295,8 @@ if (!fs.existsSync(easConfigPath)) {
 
         if (targetBuildEnv.EXPO_PUBLIC_IAP_STATUS !== "sdk-configured") {
           errors.push(`EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS must be sdk-configured before release builds.`);
+        } else if (!hasSupportedIapBridgeDependency()) {
+          errors.push(`EAS ${checkTarget} EXPO_PUBLIC_IAP_STATUS is sdk-configured but apps/mobile has no supported native IAP bridge dependency (${supportedIapBridgeDependencies.join(", ")}).`);
         }
       }
     } else {
