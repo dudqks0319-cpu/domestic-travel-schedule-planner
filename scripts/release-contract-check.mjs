@@ -2483,10 +2483,15 @@ for (const text of [
   "R2",
   "worker:smoke",
   "worker:smoke:naver",
+  "TRIPMATE_KAKAO_ACCESS_TOKEN",
   "/api/v1/ops/retention",
   "Do not run this write smoke against production"
 ]) {
   requireText("docs/deployment-cloudflare.md", text);
+}
+
+if (!apiWorkerReadme.includes("TRIPMATE_KAKAO_ACCESS_TOKEN")) {
+  errors.push("API Worker README must document the optional live Kakao auth smoke token.");
 }
 
 for (const text of [
@@ -2525,9 +2530,11 @@ for (const text of [
   "require_provider",
   "TRIPMATE_WORKER_BASE_URL",
   "TRIPMATE_REQUIRE_PROVIDER",
+  "TRIPMATE_KAKAO_ACCESS_TOKEN",
   "OPS_ADMIN_TOKEN",
   "node --check scripts/worker-v1-smoke.mjs",
   "--require-provider",
+  "--kakao-access-token",
   "args=(--base-url",
   'npm run worker:smoke -- "${args[@]}"'
 ]) {
@@ -2555,6 +2562,11 @@ for (const text of [
   "reverse geocode should return required provider address",
   "free saved trip limit",
   "FREE_TRIP_LIMIT_REACHED",
+  "--kakao-access-token",
+  "TRIPMATE_KAKAO_ACCESS_TOKEN",
+  "live kakao login and logout",
+  "live Kakao login should return Kakao provider user",
+  "POST /api/v1/auth/logout after live Kakao login",
   "ops retention dry run",
   "/api/v1/ops/retention?dryRun=true"
 ]) {

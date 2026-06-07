@@ -20,6 +20,7 @@ npm run d1:migrate:production
 npm run d1:check:production
 npm run release:production:gate -- --base-url https://<production-worker>
 npm run worker:smoke -- --base-url http://127.0.0.1:8787
+npm run worker:smoke -- --base-url https://<preview-worker> --kakao-access-token "$TRIPMATE_KAKAO_ACCESS_TOKEN"
 npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
 ```
 
@@ -30,6 +31,8 @@ npm run worker:smoke:naver -- --base-url https://<preview-worker> --ops-token "$
 `release:production:gate` is the preferred production handoff gate. It runs production env readiness, production secret-name checks, release contract checks, planner tests, build/typecheck health checks, and read-only health checks against the deployed production Worker. It does not run write smoke against production.
 
 `worker:smoke:naver` is the strict preview provider smoke. It requires live Naver Search and Naver Cloud Maps geocode, reverse-geocode, planner route enrichment, and route optimization responses. It still refuses write smoke outside `ENVIRONMENT=local` or `preview`.
+
+Use `--kakao-access-token` or the `TRIPMATE_KAKAO_ACCESS_TOKEN` environment variable only with a test Kakao account token in local/preview smoke. The script verifies live Kakao login and logout but does not delete that Kakao-backed user.
 
 ## Implemented
 

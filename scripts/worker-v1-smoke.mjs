@@ -28,16 +28,19 @@ Usage:
   npm run worker:smoke
   npm run worker:smoke -- --base-url http://127.0.0.1:8787
   npm run worker:smoke -- --base-url https://<preview-worker> --ops-token "$OPS_ADMIN_TOKEN"
+  npm run worker:smoke -- --base-url https://<preview-worker> --kakao-access-token "$TRIPMATE_KAKAO_ACCESS_TOKEN"
   npm run worker:smoke -- --base-url https://<preview-worker> --require-provider naver
 
 Options:
-  --base-url          Worker base URL. Default: ${DEFAULT_BASE_URL}
-  --ops-token         Optional server-only token for /api/v1/ops summary and retention smoke.
-  --require-provider  Optional strict live provider check: naver or kakao.
+  --base-url            Worker base URL. Default: ${DEFAULT_BASE_URL}
+  --ops-token           Optional server-only token for /api/v1/ops summary and retention smoke.
+  --kakao-access-token  Optional real Kakao access token for live auth verification.
+  --require-provider    Optional strict live provider check: naver or kakao.
 
 Notes:
   - The script creates and deletes smoke-owned data.
   - Kakao login uses a dev: token and therefore requires Worker ENVIRONMENT=local or preview.
+  - Real Kakao token smoke logs in and logs out only; it does not delete that Kakao-backed user.
   - The script verifies /health environment before sending write requests.
   - Do not run this write smoke against production.
 `);
@@ -51,6 +54,10 @@ if (shouldShowHelp()) {
 const baseUrl = readArg("--base-url", process.env.TRIPMATE_WORKER_BASE_URL ?? DEFAULT_BASE_URL)
   .replace(/\/+$/, "");
 const opsToken = readArg("--ops-token", process.env.OPS_ADMIN_TOKEN ?? "");
+const liveKakaoAccessToken = readArg(
+  "--kakao-access-token",
+  process.env.TRIPMATE_KAKAO_ACCESS_TOKEN ?? ""
+).trim();
 const requiredProvider = readArg("--require-provider", process.env.TRIPMATE_REQUIRE_PROVIDER ?? "")
   .trim()
   .toLowerCase();
@@ -96,6 +103,23 @@ async function loginWithDevKakao(label) {
   accessToken = result.body?.accessToken ?? "";
   refreshToken = result.body?.refreshToken ?? "";
   assert(accessToken && refreshToken, "login should return access and refresh tokens");
+}
+
+async function loginWithLiveKakaoAccessToken() {
+  const result = await request("POST", "/api/v1/auth/login/kakao", {
+    auth: false,
+    json: { kakaoAccessToken: liveKakaoAccessToken }
+  });
+  assertOk(result, "POST /api/v1/auth/login/kakao live token");
+  accessToken = result.body?.accessToken ?? "";
+  refreshToken = result.body?.refreshToken ?? "";
+  assert(accessToken && refreshToken, "live Kakao login should return access and refresh tokens");
+  assert(result.body?.user?.provider === "kakao", "live Kakao login should return Kakao provider user");
+  assert(!String(result.body?.user?.email ?? "").endsWith("@tripmate.local"), "live Kakao login should not use dev-local email");
+  assertOk(await request("GET", "/api/v1/auth/me"), "GET /api/v1/auth/me after live Kakao login");
+  assertOk(await request("POST", "/api/v1/auth/logout"), "POST /api/v1/auth/logout after live Kakao login");
+  accessToken = "";
+  refreshToken = "";
 }
 
 async function request(method, path, options = {}) {
@@ -178,6 +202,12 @@ await step("health endpoints", async () => {
     `refusing write smoke against ENVIRONMENT=${workerEnvironment}; use local or preview only`
   );
 });
+
+if (liveKakaoAccessToken) {
+  await step("live kakao login and logout", async () => {
+    await loginWithLiveKakaoAccessToken();
+  });
+}
 
 await step("planner generate and replan", async () => {
   const input = {

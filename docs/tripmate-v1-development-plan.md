@@ -3960,3 +3960,31 @@ Verification completed:
 
 Remaining risks:
 - Live Kakao auth validation still requires a real Kakao access token and configured network access in local/preview Worker smoke.
+
+## Live Kakao Auth Smoke Option Result Record
+
+Plan:
+- Add an optional Worker smoke mode that can validate a real Kakao access token without storing secrets in the repository.
+- Keep dev-token smoke as the default for local/preview automated CRUD checks.
+- Ensure live Kakao smoke logs out only and does not delete the Kakao-backed test user.
+- Wire the option through the preview GitHub Actions smoke workflow and release contract checks.
+
+Completed:
+- Added `--kakao-access-token` and `TRIPMATE_KAKAO_ACCESS_TOKEN` support to `scripts/worker-v1-smoke.mjs`.
+- Added an optional live Kakao login, `/auth/me`, and logout smoke step before dev-token smoke data creation.
+- Updated the preview smoke GitHub Actions workflow to pass `TRIPMATE_KAKAO_ACCESS_TOKEN` from repository secrets when available.
+- Updated Cloudflare deployment docs and API Worker README with the live Kakao auth smoke command and account-deletion boundary.
+- Added release contract checks for the new smoke option, workflow secret wiring, and live Kakao auth assertions.
+
+Verification completed:
+- `node --check scripts/worker-v1-smoke.mjs`
+- `node --check scripts/release-contract-check.mjs`
+- `npm run worker:smoke -- --help`
+- `npm run check:release-contract`
+- `npm test`
+- `npm run check:health`
+- `npm run check:dev`
+- `git diff --check`
+
+Remaining risks:
+- Live Kakao auth smoke still requires a valid short-lived Kakao test account access token in the local shell or GitHub repository secrets.

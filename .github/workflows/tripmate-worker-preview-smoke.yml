@@ -42,6 +42,7 @@ jobs:
       - name: Run preview Worker smoke
         env:
           OPS_ADMIN_TOKEN: ${{ secrets.OPS_ADMIN_TOKEN }}
+          TRIPMATE_KAKAO_ACCESS_TOKEN: ${{ secrets.TRIPMATE_KAKAO_ACCESS_TOKEN }}
           TRIPMATE_WORKER_BASE_URL: ${{ inputs.base_url }}
           TRIPMATE_REQUIRE_PROVIDER: ${{ inputs.require_provider }}
         shell: bash
@@ -56,6 +57,9 @@ jobs:
           args=(--base-url "$TRIPMATE_WORKER_BASE_URL")
           if [[ -n "${TRIPMATE_REQUIRE_PROVIDER:-}" ]]; then
             args+=(--require-provider "$TRIPMATE_REQUIRE_PROVIDER")
+          fi
+          if [[ -n "${TRIPMATE_KAKAO_ACCESS_TOKEN:-}" ]]; then
+            args+=(--kakao-access-token "$TRIPMATE_KAKAO_ACCESS_TOKEN")
           fi
 
           if [[ -n "${OPS_ADMIN_TOKEN:-}" ]]; then
