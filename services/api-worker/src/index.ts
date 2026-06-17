@@ -10,6 +10,12 @@ import {
   updateTripPlaceHandler
 } from "./itinerary.js";
 import {
+  createAdEventHandler,
+  createAffiliateClickHandler,
+  getMyEntitlementsHandler,
+  verifyEntitlementHandler
+} from "./monetization.js";
+import {
   createTripHandler,
   deleteTripHandler,
   getTripHandler,
@@ -105,10 +111,10 @@ const routes: RouteDefinition[] = [
   { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId/places/:placeId"), auth: "required", handler: deleteTripPlaceHandler },
   { method: "POST", pattern: pattern("/api/v1/trips/:tripId/share"), auth: "required", handler: createShareLinkHandler },
   { method: "GET", pattern: pattern("/api/v1/share/:shareId"), auth: "public", handler: getSharedTripHandler },
-  { method: "POST", pattern: pattern("/api/v1/monetization/ad-events"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/monetization/affiliate-clicks"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/monetization/entitlements/verify"), auth: "required", handler: notImplementedHandler },
-  { method: "GET", pattern: pattern("/api/v1/monetization/entitlements/me"), auth: "required", handler: notImplementedHandler }
+  { method: "POST", pattern: pattern("/api/v1/monetization/ad-events"), auth: "required", handler: createAdEventHandler },
+  { method: "POST", pattern: pattern("/api/v1/monetization/affiliate-clicks"), auth: "required", handler: createAffiliateClickHandler },
+  { method: "POST", pattern: pattern("/api/v1/monetization/entitlements/verify"), auth: "required", handler: verifyEntitlementHandler },
+  { method: "GET", pattern: pattern("/api/v1/monetization/entitlements/me"), auth: "required", handler: getMyEntitlementsHandler }
 ];
 
 function matchRoute(request: Request): { route: RouteDefinition; params: Record<string, string> } | undefined {

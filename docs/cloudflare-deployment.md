@@ -60,6 +60,12 @@ wrangler secret put ODSAY_API_KEY --env preview
 ```
 
 Production uses the same secret names with `--env production`.
+Store verification secrets are reserved for the receipt-verification slice and must also stay server-side:
+
+```bash
+wrangler secret put APPLE_SHARED_SECRET --env preview
+wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --env preview
+```
 
 ## Current Security Posture
 
@@ -68,13 +74,15 @@ Production uses the same secret names with `--env production`.
 3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`.
 4. Trip list, create, read, update, delete, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
 5. Trip update/delete accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
-6. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
-7. CORS is allow-list based. `*` is ignored in production.
-8. API responses include a correlation id via `X-Request-Id` and error payloads.
+6. Monetization handlers require auth, validate inputs, hash affiliate URLs and entitlement transaction ids, and do not store raw receipts or purchase tokens.
+7. Entitlement verify is a skeleton only: it records `pending_verification` and does not grant premium access until real Apple/Google server verification is implemented.
+8. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
+9. CORS is allow-list based. `*` is ignored in production.
+10. API responses include a correlation id via `X-Request-Id` and error payloads.
 
 ## Next Required Slice
 
-1. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+1. Add real Apple/Google receipt verification before granting premium entitlements.
 2. Extend idempotency support to remaining retryable mutation endpoints.
 3. Add JWT issuer/audience policy if the production auth provider requires it.
 4. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.

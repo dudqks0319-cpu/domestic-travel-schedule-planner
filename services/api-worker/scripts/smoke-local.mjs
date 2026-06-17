@@ -157,6 +157,177 @@ async function main() {
   assert(crossUserTripBody.error.code === "not_found", "cross-user trip response should not reveal ownership");
   checks.push("GET /api/v1/trips/:tripId cross-user -> 404");
 
+  const invalidAdEvent = await request("/api/v1/monetization/ad-events", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ placement: "home_top", eventType: "unknown" })
+  });
+  const invalidAdEventBody = await readJson(invalidAdEvent);
+  assert(invalidAdEvent.status === 400, "invalid ad event should return 400");
+  assert(invalidAdEventBody.error.code === "validation_failed", "invalid ad event should use validation_failed");
+  checks.push("POST /api/v1/monetization/ad-events invalid payload -> 400");
+
+  const adEventPayload = JSON.stringify({
+    placement: "home_top",
+    eventType: "impression",
+    metadata: { screen: "home", index: 1 }
+  });
+  const adEvent = await request("/api/v1/monetization/ad-events", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "ad-event-0001"
+    },
+    body: adEventPayload
+  });
+  const adEventBody = await readJson(adEvent);
+  assert(adEvent.status === 201, "valid ad event should return 201");
+  assert(adEventBody.item.placement === "home_top", "ad event should preserve placement");
+  checks.push("POST /api/v1/monetization/ad-events valid payload -> 201");
+
+  const adEventReplay = await request("/api/v1/monetization/ad-events", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "ad-event-0001"
+    },
+    body: adEventPayload
+  });
+  const adEventReplayBody = await readJson(adEventReplay);
+  assert(adEventReplay.status === 201, "ad event idempotent replay should return 201");
+  assert(
+    adEventReplay.headers.get("x-idempotent-replay") === "true",
+    "ad event idempotent replay should expose replay header"
+  );
+  assert(adEventReplayBody.item.id === adEventBody.item.id, "ad event replay should preserve original response");
+  checks.push("POST /api/v1/monetization/ad-events idempotent replay -> 201");
+
+  const invalidAffiliateClick = await request("/api/v1/monetization/affiliate-clicks", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ provider: "booking", targetUrl: "http://example.com/deal" })
+  });
+  const invalidAffiliateClickBody = await readJson(invalidAffiliateClick);
+  assert(invalidAffiliateClick.status === 400, "non-HTTPS affiliate target should return 400");
+  assert(
+    invalidAffiliateClickBody.error.code === "validation_failed",
+    "invalid affiliate click should use validation_failed"
+  );
+  checks.push("POST /api/v1/monetization/affiliate-clicks invalid payload -> 400");
+
+  const crossUserAffiliateClick = await request("/api/v1/monetization/affiliate-clicks", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userBToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      provider: "booking",
+      targetUrl: "https://example.com/deal?hotel=1",
+      tripId
+    })
+  });
+  const crossUserAffiliateClickBody = await readJson(crossUserAffiliateClick);
+  assert(crossUserAffiliateClick.status === 404, "cross-user affiliate trip association should return 404");
+  assert(
+    crossUserAffiliateClickBody.error.code === "not_found",
+    "cross-user affiliate click should hide trip ownership"
+  );
+  checks.push("POST /api/v1/monetization/affiliate-clicks cross-user trip -> 404");
+
+  const affiliateClick = await request("/api/v1/monetization/affiliate-clicks", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      provider: "booking",
+      targetUrl: "https://example.com/deal?hotel=1",
+      tripId
+    })
+  });
+  const affiliateClickBody = await readJson(affiliateClick);
+  assert(affiliateClick.status === 201, "valid affiliate click should return 201");
+  assert(affiliateClickBody.item.provider === "booking", "affiliate click should preserve provider");
+  assert(affiliateClickBody.item.tripId === tripId, "affiliate click should preserve owned trip id");
+  checks.push("POST /api/v1/monetization/affiliate-clicks valid payload -> 201");
+
+  const invalidEntitlement = await request("/api/v1/monetization/entitlements/verify", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ store: "stripe", productId: "tripmate_pro" })
+  });
+  const invalidEntitlementBody = await readJson(invalidEntitlement);
+  assert(invalidEntitlement.status === 400, "invalid entitlement verify should return 400");
+  assert(
+    invalidEntitlementBody.error.code === "validation_failed",
+    "invalid entitlement verify should use validation_failed"
+  );
+  checks.push("POST /api/v1/monetization/entitlements/verify invalid payload -> 400");
+
+  const entitlementPayload = JSON.stringify({
+    store: "apple",
+    productId: "tripmate_pro_monthly",
+    transactionId: "tx-local-0001",
+    receiptData: "raw-receipt-not-stored"
+  });
+  const entitlement = await request("/api/v1/monetization/entitlements/verify", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "entitlement-0001"
+    },
+    body: entitlementPayload
+  });
+  const entitlementBody = await readJson(entitlement);
+  assert(entitlement.status === 200, "entitlement verify skeleton should return 200");
+  assert(entitlementBody.item.status === "pending_verification", "entitlement should remain pending without store verification");
+  assert(entitlementBody.item.active === false, "pending entitlement should not grant active premium");
+  assert(entitlementBody.meta.receiptStored === false, "entitlement verify should not store receipt payloads");
+  checks.push("POST /api/v1/monetization/entitlements/verify skeleton -> 200");
+
+  const entitlementReplay = await request("/api/v1/monetization/entitlements/verify", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "entitlement-0001"
+    },
+    body: entitlementPayload
+  });
+  const entitlementReplayBody = await readJson(entitlementReplay);
+  assert(entitlementReplay.status === 200, "entitlement idempotent replay should return 200");
+  assert(
+    entitlementReplay.headers.get("x-idempotent-replay") === "true",
+    "entitlement idempotent replay should expose replay header"
+  );
+  assert(entitlementReplayBody.item.id === entitlementBody.item.id, "entitlement replay should preserve original response");
+  checks.push("POST /api/v1/monetization/entitlements/verify idempotent replay -> 200");
+
+  const myEntitlements = await request("/api/v1/monetization/entitlements/me", {
+    headers: {
+      authorization: `Bearer ${userAToken}`
+    }
+  });
+  const myEntitlementsBody = await readJson(myEntitlements);
+  assert(myEntitlements.status === 200, "GET entitlements/me should return 200");
+  assert(myEntitlementsBody.items.length === 1, "GET entitlements/me should return stored entitlement");
+  assert(myEntitlementsBody.active === false, "GET entitlements/me should not activate pending entitlement");
+  checks.push("GET /api/v1/monetization/entitlements/me -> 200");
+
   const invalidUpdateTrip = await request(`/api/v1/trips/${tripId}`, {
     method: "PATCH",
     headers: {
@@ -562,6 +733,9 @@ function createMockD1() {
     tripPlaces: [],
     shareLinks: [],
     idempotencyKeys: [],
+    entitlements: [],
+    adEvents: [],
+    affiliateClicks: [],
     auditLogs: []
   };
 
@@ -609,6 +783,17 @@ function createMockStatement(state, sql, bindings) {
           results: state.tripPlaces
             .filter((place) => place.trip_id === tripId)
             .sort((left, right) => left.visit_order - right.visit_order)
+        };
+      }
+
+      if (normalized.includes("from subscription_entitlements") && normalized.includes("where user_id = ?")) {
+        const [userId] = bindings;
+        return {
+          success: true,
+          meta: {},
+          results: state.entitlements
+            .filter((item) => item.user_id === userId)
+            .sort((left, right) => right.updated_at.localeCompare(left.updated_at))
         };
       }
 
@@ -672,6 +857,16 @@ function createMockStatement(state, sql, bindings) {
             item.user_id === userId &&
             item.route_key === routeKey &&
             item.idempotency_key === idempotencyKey
+        ) || null;
+      }
+
+      if (
+        normalized.includes("from subscription_entitlements") &&
+        normalized.includes("where store = ? and transaction_id = ?")
+      ) {
+        const [store, transactionId] = bindings;
+        return state.entitlements.find(
+          (item) => item.store === store && item.transaction_id === transactionId
         ) || null;
       }
 
@@ -831,6 +1026,64 @@ function createMockStatement(state, sql, bindings) {
           revoked_at: null,
           created_at
         });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into ad_events")) {
+        const [id, user_id, placement, event_type, metadata_json, created_at] = bindings;
+        state.adEvents.push({ id, user_id, placement, event_type, metadata_json, created_at });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into affiliate_clicks")) {
+        const [id, user_id, provider, target_url_hash, trip_id, created_at] = bindings;
+        if (String(target_url_hash).includes("example.com")) {
+          return { success: false, meta: {}, error: "raw affiliate URL was stored" };
+        }
+        state.affiliateClicks.push({ id, user_id, provider, target_url_hash, trip_id, created_at });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into subscription_entitlements")) {
+        const [
+          id,
+          user_id,
+          store,
+          product_id,
+          transaction_id,
+          status,
+          expires_at,
+          verified_at,
+          created_at,
+          updated_at
+        ] = bindings;
+        if (String(transaction_id).includes("tx-local")) {
+          return { success: false, meta: {}, error: "raw transaction id was stored" };
+        }
+        const existing = state.entitlements.find(
+          (item) => item.store === store && item.transaction_id === transaction_id
+        );
+        if (existing) {
+          existing.user_id = user_id;
+          existing.product_id = product_id;
+          existing.status = status;
+          existing.expires_at = expires_at;
+          existing.verified_at = verified_at;
+          existing.updated_at = updated_at;
+        } else {
+          state.entitlements.push({
+            id,
+            user_id,
+            store,
+            product_id,
+            transaction_id,
+            status,
+            expires_at,
+            verified_at,
+            created_at,
+            updated_at
+          });
+        }
         return { success: true, meta: {} };
       }
 

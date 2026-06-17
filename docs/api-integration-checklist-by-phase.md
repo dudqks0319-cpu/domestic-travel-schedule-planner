@@ -101,13 +101,17 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Implement owner-only trip update/delete handlers.
 - [x] Add `X-Idempotency-Key` replay/conflict handling for trip update/delete retries.
 - [x] Add negative smoke coverage for trip update/delete ownership and idempotency conflicts.
+- [x] Implement monetization handlers for ad events, affiliate clicks, entitlement verify skeleton, and current user entitlements.
+- [x] Store affiliate targets and entitlement transaction ids as hashes; do not persist raw URLs, receipts, or purchase tokens.
+- [x] Add negative smoke coverage for monetization validation, trip ownership, idempotent replay, and pending entitlements.
+- [x] Add monetization policy documentation.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
 2. Add repository-level tests beyond the current Worker smoke surface.
 3. Add JWT issuer/audience policy if the production auth provider requires it.
-4. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+4. Add real Apple/Google receipt verification before granting premium entitlements.
 5. Extend idempotency support to remaining mutation endpoints used by mobile retries.
 
 ## Phase 4: Collaboration, Notifications, and Sync
