@@ -79,6 +79,22 @@ function assert(condition, message) {
   }
 }
 
+function assertProviderMetaIfPresent(body, label) {
+  if (!body || typeof body !== "object" || !("meta" in body)) {
+    return;
+  }
+
+  const meta = body.meta;
+  assert(meta && typeof meta === "object", `${label} expected meta object`);
+  assert(meta.degraded === true, `${label} expected meta.degraded=true`);
+  assert(typeof meta.provider === "string" && meta.provider.length > 0, `${label} expected meta.provider`);
+  assert(
+    meta.reason === "disabled" || meta.reason === "missing_credentials",
+    `${label} expected known meta.reason`
+  );
+  assert(meta.retryable === false, `${label} expected meta.retryable=false`);
+}
+
 async function run() {
   const baseUrl = createBaseUrl();
   const apiPrefix = normalizePrefix(process.env.SMOKE_API_PREFIX ?? process.env.API_PREFIX);
@@ -132,6 +148,7 @@ async function run() {
 
     assert(status === 200, `GET ${tourismSearchPath} expected 200 but got ${status}`);
     assert(body && Array.isArray(body.items), `GET ${tourismSearchPath} expected items array`);
+    assertProviderMetaIfPresent(body, `GET ${tourismSearchPath}`);
     return `GET ${tourismSearchPath} -> 200`;
   });
 
@@ -143,6 +160,7 @@ async function run() {
 
     assert(status === 200, `GET ${restaurantSearchPath} expected 200 but got ${status}`);
     assert(body && Array.isArray(body.items), `GET ${restaurantSearchPath} expected items array`);
+    assertProviderMetaIfPresent(body, `GET ${restaurantSearchPath}`);
     return `GET ${restaurantSearchPath} -> 200`;
   });
 

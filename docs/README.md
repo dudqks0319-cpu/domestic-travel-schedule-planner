@@ -7,7 +7,8 @@ This folder contains the v3.0 planning baseline for architecture, phased API int
 1. [Architecture Overview](./architecture-overview.md)
 2. [API Integration Checklist by Phase](./api-integration-checklist-by-phase.md)
 3. [UI/UX Notes for Claude Design Code Integration](./ui-ux-claude-design-integration-notes.md)
-4. [First 2-Week Execution Checklist](./execution-checklist-first-2-weeks.md)
+4. [Phase 2 Mobile UX Verification](./phase-2-mobile-ux-verification.md)
+5. [Phase 3 Provider Degraded Mode](./phase-3-provider-degraded-mode.md)
 
 ## Working Assumptions
 

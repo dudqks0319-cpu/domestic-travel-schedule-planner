@@ -1,5 +1,9 @@
 import axios from "axios";
 import { env } from "../config/env";
+import {
+  getNaverLocalProviderAvailability,
+  logProviderUnavailable
+} from "../utils/provider-availability";
 
 interface NaverLocalItem {
   title: string;
@@ -28,6 +32,12 @@ export async function searchRestaurants(params: {
   start?: number;
   sort?: "random" | "comment";
 }) {
+  const availability = getNaverLocalProviderAvailability();
+  if (!availability.available) {
+    logProviderUnavailable("restaurants.localSearch", availability);
+    return [];
+  }
+
   const response = await axios.get<NaverSearchResponse>("https://openapi.naver.com/v1/search/local.json", {
     headers: {
       "X-Naver-Client-Id": env.naverClientId,

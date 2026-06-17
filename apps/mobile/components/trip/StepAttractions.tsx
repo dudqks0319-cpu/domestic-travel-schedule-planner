@@ -5,7 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../../constants/Theme';
-import { tourismApi } from '../../services/api';
+import {
+  getProviderNoticeMessage,
+  tourismApi,
+  type ProviderListResponse,
+} from '../../services/api';
 
 interface Props {
   destination: string;
@@ -40,21 +44,24 @@ export default function StepAttractions({ destination, selectedAttractions, onCh
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [providerNotice, setProviderNotice] = useState('');
   const [cat, setCat] = useState('all');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const fetchData = useCallback(async (p: number, c?: string, reset = false) => {
     if (!destination) return;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setProviderNotice('');
     try {
       const area = destination.replace(/도$|시$|군$|구$/g, '').trim();
       const ct = c === 'all' ? undefined : c;
       const res = await tourismApi.getAttractions(area, p, ct);
-      const arr = (res.data.items ?? []) as Item[];
+      const data = res.data as ProviderListResponse<Item>;
+      const arr = data.items ?? [];
+      setProviderNotice(getProviderNoticeMessage(data.meta, '관광지'));
       setItems((prev) => reset ? arr : [...prev, ...arr]);
       setHasMore(arr.length >= 20);
-    } catch { setError('관광지 정보를 불러올 수 없습니다'); }
+    } catch { setProviderNotice(''); setError('관광지 정보를 불러올 수 없습니다'); }
     finally { setLoading(false); }
   }, [destination]);
 
@@ -103,6 +110,13 @@ export default function StepAttractions({ destination, selectedAttractions, onCh
         <View style={styles.errBox}>
           <Ionicons name="warning-outline" size={16} color={Theme.colors.error} />
           <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {providerNotice ? (
+        <View style={styles.noticeBox}>
+          <Ionicons name="alert-circle-outline" size={16} color={Theme.colors.warning} />
+          <Text style={styles.noticeText}>{providerNotice}</Text>
         </View>
       ) : null}
 
@@ -203,5 +217,12 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
   },
   errText: { ...Theme.typography.body2, color: Theme.colors.error },
+  noticeBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFBEB', borderRadius: Theme.radius.md,
+    borderWidth: 1, borderColor: '#FDE68A',
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
+  },
+  noticeText: { ...Theme.typography.body2, color: '#92400E', flex: 1 },
   emptyText: { ...Theme.typography.body1, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 40 },
 });

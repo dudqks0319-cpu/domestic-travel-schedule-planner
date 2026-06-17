@@ -62,8 +62,9 @@ Resolved web blocker:
 Observed external-provider limit:
 
 1. With `services/api` running on `127.0.0.1:4000`, step 4 requests reached the API backend.
-2. The backend returned upstream `401` failures for tourism and restaurant lookups because the QA run used placeholder `DATA_GO_KR_API_KEY` and no real Naver provider credentials.
-3. This confirms the local UI-to-backend path, but not live provider data rendering.
+2. The initial QA run returned upstream `401` failures for tourism and restaurant lookups because the run used placeholder `DATA_GO_KR_API_KEY` and no real Naver provider credentials.
+3. Phase 3 provider gates now convert disabled, missing, or placeholder provider credentials into `200` degraded responses with `items: []` and provider metadata.
+4. This confirms the local UI-to-backend path and degraded UI path, but not live provider data rendering.
 
 ## Residual Risks
 

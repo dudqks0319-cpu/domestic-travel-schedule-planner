@@ -5,7 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../../constants/Theme';
-import { restaurantApi } from '../../services/api';
+import {
+  getProviderNoticeMessage,
+  restaurantApi,
+  type ProviderListResponse,
+} from '../../services/api';
 
 interface Props {
   destination: string;
@@ -43,16 +47,19 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
   const [items, setItems] = useState<Item[]>([]);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState('');
+  const [providerNotice, setProviderNotice] = useState('');
   const [cat, setCat] = useState('맛집');
 
   const fetch_ = useCallback(async (c: string) => {
     if (!destination) return;
-    setFetching(true); setError('');
+    setFetching(true); setError(''); setProviderNotice('');
     try {
       const q = c === '맛집' ? `${destination} 맛집` : `${destination} ${c}`;
       const res = await restaurantApi.search(q, 20);
-      setItems((res.data.items ?? []) as Item[]);
-    } catch { setError('맛집 정보를 불러올 수 없습니다'); }
+      const data = res.data as ProviderListResponse<Item>;
+      setProviderNotice(getProviderNoticeMessage(data.meta, '맛집'));
+      setItems(data.items ?? []);
+    } catch { setProviderNotice(''); setError('맛집 정보를 불러올 수 없습니다'); }
     finally { setFetching(false); }
   }, [destination]);
 
@@ -95,6 +102,13 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
         <View style={styles.errBox}>
           <Ionicons name="warning-outline" size={16} color={Theme.colors.error} />
           <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {providerNotice ? (
+        <View style={styles.noticeBox}>
+          <Ionicons name="alert-circle-outline" size={16} color={Theme.colors.warning} />
+          <Text style={styles.noticeText}>{providerNotice}</Text>
         </View>
       ) : null}
 
@@ -227,5 +241,12 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
   },
   errText: { ...Theme.typography.body2, color: Theme.colors.error },
+  noticeBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFBEB', borderRadius: Theme.radius.md,
+    borderWidth: 1, borderColor: '#FDE68A',
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
+  },
+  noticeText: { ...Theme.typography.body2, color: '#92400E', flex: 1 },
   emptyText: { ...Theme.typography.body1, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 40 },
 });

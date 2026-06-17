@@ -10,6 +10,10 @@ export interface EnvConfig {
   databaseUrl: string;
   jwtAccessSecret: string;
   jwtRefreshSecret: string;
+  providerFlags: {
+    dataGoKr: boolean;
+    naverLocal: boolean;
+  };
   // 외부 API 키
   kakaoRestApiKey: string;
   kakaoNativeAppKey: string;
@@ -64,6 +68,24 @@ function getPort(): number {
   return parsed;
 }
 
+function getBoolean(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return fallback;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+
+  throw new Error(`Invalid boolean environment variable ${name}: ${raw}`);
+}
+
 function normalizeApiPrefix(rawPrefix: string): string {
   const trimmed = rawPrefix.trim();
 
@@ -74,6 +96,11 @@ function normalizeApiPrefix(rawPrefix: string): string {
   return trimmed;
 }
 
+const providerFlags = {
+  dataGoKr: getBoolean("PROVIDER_DATA_GO_KR_ENABLED", true),
+  naverLocal: getBoolean("PROVIDER_NAVER_LOCAL_ENABLED", true)
+};
+
 export const env: EnvConfig = {
   nodeEnv: getNodeEnv(),
   host: getRequired("HOST", "0.0.0.0"),
@@ -82,11 +109,12 @@ export const env: EnvConfig = {
   databaseUrl: getRequired("DATABASE_URL"),
   jwtAccessSecret: getRequired("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: getRequired("JWT_REFRESH_SECRET"),
+  providerFlags,
   kakaoRestApiKey: getOptional("KAKAO_REST_API_KEY"),
   kakaoNativeAppKey: getOptional("KAKAO_NATIVE_APP_KEY"),
   naverClientId: getOptional("NAVER_CLIENT_ID"),
   naverClientSecret: getOptional("NAVER_CLIENT_SECRET"),
-  dataGoKrApiKey: getRequired("DATA_GO_KR_API_KEY"),
+  dataGoKrApiKey: getOptional("DATA_GO_KR_API_KEY"),
   kmaApiKey: getOptional("KMA_API_KEY"),
   odsayApiKey: getOptional("ODSAY_API_KEY"),
   jusoSearchApiKey: getOptional("JUSO_SEARCH_API_KEY"),

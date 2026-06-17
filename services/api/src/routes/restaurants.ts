@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { searchRestaurants } from "../services/restaurant.service";
 import { sanitizePublicText } from "../utils/response-safety";
+import {
+  createProviderListResponse,
+  getNaverLocalProviderAvailability
+} from "../utils/provider-availability";
 
 const restaurantsRouter = Router();
 
@@ -16,7 +20,7 @@ restaurantsRouter.get("/search", async (req, res) => {
       sort: sort as "random" | "comment" | undefined
     });
 
-    return res.json({ items });
+    return res.json(createProviderListResponse(items, getNaverLocalProviderAvailability()));
   } catch (error) {
     const message = error instanceof Error ? sanitizePublicText(error.message) : "unknown";
     console.error(`[restaurants] search failed: ${message || "unknown"}`);

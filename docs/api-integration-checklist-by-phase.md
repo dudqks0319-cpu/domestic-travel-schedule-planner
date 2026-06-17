@@ -65,13 +65,19 @@ Checklist:
 - [ ] Enforce timeout/retry/circuit-breaker policy per adapter.
 - [ ] Add provider response normalization into shared domain models.
 - [ ] Add cache strategy for repeat lookup endpoints.
-- [ ] Add feature flags to disable individual providers safely.
+- [x] Add feature flags to disable individual providers safely.
 
 Exit criteria:
 
 1. Provider outage does not block core itinerary read/write flows.
 2. Adapter failures are visible in logs/metrics with provider-level tags.
 3. At least one fallback response path is verified in staging.
+
+Current implementation note:
+
+1. `PROVIDER_DATA_GO_KR_ENABLED` and `PROVIDER_NAVER_LOCAL_ENABLED` gate outbound tourism and restaurant lookups.
+2. Missing, disabled, or placeholder credentials return `200` with `items: []` and degraded provider metadata instead of blocking the mobile planning flow.
+3. Mobile attraction and restaurant steps render a provider notice when degraded metadata is present.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
