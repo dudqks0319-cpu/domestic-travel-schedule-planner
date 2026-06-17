@@ -1,0 +1,19 @@
+{
+  "name": "tripmate-api-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TripMate Cloudflare Worker API foundation",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "wrangler dev --local",
+    "deploy:preview": "wrangler deploy --env preview",
+    "deploy:production": "wrangler deploy --env production",
+    "smoke:local": "npm run -s build && node scripts/smoke-local.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

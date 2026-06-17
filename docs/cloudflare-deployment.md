@@ -1,0 +1,77 @@
+# Cloudflare Worker Deployment Path
+
+Date: 2026-06-17
+Branch: `agent/tripmate-v1-release-goal`
+
+## Scope
+
+This document covers the first deployable Worker foundation for `services/api-worker`.
+It intentionally does not move mobile traffic to the Worker yet.
+
+## Local Verification
+
+```bash
+npm run worker:typecheck
+npm run worker:smoke:local
+```
+
+`worker:smoke:local` builds the Worker module and drives the exported `fetch` handler with `Request` objects. It verifies:
+
+1. `GET /health`
+2. `GET /api/v1/health`
+3. CORS preflight
+4. authenticated route denial without a bearer token
+5. registered route behavior with a bearer token
+6. public share route registration
+7. standard 404 error schema
+
+## Cloudflare Setup
+
+Create Cloudflare resources before replacing placeholders in `services/api-worker/wrangler.toml`.
+
+```bash
+wrangler d1 create tripmate-preview
+wrangler d1 create tripmate-production
+wrangler kv namespace create PROVIDER_CACHE --preview
+wrangler kv namespace create PROVIDER_CACHE
+wrangler r2 bucket create tripmate-share-assets-preview
+wrangler r2 bucket create tripmate-share-assets
+```
+
+Apply the D1 migration after each database id is configured:
+
+```bash
+wrangler d1 migrations apply tripmate-preview --env preview
+wrangler d1 migrations apply tripmate-production --env production
+```
+
+## Required Secrets
+
+Set secrets through Wrangler only. Do not commit provider credentials.
+
+```bash
+wrangler secret put JWT_ACCESS_SECRET --env preview
+wrangler secret put JWT_REFRESH_SECRET --env preview
+wrangler secret put NAVER_CLIENT_ID --env preview
+wrangler secret put NAVER_CLIENT_SECRET --env preview
+wrangler secret put KAKAO_REST_API_KEY --env preview
+wrangler secret put DATA_GO_KR_API_KEY --env preview
+wrangler secret put ODSAY_API_KEY --env preview
+```
+
+Production uses the same secret names with `--env production`.
+
+## Current Security Posture
+
+1. Health and share routes are public.
+2. Trip, planner, route, and monetization routes require a bearer token before reaching handlers.
+3. Token signature verification and ownership checks are not implemented in this slice.
+4. CORS is allow-list based. `*` is ignored in production.
+5. API responses include a correlation id via `X-Request-Id` and error payloads.
+
+## Next Required Slice
+
+1. Implement JWT verification with Web Crypto.
+2. Add D1 repositories for users, trips, days, places, and share links.
+3. Enforce trip ownership and read-only share access.
+4. Add negative tests for missing, malformed, expired, and cross-user access.

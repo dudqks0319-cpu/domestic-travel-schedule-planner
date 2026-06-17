@@ -79,6 +79,26 @@ Current implementation note:
 2. Missing, disabled, or placeholder credentials return `200` with `items: []` and degraded provider metadata instead of blocking the mobile planning flow.
 3. Mobile attraction and restaurant steps render a provider notice when degraded metadata is present.
 
+## Current Worker/D1 Foundation
+
+Completed toward the v1.0 Cloudflare target:
+
+- [x] Create `services/api-worker`.
+- [x] Register required v1 endpoint paths with standard JSON error responses.
+- [x] Implement `GET /health` and `GET /api/v1/health`.
+- [x] Add correlation id propagation via `X-Request-Id`.
+- [x] Add allow-list CORS with production wildcard denial.
+- [x] Add auth gate skeleton for trip, planner, route, and monetization endpoints.
+- [x] Add D1, KV, and R2 binding types plus `wrangler.toml` preview/production placeholders.
+- [x] Add initial D1 migration covering users, trips, places, cache, share links, entitlements, ads, affiliate clicks, sponsored places, and audit logs.
+
+Remaining before Worker production cutover:
+
+1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
+2. Implement JWT signature verification and ownership checks.
+3. Implement D1 repositories and handlers behind registered routes.
+4. Add negative tests for malformed/expired tokens and cross-user access.
+
 ## Phase 4: Collaboration, Notifications, and Sync
 
 Goal: support shared trip editing and user notification hooks.
