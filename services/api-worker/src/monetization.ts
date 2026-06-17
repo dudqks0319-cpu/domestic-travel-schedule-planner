@@ -1,5 +1,6 @@
 import { errorResponse, jsonResponse } from "./http.js";
 import { prepareIdempotency, storeIdempotencyResult } from "./idempotency.js";
+import { verifyStorePurchase } from "./store-verification.js";
 import type { AuthenticatedUser, D1Database, RequestContext, RouteHandler } from "./types.js";
 
 interface EntitlementRow {
@@ -30,7 +31,7 @@ interface EntitlementVerifyInput {
   store: "apple" | "google";
   productId: string;
   transactionId: string;
-  expiresAt: string | null;
+  receiptData: string | null;
 }
 
 const ENTITLEMENT_COLUMNS = [
@@ -168,8 +169,9 @@ export const verifyEntitlementHandler: RouteHandler = async (request, context) =
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
   const transactionHash = await hashText(`${input.store}:${input.transactionId}`);
-  const status = "pending_verification";
-  const expiresAt = null;
+  const verification = await verifyStorePurchase(input, context.env);
+  const status = toEntitlementStatus(verification.status);
+  const expiresAt = verification.status === "verified" ? verification.expiresAt : null;
   const result = await context.env.DB
     .prepare(
       `INSERT INTO subscription_entitlements (
@@ -199,7 +201,8 @@ export const verifyEntitlementHandler: RouteHandler = async (request, context) =
     item: toEntitlementResponse(entitlement),
     meta: {
       receiptStored: false,
-      serverVerified: false
+      serverVerified: verification.status === "verified",
+      verificationStatus: verification.providerStatus
     }
   };
   if (!(await storeIdempotencyResult(context.env.DB, idempotency, 200, body))) {
@@ -320,7 +323,7 @@ function parseEntitlementVerifyInput(
   const store = getToken(body.store);
   const productId = getToken(body.productId);
   const transactionId = getString(body.transactionId ?? body.originalTransactionId ?? body.purchaseToken);
-  const expiresAt = body.expiresAt === undefined || body.expiresAt === null ? null : getString(body.expiresAt);
+  const receiptData = body.receiptData === undefined || body.receiptData === null ? null : getString(body.receiptData);
 
   if (store !== "apple" && store !== "google") {
     return validationError(request, context, "store must be apple or google.");
@@ -328,11 +331,11 @@ function parseEntitlementVerifyInput(
   if (!productId || !transactionId) {
     return validationError(request, context, "productId and transactionId are required.");
   }
-  if (expiresAt !== null && (!expiresAt || Number.isNaN(Date.parse(expiresAt)))) {
-    return validationError(request, context, "expiresAt must be an ISO date-time string when provided.");
+  if (body.receiptData !== undefined && body.receiptData !== null && !receiptData) {
+    return validationError(request, context, "receiptData must be a non-empty string when provided.");
   }
 
-  return { store, productId, transactionId, expiresAt };
+  return { store, productId, transactionId, receiptData };
 }
 
 function parseJsonObject(
@@ -446,6 +449,14 @@ function isActiveEntitlement(row: EntitlementRow): boolean {
   }
 
   return !row.expires_at || Date.parse(row.expires_at) > Date.now();
+}
+
+function toEntitlementStatus(verificationStatus: "verified" | "pending" | "failed"): string {
+  if (verificationStatus === "verified") {
+    return "active";
+  }
+
+  return verificationStatus === "failed" ? "verification_failed" : "pending_verification";
 }
 
 function stringifyMetadata(metadata: Record<string, string> | null): string | null {

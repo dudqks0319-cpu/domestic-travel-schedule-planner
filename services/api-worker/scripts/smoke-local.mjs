@@ -396,6 +396,59 @@ async function main() {
   assert(entitlementReplayBody.item.id === entitlementBody.item.id, "entitlement replay should preserve original response");
   checks.push("POST /api/v1/monetization/entitlements/verify idempotent replay -> 200");
 
+  const originalFetch = globalThis.fetch;
+  env.APPLE_SHARED_SECRET = "local-apple-shared-secret";
+  let verifiedEntitlement;
+  try {
+    globalThis.fetch = async (url, init) => {
+      assert(
+        url === "https://buy.itunes.apple.com/verifyReceipt",
+        "Apple verification should call production verifyReceipt endpoint first"
+      );
+      const body = JSON.parse(String(init?.body));
+      assert(body["receipt-data"] === "raw-active-receipt-not-stored", "Apple verification should send receipt data");
+      assert(body.password === "local-apple-shared-secret", "Apple verification should use server-side shared secret");
+      return new Response(
+        JSON.stringify({
+          status: 0,
+          latest_receipt_info: [
+            {
+              product_id: "tripmate_pro_monthly",
+              transaction_id: "tx-local-active-0001",
+              original_transaction_id: "tx-local-active-original",
+              expires_date_ms: String(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            }
+          ]
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    };
+    verifiedEntitlement = await request("/api/v1/monetization/entitlements/verify", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${userAToken}`,
+        "content-type": "application/json",
+        "x-idempotency-key": "entitlement-active-0001"
+      },
+      body: JSON.stringify({
+        store: "apple",
+        productId: "tripmate_pro_monthly",
+        transactionId: "tx-local-active-0001",
+        receiptData: "raw-active-receipt-not-stored"
+      })
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete env.APPLE_SHARED_SECRET;
+  }
+  const verifiedEntitlementBody = await readJson(verifiedEntitlement);
+  assert(verifiedEntitlement.status === 200, "verified entitlement should return 200");
+  assert(verifiedEntitlementBody.item.status === "active", "verified entitlement should become active");
+  assert(verifiedEntitlementBody.item.active === true, "verified entitlement should grant premium access");
+  assert(verifiedEntitlementBody.meta.receiptStored === false, "verified entitlement should not store receipt payloads");
+  assert(verifiedEntitlementBody.meta.serverVerified === true, "verified entitlement should report server verification");
+  checks.push("POST /api/v1/monetization/entitlements/verify Apple verified -> 200");
+
   const myEntitlements = await request("/api/v1/monetization/entitlements/me", {
     headers: {
       authorization: `Bearer ${userAToken}`
@@ -403,8 +456,8 @@ async function main() {
   });
   const myEntitlementsBody = await readJson(myEntitlements);
   assert(myEntitlements.status === 200, "GET entitlements/me should return 200");
-  assert(myEntitlementsBody.items.length === 1, "GET entitlements/me should return stored entitlement");
-  assert(myEntitlementsBody.active === false, "GET entitlements/me should not activate pending entitlement");
+  assert(myEntitlementsBody.items.length === 2, "GET entitlements/me should return stored entitlements");
+  assert(myEntitlementsBody.active === true, "GET entitlements/me should activate verified entitlement");
   checks.push("GET /api/v1/monetization/entitlements/me -> 200");
 
   const invalidUpdateTrip = await request(`/api/v1/trips/${tripId}`, {

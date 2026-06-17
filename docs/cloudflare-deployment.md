@@ -84,6 +84,13 @@ They must match the auth provider that signs mobile access tokens:
 3. Preview and production values are placeholders until the real auth domain/client id is known.
 4. A token with a valid signature but wrong issuer or audience is rejected with `401 invalid_token`.
 
+## Store Verification Vars
+
+`GOOGLE_PLAY_PACKAGE_NAME` is a non-secret Worker var in `wrangler.toml`.
+It must match the Android application id associated with Google Play purchase tokens.
+App Store verification uses the `APPLE_SHARED_SECRET` Cloudflare secret.
+Google Play verification uses the `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` Cloudflare secret.
+
 ## Current Security Posture
 
 1. Health and share routes are public.
@@ -92,13 +99,13 @@ They must match the auth provider that signs mobile access tokens:
 4. Trip list, create, read, update, delete, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
 5. Current retryable mutation handlers accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
 6. Monetization handlers require auth, validate inputs, hash affiliate URLs and entitlement transaction ids, and do not store raw receipts or purchase tokens.
-7. Entitlement verify is a skeleton only: it records `pending_verification` and does not grant premium access until real Apple/Google server verification is implemented.
+7. Entitlement verify calls server-side App Store or Google Play verification when configured; failed or unconfigured verification remains inactive.
 8. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
 9. CORS is allow-list based. `*` is ignored in production.
 10. API responses include a correlation id via `X-Request-Id` and error payloads.
 
 ## Next Required Slice
 
-1. Add real Apple/Google receipt verification before granting premium entitlements.
+1. Configure production App Store / Google Play verification secrets and `GOOGLE_PLAY_PACKAGE_NAME` before paid release.
 2. Replace placeholder JWT issuer/audience values with the real auth provider values before preview deploy.
 3. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.

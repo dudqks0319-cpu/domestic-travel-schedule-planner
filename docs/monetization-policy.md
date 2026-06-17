@@ -12,7 +12,13 @@ The Worker implements these authenticated endpoints:
 3. `POST /api/v1/monetization/entitlements/verify`
 4. `GET /api/v1/monetization/entitlements/me`
 
-The entitlement verify endpoint is a server-side skeleton. It records a pending verification record, but it does not grant premium access until real Apple or Google server verification is implemented.
+The entitlement verify endpoint performs server-side store verification when configured:
+
+1. Apple receipts are posted to App Store receipt validation using `APPLE_SHARED_SECRET`.
+2. Google Play purchase tokens are checked through the Android Publisher API using `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` and `GOOGLE_PLAY_PACKAGE_NAME`.
+3. Unconfigured or transient verification stores `pending_verification` and does not unlock premium.
+4. Store-rejected purchases store `verification_failed` and do not unlock premium.
+5. Only server-verified purchases store `active`.
 
 ## Data Minimization
 
@@ -21,6 +27,7 @@ The entitlement verify endpoint is a server-side skeleton. It records a pending 
 3. Do not store raw store transaction ids. Store only the Worker-side transaction hash in `subscription_entitlements.transaction_id`.
 4. Ad metadata is limited to a small object of primitive values and is not a general analytics payload.
 5. Secrets such as `APPLE_SHARED_SECRET` and `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` must be configured only as Cloudflare secrets.
+6. `GOOGLE_PLAY_PACKAGE_NAME` is a non-secret Worker var and must match the Android application id.
 
 ## User-Facing Rules
 
@@ -39,8 +46,7 @@ The entitlement verify endpoint is a server-side skeleton. It records a pending 
 
 ## Remaining Release Work
 
-1. Implement real Apple receipt verification.
-2. Implement real Google Play purchase verification.
-3. Add premium gates in mobile UI using `GET /api/v1/monetization/entitlements/me`.
-4. Add sponsored labels to all paid recommendation surfaces.
-5. Re-check current App Store, Play Store, ad-network, and affiliate-network rules before final submission.
+1. Configure production App Store / Google Play credentials and Android package name.
+2. Add premium gates in mobile UI using `GET /api/v1/monetization/entitlements/me`.
+3. Add sponsored labels to all paid recommendation surfaces.
+4. Re-check current App Store, Play Store, ad-network, and affiliate-network rules before final submission.

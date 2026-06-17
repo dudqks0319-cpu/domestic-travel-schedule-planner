@@ -459,7 +459,7 @@ Target scripts:
 }
 ```
 
-Current root scripts already include `check:env`, `check:health`, `check:dev`, `mobile:*`, `api:*`, `planner:build`, and `gate:local`. Worker and root `test` scripts still need to be added when `services/api-worker` and planner tests are in place.
+Current root scripts already include `check:env`, `check:health`, `check:dev`, `mobile:*`, `api:*`, `planner:build`, `worker:test`, and `gate:local`. `gate:local` runs Worker unit coverage before API and Worker smoke checks.
 
 ## 12. Environment and Secret Policy
 
@@ -490,6 +490,14 @@ Cloudflare secrets:
 7. `ODSAY_API_KEY`
 8. `APPLE_SHARED_SECRET`
 9. `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+
+Cloudflare non-secret vars:
+
+1. `ENVIRONMENT`
+2. `CORS_ALLOWED_ORIGINS`
+3. `JWT_ISSUER`
+4. `JWT_AUDIENCE`
+5. `GOOGLE_PLAY_PACKAGE_NAME`
 
 ## 13. Final v1.0 Acceptance Criteria
 

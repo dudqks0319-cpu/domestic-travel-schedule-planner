@@ -48,6 +48,7 @@ export interface Env {
   ODSAY_API_KEY?: string;
   APPLE_SHARED_SECRET?: string;
   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON?: string;
+  GOOGLE_PLAY_PACKAGE_NAME?: string;
 }
 
 export interface AuthenticatedUser {

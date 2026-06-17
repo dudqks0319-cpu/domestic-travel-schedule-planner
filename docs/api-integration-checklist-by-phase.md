@@ -108,11 +108,12 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Add negative smoke coverage for monetization validation, trip ownership, idempotent replay, and pending entitlements.
 - [x] Add monetization policy documentation.
 - [x] Add Worker unit tests beyond smoke for JWT policy and idempotency replay/conflict behavior, and wire them into `gate:local`.
+- [x] Add server-side Apple and Google Play purchase verification adapters; premium entitlements become active only after store verification succeeds.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
-2. Add real Apple/Google receipt verification before granting premium entitlements.
+2. Configure production App Store / Google Play verification secrets and `GOOGLE_PLAY_PACKAGE_NAME` before paid release.
 3. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
 
 ## Phase 4: Collaboration, Notifications, and Sync
