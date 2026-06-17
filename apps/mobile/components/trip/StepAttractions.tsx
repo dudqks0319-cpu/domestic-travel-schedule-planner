@@ -17,7 +17,16 @@ interface Item {
   contentid: string; title: string; addr1: string; firstimage?: string;
 }
 
-const CATS = [
+type CategoryIconName =
+  | 'apps-outline'
+  | 'camera-outline'
+  | 'library-outline'
+  | 'ticket-outline'
+  | 'trail-sign-outline'
+  | 'bicycle-outline'
+  | 'bag-outline';
+
+const CATS: Array<{ key: string; label: string; icon: CategoryIconName }> = [
   { key: 'all', label: '전체', icon: 'apps-outline' },
   { key: '12', label: '관광지', icon: 'camera-outline' },
   { key: '14', label: '문화시설', icon: 'library-outline' },
@@ -84,7 +93,7 @@ export default function StepAttractions({ destination, selectedAttractions, onCh
             style={[styles.filterChip, cat === c.key && styles.filterChipActive]}
             onPress={() => setCat(c.key)}
           >
-            <Ionicons name={c.icon as any} size={14} color={cat === c.key ? Theme.colors.primary : Theme.colors.textTertiary} />
+            <Ionicons name={c.icon} size={14} color={cat === c.key ? Theme.colors.primary : Theme.colors.textTertiary} />
             <Text style={[styles.filterText, cat === c.key && styles.filterTextActive]}>{c.label}</Text>
           </TouchableOpacity>
         )}

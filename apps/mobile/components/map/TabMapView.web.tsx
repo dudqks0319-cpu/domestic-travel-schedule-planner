@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import Theme from "../../constants/Theme";
 import { tripsApi } from "../../services/api";
+import { getKakaoJavascriptKey, resolveMapProviderState } from "../../services/mapProvider";
 
 interface PlaceMarker {
   id: string;
@@ -59,20 +60,6 @@ const CATEGORY_META: Record<string, { label: string; color: string; icon: keyof 
   hotel: { label: "숙소", color: "#24B47E", icon: "bed-outline" }
 };
 
-function readKakaoMapWebKey(): string | undefined {
-  const maybeProcess = (
-    globalThis as {
-      process?: {
-        env?: Record<string, string | undefined>;
-      };
-    }
-  ).process;
-
-  const candidate = maybeProcess?.env?.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY;
-  const trimmed = candidate?.trim();
-  return trimmed ? trimmed : undefined;
-}
-
 function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return Promise.reject(new Error("Kakao map is only available on web."));
@@ -118,7 +105,7 @@ function loadKakaoMapSdk(appKey: string): Promise<KakaoGlobal> {
     const script = document.createElement("script");
     script.id = KAKAO_MAP_SCRIPT_ID;
     script.async = true;
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${appKey}&autoload=false`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(appKey)}&autoload=false`;
     script.onload = onKakaoReady;
     script.onerror = () => {
       kakaoMapSdkPromise = null;
@@ -134,7 +121,8 @@ export default function TabMapViewWeb() {
   const [markers, setMarkers] = useState<PlaceMarker[]>([]);
   const [loadingMarkers, setLoadingMarkers] = useState(true);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-  const kakaoMapKey = useMemo(() => readKakaoMapWebKey(), []);
+  const mapProvider = useMemo(() => resolveMapProviderState(), []);
+  const kakaoMapKey = useMemo(() => getKakaoJavascriptKey(), []);
   const [kakaoStatus, setKakaoStatus] = useState<KakaoMapStatus>(kakaoMapKey ? "idle" : "no-key");
   const [kakaoError, setKakaoError] = useState<string | null>(null);
   const mapContainerId = useMemo(() => `tripmate-kakao-map-tab-${Math.random().toString(36).slice(2)}`, []);
@@ -282,6 +270,16 @@ export default function TabMapViewWeb() {
             </View>
           ))}
         </View>
+        <View style={[styles.providerNotice, !mapProvider.isProductionProvider && styles.providerNoticeWarning]}>
+          <Ionicons
+            name={mapProvider.isProductionProvider ? "map-outline" : "flask-outline"}
+            size={14}
+            color={mapProvider.isProductionProvider ? Theme.colors.primary : "#AD6800"}
+          />
+          <Text style={[styles.providerNoticeText, !mapProvider.isProductionProvider && styles.providerNoticeTextWarning]}>
+            {mapProvider.warning ?? mapProvider.label}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.mapCard}>
@@ -311,13 +309,10 @@ export default function TabMapViewWeb() {
                 { backgroundColor: CATEGORY_META[selectedMarker.category]?.color ?? Theme.colors.primary }
               ]}
             />
-            <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
-          </View>
-          <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
-          <Text style={styles.selectedCoord}>
-            {selectedMarker.lat.toFixed(4)}, {selectedMarker.lng.toFixed(4)}
-          </Text>
+          <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
         </View>
+        <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
+      </View>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.markerScroll}>
@@ -399,6 +394,29 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     fontWeight: "600"
   },
+  providerNotice: {
+    marginTop: 10,
+    minHeight: 36,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primaryLight,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  providerNoticeWarning: {
+    backgroundColor: "#FFF4E6"
+  },
+  providerNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primary,
+    fontWeight: "700"
+  },
+  providerNoticeTextWarning: {
+    color: "#AD6800"
+  },
   mapCard: {
     flex: 1,
     minHeight: 320,
@@ -456,13 +474,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     color: Theme.colors.textSecondary,
-    fontWeight: "600"
-  },
-  selectedCoord: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
-    color: Theme.colors.textTertiary,
     fontWeight: "600"
   },
   markerScroll: {

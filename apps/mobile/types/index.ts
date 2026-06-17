@@ -103,6 +103,7 @@ export interface TripRouteMapPoint {
   name: string;
   latitude: number;
   longitude: number;
+  source?: "provider" | "manual" | "mock";
 }
 
 export interface CurrentTripStorage {

@@ -20,7 +20,16 @@ interface Item {
   address: string; roadAddress: string; telephone: string;
 }
 
-const CATS = [
+type RestaurantIconName =
+  | 'restaurant-outline'
+  | 'flame-outline'
+  | 'fish-outline'
+  | 'nutrition-outline'
+  | 'cafe-outline'
+  | 'ice-cream-outline'
+  | 'fast-food-outline';
+
+const CATS: Array<{ key: string; label: string; icon: RestaurantIconName }> = [
   { key: '맛집', label: '전체', icon: 'restaurant-outline' },
   { key: '한식', label: '한식', icon: 'flame-outline' },
   { key: '해산물', label: '해산물', icon: 'fish-outline' },
@@ -76,7 +85,7 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
             style={[styles.filterChip, cat === c.key && styles.filterChipActive]}
             onPress={() => setCat(c.key)}
           >
-            <Ionicons name={c.icon as any} size={14} color={cat === c.key ? '#A15B00' : Theme.colors.textTertiary} />
+            <Ionicons name={c.icon} size={14} color={cat === c.key ? '#A15B00' : Theme.colors.textTertiary} />
             <Text style={[styles.filterText, cat === c.key && styles.filterTextActive]}>{c.label}</Text>
           </TouchableOpacity>
         )}

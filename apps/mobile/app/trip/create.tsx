@@ -19,6 +19,7 @@ import { clearPersistedOptimizedRoute } from '../../services/routeApi';
 import { plannerApi } from '../../services/api';
 import {
   DEFAULT_TRAVEL_STYLE_KEY,
+  TRAVEL_STYLE_OPTIONS,
   getTravelStyleOption,
   resolveTravelStyleKey
 } from '../../constants/travelStyles';
@@ -32,20 +33,15 @@ import type {
 } from '../../types';
 import type { AccommodationType } from '../../components/trip/StepAccommodation';
 
-const TOTAL_STEPS = 7;
-const STEP_LABELS = ['목적지', '날짜', '동행자', '이동수단', '숙소', '관광지', '맛집'] as const;
+const TOTAL_STEPS = 4;
+const STEP_LABELS = ['지역/스타일', '날짜', '여행 옵션', '선호 장소'] as const;
 type StepIconName =
   | 'location-outline'
   | 'calendar-outline'
   | 'people-outline'
-  | 'car-outline'
-  | 'bed-outline'
-  | 'camera-outline'
-  | 'restaurant-outline'
   | 'ellipse-outline';
 const STEP_ICONS = [
-  'location-outline', 'calendar-outline', 'people-outline',
-  'car-outline', 'bed-outline', 'camera-outline', 'restaurant-outline',
+  'location-outline', 'calendar-outline', 'people-outline', 'ellipse-outline',
 ] as const satisfies readonly StepIconName[];
 
 interface StepState {
@@ -118,10 +114,8 @@ export default function TripCreateScreen() {
         if (e.getTime() < s.getTime()) { Alert.alert('', '도착일은 출발일 이후여야 해요'); return false; }
         return true;
       }
-      case 3: if (!draft.companion) { Alert.alert('', '동행자를 선택해주세요'); return false; } return true;
-      case 4: if (!draft.transport) { Alert.alert('', '이동수단을 선택해주세요'); return false; } return true;
-      case 5: if (!draft.accommodationType) { Alert.alert('', '숙소 타입을 선택해주세요'); return false; } return true;
-      case 6: if (draft.attractions.length === 0) { Alert.alert('', '관광지를 1개 이상 선택해주세요'); return false; } return true;
+      case 3: return true;
+      case 4: return true;
       default: return true;
     }
   };
@@ -130,19 +124,18 @@ export default function TripCreateScreen() {
   const handleNext = () => { if (!validate()) return; setStep((s) => Math.min(s + 1, TOTAL_STEPS)); scrollTop(); };
 
   const handleComplete = async () => {
-    if (!draft.companion || !draft.transport || !draft.accommodationType) {
-      Alert.alert('', '누락된 항목이 있어요'); return;
-    }
     if (isSaving) return;
     setIsSaving(true);
+    const companion = draft.companion ?? 'solo';
+    const transport = draft.transport ?? (draft.styleKey === 'walking_trip' ? 'walk' : draft.styleKey === 'drive_trip' ? 'car' : 'transit');
     try {
       const res = await plannerApi.generate({
         destination: draft.destination.trim(),
         startDate: draft.startDate,
         endDate: draft.endDate,
         styleKey: draft.styleKey,
-        transport: draft.transport,
-        companions: draft.companion,
+        transport,
+        companions: companion,
         attractionKeywords: draft.attractions,
         restaurantKeywords: draft.restaurants,
       });
@@ -150,8 +143,10 @@ export default function TripCreateScreen() {
       const routePoints: TripRouteMapPoint[] = [];
       for (const day of (trip.days ?? [])) {
         for (const place of (day.places ?? [])) {
-          if (place.lat && place.lng) {
-            routePoints.push({ id: place.id, name: place.name, latitude: place.lat, longitude: place.lng });
+          const lat = typeof place.lat === 'number' ? place.lat : null;
+          const lng = typeof place.lng === 'number' ? place.lng : null;
+          if (lat !== null && lng !== null) {
+            routePoints.push({ id: place.id, name: place.name, latitude: lat, longitude: lng, source: 'provider' });
           }
         }
       }
@@ -162,8 +157,8 @@ export default function TripCreateScreen() {
         startDate: trip.startDate,
         endDate: trip.endDate,
         styleKey: draft.styleKey,
-        companion: draft.companion,
-        transport: draft.transport,
+        companion,
+        transport,
         accommodationType: draft.accommodationType,
         attractions: draft.attractions,
         restaurants: draft.restaurants,
@@ -179,8 +174,8 @@ export default function TripCreateScreen() {
         destination: draft.destination.trim(),
         startDate: draft.startDate, endDate: draft.endDate,
         styleKey: draft.styleKey,
-        companion: draft.companion,
-        transport: draft.transport,
+        companion,
+        transport,
         accommodationType: draft.accommodationType,
         attractions: draft.attractions,
         restaurants: draft.restaurants,
@@ -193,16 +188,65 @@ export default function TripCreateScreen() {
 
   const renderStep = () => {
     switch (step) {
-      case 1: return <StepDestination destination={draft.destination} onChangeDestination={(v) => update('destination', v)} />;
+      case 1: return (
+        <View>
+          <StepDestination destination={draft.destination} onChangeDestination={(v) => update('destination', v)} />
+          {renderStyleSelector()}
+        </View>
+      );
       case 2: return <StepDates startDate={draft.startDate} endDate={draft.endDate} onChangeStartDate={handleChangeStartDate} onChangeEndDate={handleChangeEndDate} />;
-      case 3: return <StepCompanion companion={draft.companion} onSelectCompanion={(v) => update('companion', v)} />;
-      case 4: return <StepTransport transport={draft.transport} onSelectTransport={(v) => update('transport', v)} />;
-      case 5: return <StepAccommodation destination={draft.destination} accommodationType={draft.accommodationType} onSelectAccommodation={(v) => update('accommodationType', v)} />;
-      case 6: return <StepAttractions destination={draft.destination} selectedAttractions={draft.attractions} onChangeAttractions={(v) => update('attractions', v)} />;
-      case 7: return <StepRestaurants destination={draft.destination} selectedRestaurants={draft.restaurants} onChangeRestaurants={(v) => update('restaurants', v)} onComplete={() => void handleComplete()} loading={isSaving} />;
+      case 3: return (
+        <View>
+          <StepCompanion companion={draft.companion} onSelectCompanion={(v) => update('companion', v)} />
+          <StepTransport transport={draft.transport} onSelectTransport={(v) => update('transport', v)} />
+          <StepAccommodation destination={draft.destination} accommodationType={draft.accommodationType} onSelectAccommodation={(v) => update('accommodationType', v)} />
+        </View>
+      );
+      case 4: return (
+        <View>
+          <StepAttractions destination={draft.destination} selectedAttractions={draft.attractions} onChangeAttractions={(v) => update('attractions', v)} />
+          <StepRestaurants destination={draft.destination} selectedRestaurants={draft.restaurants} onChangeRestaurants={(v) => update('restaurants', v)} onComplete={() => void handleComplete()} loading={isSaving} />
+        </View>
+      );
       default: return null;
     }
   };
+
+  const renderStyleSelector = () => (
+    <View style={styles.styleSelectorCard}>
+      <View style={styles.styleSelectorHeader}>
+        <Text style={styles.styleSelectorTitle}>여행 스타일</Text>
+        <Text style={styles.styleSelectorHint}>나중에 바꿀 수 있어요</Text>
+      </View>
+      <View style={styles.styleGrid}>
+        {TRAVEL_STYLE_OPTIONS.map((option) => {
+          const selected = draft.styleKey === option.key;
+          return (
+            <TouchableOpacity
+              key={option.key}
+              style={[
+                styles.styleChip,
+                { backgroundColor: option.tintColor },
+                selected && styles.styleChipSelected
+              ]}
+              onPress={() => update('styleKey', option.key)}
+              activeOpacity={0.82}
+            >
+              <Ionicons
+                name={option.iconName}
+                size={18}
+                color={selected ? Theme.colors.primaryDark : Theme.colors.textPrimary}
+              />
+              <View style={styles.styleChipTextWrap}>
+                <Text style={[styles.styleChipLabel, selected && styles.styleChipLabelSelected]}>{option.label}</Text>
+                <Text style={styles.styleChipDesc} numberOfLines={2}>{option.description}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
 
   const progress = (step / TOTAL_STEPS) * 100;
 
@@ -319,6 +363,65 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%', backgroundColor: Theme.colors.primary,
     borderRadius: 2,
+  },
+  styleSelectorCard: {
+    marginHorizontal: Theme.spacing.xl,
+    marginBottom: Theme.spacing.xl,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: Theme.spacing.lg,
+    ...Theme.shadow.sm,
+  },
+  styleSelectorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Theme.spacing.md,
+  },
+  styleSelectorTitle: {
+    ...Theme.typography.body1,
+    color: Theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+  styleSelectorHint: {
+    ...Theme.typography.caption,
+    color: Theme.colors.textSecondary,
+  },
+  styleGrid: {
+    gap: Theme.spacing.sm,
+  },
+  styleChip: {
+    minHeight: 58,
+    borderRadius: Theme.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  styleChipSelected: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight,
+  },
+  styleChipTextWrap: {
+    flex: 1,
+  },
+  styleChipLabel: {
+    ...Theme.typography.body2,
+    color: Theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+  styleChipLabelSelected: {
+    color: Theme.colors.primaryDark,
+  },
+  styleChipDesc: {
+    ...Theme.typography.caption,
+    color: Theme.colors.textSecondary,
+    marginTop: 2,
   },
   stepIcons: {
     flexDirection: 'row', justifyContent: 'space-between',

@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   ScrollView,
@@ -27,18 +28,39 @@ interface TopFriend {
 }
 
 const QUICK_START_STYLES = TRAVEL_STYLE_OPTIONS.slice(0, 4);
+const REGION_MARKERS = [
+  { id: "seoul", name: "서울", x: "46%", y: "25%" },
+  { id: "gangneung", name: "강릉", x: "67%", y: "24%" },
+  { id: "jeonju", name: "전주", x: "43%", y: "53%" },
+  { id: "busan", name: "부산", x: "68%", y: "70%" },
+  { id: "jeju", name: "제주", x: "35%", y: "86%" }
+] as const;
+
+type HomeDataStatus = "loading" | "ready" | "error";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [friends, setFriends] = useState<TopFriend[]>([]);
+  const [status, setStatus] = useState<HomeDataStatus>("loading");
 
-  useEffect(() => {
-    void Promise.all([fetchDestinations(), fetchTopFriends()]).then(([destinationsRes, friendsRes]) => {
+  const loadHomeData = useCallback(async () => {
+    setStatus("loading");
+    try {
+      const [destinationsRes, friendsRes] = await Promise.all([fetchDestinations(), fetchTopFriends()]);
       setDestinations(destinationsRes.slice(0, 3));
       setFriends((friendsRes as TopFriend[]).slice(0, 5));
-    });
+      setStatus("ready");
+    } catch {
+      setDestinations([]);
+      setFriends([]);
+      setStatus("error");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadHomeData();
+  }, [loadHomeData]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -69,7 +91,53 @@ export default function HomeScreen() {
         <Text style={styles.greeting}>{greeting}, 김지수님!</Text>
         <Text style={styles.subGreeting}>오늘 어디로 여행 가시겠어요?</Text>
 
+        <View style={styles.mapFirstPanel}>
+          <View style={styles.mapHeaderRow}>
+            <View>
+              <Text style={styles.mapEyebrow}>전국 지도에서 바로 시작</Text>
+              <Text style={styles.mapTitle}>지역을 고르면 날짜만으로 초안을 만들어요</Text>
+            </View>
+            {status === "loading" ? <ActivityIndicator color={Theme.colors.primary} /> : null}
+          </View>
+
+          <View style={styles.koreaMapSurface}>
+            <View style={styles.mapLandShape} />
+            {REGION_MARKERS.map((marker) => (
+              <TouchableOpacity
+                key={marker.id}
+                style={[styles.regionMarker, { left: marker.x, top: marker.y }]}
+                activeOpacity={0.82}
+                onPress={() =>
+                  router.push({
+                    pathname: "/trip/create",
+                    params: { destination: marker.name, styleKey: DEFAULT_TRAVEL_STYLE_KEY }
+                  })
+                }
+              >
+                <View style={styles.regionMarkerDot} />
+                <Text style={styles.regionMarkerText}>{marker.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {status === "error" ? (
+            <View style={styles.stateNotice}>
+              <Ionicons name="cloud-offline-outline" size={16} color={Theme.colors.error} />
+              <Text style={styles.stateNoticeText}>추천 데이터를 불러오지 못했어요. 지역 선택은 계속 사용할 수 있습니다.</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => void loadHomeData()}>
+                <Text style={styles.retryButtonText}>재시도</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
         <View style={styles.destList}>
+          {destinations.length === 0 && status !== "loading" ? (
+            <View style={styles.emptyDestCard}>
+              <Text style={styles.emptyDestTitle}>추천 지역이 비어 있어요</Text>
+              <Text style={styles.emptyDestText}>지도에서 지역을 먼저 선택해 여행을 시작할 수 있습니다.</Text>
+            </View>
+          ) : null}
           {destinations.map((destination) => (
             <TouchableOpacity
               key={destination.id}
@@ -213,8 +281,142 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 14
   },
+  mapFirstPanel: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Theme.colors.borderLight,
+    padding: 14,
+    marginBottom: 12,
+    ...Theme.shadow.sm
+  },
+  mapHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12
+  },
+  mapEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primary,
+    fontWeight: "800"
+  },
+  mapTitle: {
+    marginTop: 3,
+    fontSize: 15,
+    lineHeight: 21,
+    color: Theme.colors.textPrimary,
+    fontWeight: "700"
+  },
+  koreaMapSurface: {
+    marginTop: 12,
+    height: 238,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D5EAF8",
+    backgroundColor: "#EAF7FF",
+    overflow: "hidden",
+    position: "relative"
+  },
+  mapLandShape: {
+    position: "absolute",
+    left: "27%",
+    top: "8%",
+    width: "45%",
+    height: "76%",
+    borderTopLeftRadius: 72,
+    borderTopRightRadius: 46,
+    borderBottomLeftRadius: 54,
+    borderBottomRightRadius: 86,
+    backgroundColor: "#DFF3E6",
+    borderWidth: 1,
+    borderColor: "#B8DDC4",
+    transform: [{ rotate: "12deg" }]
+  },
+  regionMarker: {
+    position: "absolute",
+    minHeight: 44,
+    minWidth: 68,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    borderWidth: 1,
+    borderColor: Theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    ...Theme.shadow.sm
+  },
+  regionMarkerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Theme.colors.primary
+  },
+  regionMarkerText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  stateNotice: {
+    marginTop: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FFD8D8",
+    backgroundColor: "#FFF5F5",
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  stateNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
+  },
+  retryButton: {
+    minHeight: 32,
+    borderRadius: 999,
+    backgroundColor: Theme.colors.surface,
+    borderWidth: 1,
+    borderColor: Theme.colors.error,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  retryButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.error,
+    fontWeight: "800"
+  },
   destList: {
     gap: 10
+  },
+  emptyDestCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    padding: 14
+  },
+  emptyDestTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
+  },
+  emptyDestText: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 18,
+    color: Theme.colors.textSecondary,
+    fontWeight: "600"
   },
   destCard: {
     height: 134,

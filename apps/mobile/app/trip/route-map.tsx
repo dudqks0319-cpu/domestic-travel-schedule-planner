@@ -29,6 +29,7 @@ import {
   type RoutePoint,
   type RouteTransportMode
 } from "../../services/routeApi";
+import { parseCurrentTripRouteState } from "../../services/tripRoutePoints";
 
 type ViewMode = "map" | "list";
 
@@ -41,52 +42,6 @@ interface RouteParams {
 }
 
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
-
-const LEGACY_POINT_NAME_PATTERN = /(도착|추천 스팟|식당)$/;
-
-const DESTINATION_CENTERS: Record<string, { lat: number; lng: number }> = {
-  제주: { lat: 33.4996, lng: 126.5312 },
-  부산: { lat: 35.1796, lng: 129.0756 },
-  서울: { lat: 37.5665, lng: 126.978 },
-  강릉: { lat: 37.7519, lng: 128.8761 },
-  여수: { lat: 34.7604, lng: 127.6622 },
-  경주: { lat: 35.8562, lng: 129.2247 },
-  전주: { lat: 35.8242, lng: 127.148 },
-  인천: { lat: 37.4563, lng: 126.7052 },
-  속초: { lat: 38.207, lng: 128.5918 },
-  포항: { lat: 36.019, lng: 129.3435 }
-};
-
-const ATTRACTION_LABELS: Record<string, string> = {
-  nature: "자연/풍경",
-  museum: "박물관",
-  theme_park: "테마파크",
-  market: "시장/쇼핑",
-  night_view: "야경 명소",
-  walk_course: "산책 코스",
-  kids_zone: "키즈 스팟",
-  culture: "공연/문화"
-};
-
-const RESTAURANT_LABELS: Record<string, string> = {
-  korean: "한식",
-  seafood: "해산물",
-  bbq: "고기집",
-  noodle: "면요리",
-  cafe: "카페",
-  dessert: "디저트",
-  night_food: "야식",
-  local: "로컬 맛집"
-};
-
-const POINT_OFFSETS = [
-  { lat: 0, lng: 0 },
-  { lat: 0.014, lng: 0.012 },
-  { lat: -0.011, lng: 0.017 },
-  { lat: -0.016, lng: -0.01 },
-  { lat: 0.013, lng: -0.016 },
-  { lat: 0.006, lng: 0.022 }
-];
 
 function normalizeParam(param: string | string[] | undefined): string | undefined {
   if (Array.isArray(param)) {
@@ -184,97 +139,6 @@ function toBoolean(raw: string | undefined, defaultValue: boolean): boolean {
   }
 
   return defaultValue;
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
-}
-
-function hasTripSelectionData(destination: string, _attractions: string[], _restaurants: string[]): boolean {
-  return destination.trim().length > 0;
-}
-
-function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
-  const normalized = destination.trim();
-  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
-  if (entry) {
-    return entry[1];
-  }
-
-  return { lat: 37.5665, lng: 126.978 };
-}
-
-function buildTripRoutePointsFromSelection(
-  destination: string,
-  attractions: string[],
-  restaurants: string[]
-): RoutePoint[] {
-  const safeDestination = destination.trim() || "여행지";
-  const center = resolveDestinationCenter(safeDestination);
-  const attractionNames = attractions
-    .slice(0, 3)
-    .map((key, index) => `${safeDestination} ${ATTRACTION_LABELS[key] ?? `추천 명소 ${index + 1}`}`);
-  const restaurantNames = restaurants
-    .slice(0, 2)
-    .map((key, index) => `${safeDestination} ${RESTAURANT_LABELS[key] ?? `추천 맛집 ${index + 1}`}`);
-
-  const maxIntermediateCount = Math.max(0, POINT_OFFSETS.length - 2);
-  const intermediateNames = [...attractionNames, ...restaurantNames].slice(0, maxIntermediateCount);
-  const names = [`${safeDestination} 출발`, ...intermediateNames, `${safeDestination} 마무리`];
-
-  if (intermediateNames.length === 0 && POINT_OFFSETS.length >= 3) {
-    names.splice(1, 0, `${safeDestination} 추천 스팟`);
-  }
-
-  return names.slice(0, POINT_OFFSETS.length).map((name, index) => ({
-    id: `point_${index + 1}`,
-    name,
-    lat: center.lat + POINT_OFFSETS[index].lat,
-    lng: center.lng + POINT_OFFSETS[index].lng
-  }));
-}
-
-function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
-  if (!rawTrip || typeof rawTrip !== "object") {
-    return [];
-  }
-
-  const value = rawTrip as Record<string, unknown>;
-  const points = value.routePoints;
-  const destination = typeof value.destination === "string" ? value.destination : "";
-  const attractions = normalizeStringArray(value.attractions);
-  const restaurants = normalizeStringArray(value.restaurants);
-  const canBuildFromSelection = hasTripSelectionData(destination, attractions, restaurants);
-
-  if (!Array.isArray(points)) {
-    return canBuildFromSelection
-      ? buildTripRoutePointsFromSelection(destination, attractions, restaurants)
-      : [];
-  }
-
-  const parsedPoints = points
-    .map((item, index) => toRoutePoint(item, index))
-    .filter((item): item is RoutePoint => item !== null);
-
-  if (parsedPoints.length < 2) {
-    return canBuildFromSelection
-      ? buildTripRoutePointsFromSelection(destination, attractions, restaurants)
-      : [];
-  }
-
-  const hasOnlyLegacyNames = parsedPoints.every((point) =>
-    typeof point.name === "string" ? LEGACY_POINT_NAME_PATTERN.test(point.name) : false
-  );
-
-  if (!hasOnlyLegacyNames) {
-    return parsedPoints;
-  }
-
-  return buildTripRoutePointsFromSelection(destination, attractions, restaurants);
 }
 
 function parseCurrentTripMode(rawTrip: unknown): RouteTransportMode | null {
@@ -548,6 +412,10 @@ function formatWarning(warning: string): string {
     return "실시간 최적화 연결 전, 예상 경로를 먼저 보여드리고 있어요.";
   }
 
+  if (normalized.includes("mock")) {
+    return "provider 좌표 연결 전 개발용 mock 경로 미리보기입니다.";
+  }
+
   if (normalized.includes("network") || normalized.includes("timeout")) {
     return "연결 상태가 불안정해 일부 구간은 예상 이동 시간으로 안내돼요.";
   }
@@ -594,6 +462,8 @@ export default function RouteMapScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [routeStateWarnings, setRouteStateWarnings] = useState<string[]>([]);
+  const [hasMockPreviewPoints, setHasMockPreviewPoints] = useState(false);
   const autoRequestKeyRef = useRef<string>("");
 
   const requestConfig = useMemo(
@@ -628,10 +498,16 @@ export default function RouteMapScreen() {
 
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
-          parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          const routeState = parseCurrentTripRouteState(parsedCurrentTrip);
+          parsedPoints = routeState.points;
           setTripPoints(parsedPoints);
-          parsedMode = parseCurrentTripMode(parsedCurrentTrip);
+          parsedMode = routeState.mode ?? parseCurrentTripMode(parsedCurrentTrip);
           setTripMode(parsedMode);
+          setRouteStateWarnings(routeState.warnings);
+          setHasMockPreviewPoints(routeState.hasMockPreviewPoints);
+        } else {
+          setRouteStateWarnings([]);
+          setHasMockPreviewPoints(false);
         }
 
         if (savedRoute && isRouteAlignedWithTrip(savedRoute, parsedPoints)) {
@@ -702,6 +578,7 @@ export default function RouteMapScreen() {
     return adjusted ?? baseRoute;
   }, [fallbackPreviewRoute, matchedOptimizedRoute, mode, requestConfig.hasInputPoints]);
   const isFallbackRoute = displayedRoute?.source === "fallback";
+  const isMockPreviewRoute = isFallbackRoute && hasMockPreviewPoints;
   const routeTitleText = !hydrated
     ? "저장된 여행 경로를 불러오는 중이에요."
     : requestConfig.request
@@ -711,6 +588,8 @@ export default function RouteMapScreen() {
     ? "잠시만요, 여행 정보를 확인하고 있어요."
     : !requestConfig.hasInputPoints
       ? "여행 만들기에서 목적지와 장소를 선택하면 경로가 자동으로 채워져요."
+      : isMockPreviewRoute
+        ? "provider 좌표 연결 전 개발용 mock 경로 미리보기입니다."
       : isFallbackRoute
         ? "실시간 경로 연결이 지연돼 예상 경로를 먼저 보여드리고 있어요."
         : `이동수단: ${modeLabel(mode)}`;
@@ -718,6 +597,8 @@ export default function RouteMapScreen() {
     ? "불러오는 중"
     : !requestConfig.hasInputPoints
       ? "경로 없음"
+      : isMockPreviewRoute
+        ? "개발 미리보기"
       : isFallbackRoute
         ? "예상 경로"
         : "실시간 경로";
@@ -923,10 +804,10 @@ export default function RouteMapScreen() {
           </View>
         ) : null}
 
-        {displayedRoute?.warnings?.length ? (
+        {displayedRoute?.warnings?.length || routeStateWarnings.length ? (
           <View style={styles.warningCard}>
             <Text style={styles.warningTitle}>참고</Text>
-            {displayedRoute.warnings.slice(0, 3).map((warning, index) => (
+            {[...routeStateWarnings, ...(displayedRoute?.warnings ?? [])].slice(0, 3).map((warning, index) => (
               <Text key={`warning-${index}`} style={styles.warningText}>
                 • {formatWarning(warning)}
               </Text>

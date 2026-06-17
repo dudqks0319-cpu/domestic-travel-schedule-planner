@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Animated, Easing,
 } from 'react-native';
+import type { DimensionValue } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../../constants/Theme';
 
@@ -28,7 +29,7 @@ const MAP_PINS = [
   { name: '부산', left: '73%', top: '61%' },
   { name: '여수', left: '54%', top: '62%' },
   { name: '제주도', left: '37%', top: '82%' },
-];
+] as const satisfies readonly { name: string; left: DimensionValue; top: DimensionValue }[];
 
 const RANDOM_POOL = ['제주도', '부산', '서울', '강릉', '여수', '경주', '전주', '인천', '속초', '포항'];
 
@@ -149,7 +150,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
             return (
               <TouchableOpacity
                 key={pin.name}
-                style={[styles.mapPin, { left: pin.left as any, top: pin.top as any }]}
+                style={[styles.mapPin, { left: pin.left, top: pin.top }]}
                 onPress={() => onChangeDestination(pin.name)}
               >
                 <View style={[styles.mapPinDot, selected && styles.mapPinDotActive]}>

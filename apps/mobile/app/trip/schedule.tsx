@@ -10,6 +10,7 @@ import Spacing from "../../constants/Spacing";
 import Theme from "../../constants/Theme";
 import Typography from "../../constants/Typography";
 import { loadPersistedOptimizedRoute, type OptimizedRoute, type RoutePoint } from "../../services/routeApi";
+import { parseCurrentTripRouteState } from "../../services/tripRoutePoints";
 
 interface TripMeta {
   destination: string;
@@ -35,123 +36,6 @@ type DayRow = {
 
 const CURRENT_TRIP_STORAGE_KEY = "currentTrip";
 const STOP_DWELL_MINUTES = 60;
-
-const DESTINATION_CENTERS: Record<string, { lat: number; lng: number }> = {
-  제주: { lat: 33.4996, lng: 126.5312 },
-  부산: { lat: 35.1796, lng: 129.0756 },
-  서울: { lat: 37.5665, lng: 126.978 },
-  강릉: { lat: 37.7519, lng: 128.8761 },
-  여수: { lat: 34.7604, lng: 127.6622 },
-  경주: { lat: 35.8562, lng: 129.2247 },
-  전주: { lat: 35.8242, lng: 127.148 },
-  인천: { lat: 37.4563, lng: 126.7052 },
-  속초: { lat: 38.207, lng: 128.5918 },
-  포항: { lat: 36.019, lng: 129.3435 }
-};
-
-const FALLBACK_POINT_OFFSETS = [
-  { lat: 0, lng: 0 },
-  { lat: 0.012, lng: 0.014 },
-  { lat: -0.011, lng: -0.009 }
-];
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return null;
-}
-
-function toRoutePoint(raw: unknown, index: number): RoutePoint | null {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-
-  const value = raw as Record<string, unknown>;
-  const lat = toFiniteNumber(value.lat ?? value.latitude);
-  const lng = toFiniteNumber(value.lng ?? value.longitude ?? value.lon);
-
-  if (lat === null || lng === null) {
-    return null;
-  }
-
-  const id = typeof value.id === "string" ? value.id : `trip-point-${index + 1}`;
-  const name = typeof value.name === "string" ? value.name : `지점 ${index + 1}`;
-
-  return { id, name, lat, lng };
-}
-
-function resolveDestinationCenter(destination: string): { lat: number; lng: number } {
-  const normalized = destination.trim();
-  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
-  if (entry) {
-    return entry[1];
-  }
-
-  return { lat: 37.5665, lng: 126.978 };
-}
-
-function buildFallbackTripPoints(destination: string): RoutePoint[] {
-  const safeDestination = destination.trim();
-  if (!safeDestination) {
-    return [];
-  }
-
-  const center = resolveDestinationCenter(safeDestination);
-  const names = [`${safeDestination} 출발`, `${safeDestination} 추천 스팟`, `${safeDestination} 마무리`];
-
-  return names.map((name, index) => ({
-    id: `trip-fallback-${index + 1}`,
-    name,
-    lat: center.lat + FALLBACK_POINT_OFFSETS[index].lat,
-    lng: center.lng + FALLBACK_POINT_OFFSETS[index].lng
-  }));
-}
-
-function parseCurrentTripPoints(rawTrip: unknown): RoutePoint[] {
-  if (!rawTrip || typeof rawTrip !== "object") {
-    return [];
-  }
-
-  const value = rawTrip as Record<string, unknown>;
-  const routePoints = value.routePoints;
-  const destination = typeof value.destination === "string" ? value.destination : "";
-
-  if (!Array.isArray(routePoints)) {
-    return buildFallbackTripPoints(destination);
-  }
-
-  const parsed = routePoints
-    .map((item, index) => toRoutePoint(item, index))
-    .filter((item): item is RoutePoint => item !== null);
-
-  if (parsed.length >= 2) {
-    return parsed;
-  }
-
-  return buildFallbackTripPoints(destination);
-}
-
-function parseTripMeta(rawTrip: unknown): TripMeta {
-  if (!rawTrip || typeof rawTrip !== "object") {
-    return { destination: "여행", startDate: "", endDate: "" };
-  }
-
-  const value = rawTrip as Record<string, unknown>;
-  return {
-    destination: typeof value.destination === "string" && value.destination.trim().length > 0 ? value.destination : "여행",
-    startDate: typeof value.startDate === "string" ? value.startDate : "",
-    endDate: typeof value.endDate === "string" ? value.endDate : ""
-  };
-}
 
 function parseDateOnly(dateText: string): Date | null {
   if (!dateText || !/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
@@ -260,6 +144,12 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
+function formatRouteProvider(provider: string): string {
+  if (provider === "kakao") return "실시간 경로";
+  if (provider === "odsay") return "대중교통 경로";
+  return "예상 이동";
+}
+
 function formatDateLabel(date: Date | null): string {
   if (!date) {
     return "날짜 미정";
@@ -307,7 +197,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
         type: "stop",
         timeText: "09:00",
         title: firstPoint.name ?? "방문 지점",
-        detail: `위도 ${firstPoint.lat.toFixed(4)} · 경도 ${firstPoint.lng.toFixed(4)}`
+        detail: "저장된 방문 장소"
       });
     }
     return rows;
@@ -321,7 +211,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
     type: "stop",
     timeText: formatClock(cursor),
     title: firstSegment.from.name ?? "출발 지점",
-    detail: `위도 ${firstSegment.from.lat.toFixed(4)} · 경도 ${firstSegment.from.lng.toFixed(4)}`
+    detail: "저장된 방문 장소"
   });
 
   for (let index = dayTab.segmentStart; index < dayTab.segmentEndExclusive; index += 1) {
@@ -335,7 +225,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
       type: "move",
       timeText: `${formatClock(moveStart)} - ${formatClock(moveEnd)}`,
       title: `${segment.from.name} → ${segment.to.name}`,
-      detail: `${segment.distanceKm.toFixed(1)}km · ${formatDuration(segment.durationMin)} · ${segment.provider}`
+      detail: `${segment.distanceKm.toFixed(1)}km · ${formatDuration(segment.durationMin)} · ${formatRouteProvider(segment.provider)}`
     });
 
     cursor = moveEnd;
@@ -345,7 +235,7 @@ function buildDayRows(route: OptimizedRoute, dayTab: DayTab): DayRow[] {
       type: "stop",
       timeText: formatClock(cursor),
       title: segment.to.name ?? "도착 지점",
-      detail: `위도 ${segment.to.lat.toFixed(4)} · 경도 ${segment.to.lng.toFixed(4)}`
+      detail: "저장된 방문 장소"
     });
 
     if (index < dayTab.segmentEndExclusive - 1) {
@@ -361,6 +251,7 @@ export default function ScheduleScreen() {
   const [route, setRoute] = useState<OptimizedRoute | null>(null);
   const [currentTripPoints, setCurrentTripPoints] = useState<RoutePoint[]>([]);
   const [tripMeta, setTripMeta] = useState<TripMeta>({ destination: "여행", startDate: "", endDate: "" });
+  const [routeWarnings, setRouteWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
 
@@ -381,12 +272,15 @@ export default function ScheduleScreen() {
         let parsedPoints: RoutePoint[] = [];
         if (rawCurrentTrip) {
           const parsedCurrentTrip = JSON.parse(rawCurrentTrip) as unknown;
-          parsedPoints = parseCurrentTripPoints(parsedCurrentTrip);
+          const routeState = parseCurrentTripRouteState(parsedCurrentTrip);
+          parsedPoints = routeState.points;
           setCurrentTripPoints(parsedPoints);
-          setTripMeta(parseTripMeta(parsedCurrentTrip));
+          setTripMeta(routeState.meta);
+          setRouteWarnings(routeState.warnings);
         } else {
           setCurrentTripPoints([]);
           setTripMeta({ destination: "여행", startDate: "", endDate: "" });
+          setRouteWarnings([]);
         }
 
         const alignedSavedRoute =
@@ -463,7 +357,7 @@ export default function ScheduleScreen() {
               {isFallbackTimeline ? (
                 <View style={styles.fallbackNoticeCard}>
                   <Text style={styles.fallbackNoticeText}>
-                    최적화 결과가 없어 현재 여행의 저장된 경유지 순서로 임시 일정표를 보여드리고 있어요.
+                    {routeWarnings[0] ?? "최적화 결과가 없어 저장된 경유지 순서로 예상 일정표를 보여드리고 있어요."}
                   </Text>
                 </View>
               ) : null}

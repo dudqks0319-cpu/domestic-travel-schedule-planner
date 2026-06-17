@@ -5,12 +5,33 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 
 type IconName = "home" | "search" | "add-circle" | "map" | "person";
+type TabIoniconName =
+  | "home"
+  | "home-outline"
+  | "search"
+  | "search-outline"
+  | "add-circle"
+  | "add-circle-outline"
+  | "map"
+  | "map-outline"
+  | "person"
+  | "person-outline";
+
+const TAB_ICONS: Record<IconName, { active: TabIoniconName; inactive: TabIoniconName }> = {
+  home: { active: "home", inactive: "home-outline" },
+  search: { active: "search", inactive: "search-outline" },
+  "add-circle": { active: "add-circle", inactive: "add-circle-outline" },
+  map: { active: "map", inactive: "map-outline" },
+  person: { active: "person", inactive: "person-outline" }
+};
 
 function TabIcon({ icon, label, focused }: { icon: IconName; label: string; focused: boolean }) {
+  const iconName = focused ? TAB_ICONS[icon].active : TAB_ICONS[icon].inactive;
+
   return (
     <View style={styles.tabItem}>
       <Ionicons
-        name={focused ? icon : (`${icon}-outline` as any)}
+        name={iconName}
         size={24}
         color={focused ? Colors.young.primary : Colors.common.gray400}
       />

@@ -8,6 +8,7 @@ export interface RoutePoint {
   name?: string;
   lat: number;
   lng: number;
+  source?: "provider" | "manual" | "mock";
 }
 
 export interface RouteSegmentEstimate {

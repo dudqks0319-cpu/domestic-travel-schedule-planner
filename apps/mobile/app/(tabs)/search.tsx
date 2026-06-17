@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   FlatList, Image, ActivityIndicator, Keyboard, Platform
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
@@ -10,6 +11,7 @@ import Typography from "../../constants/Typography";
 import { tourismApi, restaurantApi } from "../../services/api";
 
 type TabKey = "attractions" | "restaurants" | "festivals";
+type TabIconName = "camera-outline" | "restaurant-outline" | "ticket-outline";
 
 interface SearchResultItem {
   id: string;
@@ -20,10 +22,10 @@ interface SearchResultItem {
   tab: TabKey;
 }
 
-const TABS: { key: TabKey; label: string; emoji: string }[] = [
-  { key: "attractions", label: "관광지", emoji: "🏞️" },
-  { key: "restaurants", label: "맛집", emoji: "🍽️" },
-  { key: "festivals", label: "축제", emoji: "🎪" },
+const TABS: { key: TabKey; label: string; iconName: TabIconName }[] = [
+  { key: "attractions", label: "관광지", iconName: "camera-outline" },
+  { key: "restaurants", label: "맛집", iconName: "restaurant-outline" },
+  { key: "festivals", label: "축제", iconName: "ticket-outline" },
 ];
 
 const NON_FOOD_CATEGORY_KEYWORDS = [
@@ -67,6 +69,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -74,6 +77,7 @@ export default function SearchScreen() {
     Keyboard.dismiss();
     setLoading(true);
     setSearched(true);
+    setError(null);
 
     try {
       let items: SearchResultItem[] = [];
@@ -115,6 +119,7 @@ export default function SearchScreen() {
       setResults(items);
     } catch {
       setResults([]);
+      setError("provider 응답이 불안정해 검색 결과를 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -126,9 +131,11 @@ export default function SearchScreen() {
         <Image source={{ uri: item.image }} style={styles.resultImage} />
       ) : (
         <View style={[styles.resultImage, styles.resultImagePlaceholder]}>
-          <Text style={{ fontSize: 24 }}>
-            {item.tab === "restaurants" ? "🍽️" : item.tab === "festivals" ? "🎪" : "📷"}
-          </Text>
+          <Ionicons
+            name={item.tab === "restaurants" ? "restaurant-outline" : item.tab === "festivals" ? "ticket-outline" : "camera-outline"}
+            size={24}
+            color={Colors.common.gray500}
+          />
         </View>
       )}
       <View style={styles.resultContent}>
@@ -166,9 +173,13 @@ export default function SearchScreen() {
             <TouchableOpacity
               key={tab.key}
               style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
+              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); setError(null); }}
             >
-              <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+              <Ionicons
+                name={tab.iconName}
+                size={16}
+                color={activeTab === tab.key ? Colors.young.primary : Colors.common.gray600}
+              />
               <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
                 {tab.label}
               </Text>
@@ -186,14 +197,22 @@ export default function SearchScreen() {
             style={styles.list}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              searched ? (
+              error ? (
                 <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Ionicons name="cloud-offline-outline" size={44} color={Colors.common.gray500} />
+                  <Text style={styles.emptyText}>{error}</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={() => void handleSearch()}>
+                    <Text style={styles.retryButtonText}>다시 검색</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : searched ? (
+                <View style={styles.emptyWrap}>
+                  <Ionicons name="search-outline" size={44} color={Colors.common.gray500} />
                   <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
                 </View>
               ) : (
                 <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyEmoji}>✨</Text>
+                  <Ionicons name="sparkles-outline" size={44} color={Colors.young.primary} />
                   <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
                 </View>
               )
@@ -236,7 +255,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.common.gray200, gap: 4,
   },
   tabActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
-  tabEmoji: { fontSize: 16 },
   tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.common.gray600 },
   tabLabelActive: { color: Colors.young.primary },
   list: { flex: 1 },
@@ -257,7 +275,16 @@ const styles = StyleSheet.create({
     borderRadius: 6, alignSelf: "flex-start", overflow: "hidden",
   },
   emptyWrap: { alignItems: "center", marginTop: 80 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: Colors.common.gray500 },
+  emptyText: { fontSize: 16, color: Colors.common.gray500, marginTop: 12, textAlign: "center", lineHeight: 22 },
+  retryButton: {
+    marginTop: 14,
+    minHeight: 42,
+    borderRadius: 999,
+    backgroundColor: Colors.young.primary,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  retryButtonText: { color: "#FFF", fontSize: 14, fontWeight: "800" },
   loader: { marginTop: 80 },
 });
