@@ -1,5 +1,14 @@
 import { verifyAccessToken } from "./auth.js";
 import { createCorsHeaders, errorResponse, jsonResponse } from "./http.js";
+import {
+  createShareLinkHandler,
+  createTripDayHandler,
+  createTripPlaceHandler,
+  deleteTripPlaceHandler,
+  getSharedTripHandler,
+  updateTripDayHandler,
+  updateTripPlaceHandler
+} from "./itinerary.js";
 import { createTripHandler, getTripHandler, listTripsHandler } from "./trips.js";
 import type { Env, RequestContext, RouteHandler } from "./types.js";
 
@@ -83,13 +92,13 @@ const routes: RouteDefinition[] = [
   { method: "GET", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: getTripHandler },
   { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
   { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/days"), auth: "required", handler: notImplementedHandler },
-  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId/days/:dayId"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/places"), auth: "required", handler: notImplementedHandler },
-  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId/places/:placeId"), auth: "required", handler: notImplementedHandler },
-  { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId/places/:placeId"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/share"), auth: "required", handler: notImplementedHandler },
-  { method: "GET", pattern: pattern("/api/v1/share/:shareId"), auth: "public", handler: notImplementedHandler },
+  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/days"), auth: "required", handler: createTripDayHandler },
+  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId/days/:dayId"), auth: "required", handler: updateTripDayHandler },
+  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/places"), auth: "required", handler: createTripPlaceHandler },
+  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId/places/:placeId"), auth: "required", handler: updateTripPlaceHandler },
+  { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId/places/:placeId"), auth: "required", handler: deleteTripPlaceHandler },
+  { method: "POST", pattern: pattern("/api/v1/trips/:tripId/share"), auth: "required", handler: createShareLinkHandler },
+  { method: "GET", pattern: pattern("/api/v1/share/:shareId"), auth: "public", handler: getSharedTripHandler },
   { method: "POST", pattern: pattern("/api/v1/monetization/ad-events"), auth: "required", handler: notImplementedHandler },
   { method: "POST", pattern: pattern("/api/v1/monetization/affiliate-clicks"), auth: "required", handler: notImplementedHandler },
   { method: "POST", pattern: pattern("/api/v1/monetization/entitlements/verify"), auth: "required", handler: notImplementedHandler },

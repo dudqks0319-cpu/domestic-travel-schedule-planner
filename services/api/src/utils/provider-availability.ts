@@ -24,7 +24,7 @@ const PLACEHOLDER_CREDENTIALS = [
   /^changeme$/i
 ];
 
-function hasUsableCredential(value: string): boolean {
+export function hasUsableProviderCredential(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.length > 0 && !PLACEHOLDER_CREDENTIALS.some((pattern) => pattern.test(trimmed));
 }
@@ -38,7 +38,7 @@ function getProviderAvailability(
     return { provider, available: false, reason: "disabled" };
   }
 
-  if (!credentials.every(hasUsableCredential)) {
+  if (!credentials.every(hasUsableProviderCredential)) {
     return { provider, available: false, reason: "missing_credentials" };
   }
 

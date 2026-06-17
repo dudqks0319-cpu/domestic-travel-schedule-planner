@@ -157,11 +157,213 @@ async function main() {
   assert(crossUserTripBody.error.code === "not_found", "cross-user trip response should not reveal ownership");
   checks.push("GET /api/v1/trips/:tripId cross-user -> 404");
 
-  const publicShare = await request("/api/v1/share/share_123");
+  const invalidDay = await request(`/api/v1/trips/${tripId}/days`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ dayIndex: 0 })
+  });
+  const invalidDayBody = await readJson(invalidDay);
+  assert(invalidDay.status === 400, "POST /api/v1/trips/:tripId/days invalid payload should return 400");
+  assert(invalidDayBody.error.code === "validation_failed", "invalid day response should use validation_failed code");
+  checks.push("POST /api/v1/trips/:tripId/days invalid payload -> 400");
+
+  const createdDay = await request(`/api/v1/trips/${tripId}/days`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      dayIndex: 0,
+      date: "2026-06-20",
+      title: "서울 도착"
+    })
+  });
+  const createdDayBody = await readJson(createdDay);
+  assert(createdDay.status === 201, "POST /api/v1/trips/:tripId/days valid payload should return 201");
+  assert(createdDayBody.item.date === "2026-06-20", "created day should preserve date");
+  checks.push("POST /api/v1/trips/:tripId/days valid payload -> 201");
+
+  const dayId = createdDayBody.item.id;
+  const crossUserDay = await request(`/api/v1/trips/${tripId}/days`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userBToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ dayIndex: 1, date: "2026-06-21" })
+  });
+  const crossUserDayBody = await readJson(crossUserDay);
+  assert(crossUserDay.status === 404, "cross-user day create should return 404");
+  assert(crossUserDayBody.error.code === "not_found", "cross-user day response should hide ownership");
+  checks.push("POST /api/v1/trips/:tripId/days cross-user -> 404");
+
+  const updatedDay = await request(`/api/v1/trips/${tripId}/days/${dayId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ title: "한강 산책" })
+  });
+  const updatedDayBody = await readJson(updatedDay);
+  assert(updatedDay.status === 200, "PATCH /api/v1/trips/:tripId/days/:dayId should return 200");
+  assert(updatedDayBody.item.title === "한강 산책", "updated day should preserve title");
+  checks.push("PATCH /api/v1/trips/:tripId/days/:dayId owner -> 200");
+
+  const invalidPlaceDay = await request(`/api/v1/trips/${tripId}/places`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      dayId: "missing-day",
+      title: "경복궁",
+      category: "attraction",
+      visitOrder: 0
+    })
+  });
+  const invalidPlaceDayBody = await readJson(invalidPlaceDay);
+  assert(invalidPlaceDay.status === 404, "POST /api/v1/trips/:tripId/places with missing day should return 404");
+  assert(invalidPlaceDayBody.error.code === "not_found", "missing day place response should use not_found");
+  checks.push("POST /api/v1/trips/:tripId/places missing day -> 404");
+
+  const createdPlace = await request(`/api/v1/trips/${tripId}/places`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      dayId,
+      title: "경복궁",
+      category: "attraction",
+      visitOrder: 0,
+      lat: 37.5796,
+      lng: 126.977,
+      durationMinutes: 90
+    })
+  });
+  const createdPlaceBody = await readJson(createdPlace);
+  assert(createdPlace.status === 201, "POST /api/v1/trips/:tripId/places valid payload should return 201");
+  assert(createdPlaceBody.item.title === "경복궁", "created place should preserve title");
+  checks.push("POST /api/v1/trips/:tripId/places valid payload -> 201");
+
+  const placeId = createdPlaceBody.item.id;
+  const updatedPlace = await request(`/api/v1/trips/${tripId}/places/${placeId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ notes: "오전 방문", visitOrder: 1 })
+  });
+  const updatedPlaceBody = await readJson(updatedPlace);
+  assert(updatedPlace.status === 200, "PATCH /api/v1/trips/:tripId/places/:placeId should return 200");
+  assert(updatedPlaceBody.item.notes === "오전 방문", "updated place should preserve notes");
+  checks.push("PATCH /api/v1/trips/:tripId/places/:placeId owner -> 200");
+
+  const crossUserPlace = await request(`/api/v1/trips/${tripId}/places/${placeId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userBToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ notes: "다른 사용자" })
+  });
+  const crossUserPlaceBody = await readJson(crossUserPlace);
+  assert(crossUserPlace.status === 404, "cross-user place update should return 404");
+  assert(crossUserPlaceBody.error.code === "not_found", "cross-user place response should hide ownership");
+  checks.push("PATCH /api/v1/trips/:tripId/places/:placeId cross-user -> 404");
+
+  const deletablePlace = await request(`/api/v1/trips/${tripId}/places`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      dayId,
+      title: "삭제할 장소",
+      category: "memo",
+      visitOrder: 9
+    })
+  });
+  const deletablePlaceBody = await readJson(deletablePlace);
+  const deletedPlace = await request(`/api/v1/trips/${tripId}/places/${deletablePlaceBody.item.id}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${userAToken}`
+    }
+  });
+  assert(deletedPlace.status === 204, "DELETE /api/v1/trips/:tripId/places/:placeId owner should return 204");
+  checks.push("DELETE /api/v1/trips/:tripId/places/:placeId owner -> 204");
+
+  const crossUserShare = await request(`/api/v1/trips/${tripId}/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userBToken}`
+    }
+  });
+  const crossUserShareBody = await readJson(crossUserShare);
+  assert(crossUserShare.status === 404, "cross-user share create should return 404");
+  assert(crossUserShareBody.error.code === "not_found", "cross-user share response should hide ownership");
+  checks.push("POST /api/v1/trips/:tripId/share cross-user -> 404");
+
+  const invalidSharePayload = await request(`/api/v1/trips/${tripId}/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ expiresAt: 123 })
+  });
+  const invalidSharePayloadBody = await readJson(invalidSharePayload);
+  assert(invalidSharePayload.status === 400, "invalid share payload should return 400");
+  assert(
+    invalidSharePayloadBody.error.code === "validation_failed",
+    "invalid share payload should use validation_failed"
+  );
+  checks.push("POST /api/v1/trips/:tripId/share invalid payload -> 400");
+
+  const createdShare = await request(`/api/v1/trips/${tripId}/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ expiresAt: "2026-07-01T00:00:00.000Z" })
+  });
+  const createdShareBody = await readJson(createdShare);
+  assert(createdShare.status === 201, "POST /api/v1/trips/:tripId/share owner should return 201");
+  assert(createdShareBody.item.shareId.startsWith("sh_"), "share id should use opaque sh_ token");
+  checks.push("POST /api/v1/trips/:tripId/share owner -> 201");
+
+  const publicShare = await request(`/api/v1/share/${createdShareBody.item.shareId}`);
   const publicShareBody = await readJson(publicShare);
-  assert(publicShare.status === 501, "GET /api/v1/share/:shareId should be public but not implemented");
-  assert(publicShareBody.error.code === "not_implemented", "public share route should return not_implemented");
-  checks.push("GET /api/v1/share/:shareId -> 501");
+  assert(publicShare.status === 200, "GET /api/v1/share/:shareId should return 200");
+  assert(publicShareBody.item.days.length === 1, "public share should include days");
+  assert(publicShareBody.item.places.length === 1, "public share should include non-deleted places");
+  checks.push("GET /api/v1/share/:shareId public -> 200");
+
+  const expiredShare = await request(`/api/v1/trips/${tripId}/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ expiresAt: "2020-01-01T00:00:00.000Z" })
+  });
+  const expiredShareBody = await readJson(expiredShare);
+  const expiredPublicShare = await request(`/api/v1/share/${expiredShareBody.item.shareId}`);
+  const expiredPublicShareBody = await readJson(expiredPublicShare);
+  assert(expiredPublicShare.status === 404, "expired public share should return 404");
+  assert(expiredPublicShareBody.error.code === "not_found", "expired share response should use not_found");
+  checks.push("GET /api/v1/share/:shareId expired -> 404");
 
   const missing = await request("/unknown");
   const missingBody = await readJson(missing);
@@ -209,6 +411,9 @@ function base64UrlBytes(bytes) {
 function createMockD1() {
   const state = {
     trips: [],
+    tripDays: [],
+    tripPlaces: [],
+    shareLinks: [],
     auditLogs: []
   };
 
@@ -237,6 +442,28 @@ function createMockStatement(state, sql, bindings) {
         };
       }
 
+      if (normalized.includes("from trip_days") && normalized.includes("where trip_id = ?")) {
+        const [tripId] = bindings;
+        return {
+          success: true,
+          meta: {},
+          results: state.tripDays
+            .filter((day) => day.trip_id === tripId)
+            .sort((left, right) => left.day_index - right.day_index)
+        };
+      }
+
+      if (normalized.includes("from trip_places") && normalized.includes("where trip_id = ?")) {
+        const [tripId] = bindings;
+        return {
+          success: true,
+          meta: {},
+          results: state.tripPlaces
+            .filter((place) => place.trip_id === tripId)
+            .sort((left, right) => left.visit_order - right.visit_order)
+        };
+      }
+
       throw new Error(`Mock D1 all() does not support query: ${sql}`);
     },
     async first() {
@@ -247,6 +474,47 @@ function createMockStatement(state, sql, bindings) {
       ) {
         const [tripId, userId] = bindings;
         return state.trips.find((trip) => trip.id === tripId && trip.user_id === userId) || null;
+      }
+
+      if (
+        normalized.includes("from trip_days") &&
+        normalized.includes("where id = ? and trip_id = ?")
+      ) {
+        const [dayId, tripId] = bindings;
+        return state.tripDays.find((day) => day.id === dayId && day.trip_id === tripId) || null;
+      }
+
+      if (
+        normalized.includes("from trip_places") &&
+        normalized.includes("where id = ? and trip_id = ?")
+      ) {
+        const [placeId, tripId] = bindings;
+        return state.tripPlaces.find((place) => place.id === placeId && place.trip_id === tripId) || null;
+      }
+
+      if (normalized.includes("from share_links") && normalized.includes("inner join trips")) {
+        const [shareToken] = bindings;
+        const share = state.shareLinks.find((link) => link.share_token === shareToken && link.revoked_at === null);
+        if (!share) {
+          return null;
+        }
+        const trip = state.trips.find((item) => item.id === share.trip_id);
+        if (!trip) {
+          return null;
+        }
+        return {
+          share_token: share.share_token,
+          expires_at: share.expires_at,
+          trip_id: trip.id,
+          title: trip.title,
+          destination_name: trip.destination_name,
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          style_key: trip.style_key,
+          status: trip.status,
+          created_at: trip.created_at,
+          updated_at: trip.updated_at
+        };
       }
 
       throw new Error(`Mock D1 first() does not support query: ${sql}`);
@@ -277,6 +545,99 @@ function createMockStatement(state, sql, bindings) {
           status,
           created_at,
           updated_at
+        });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into trip_days")) {
+        const [id, trip_id, day_index, date, title, created_at, updated_at] = bindings;
+        state.tripDays.push({ id, trip_id, day_index, date, title, created_at, updated_at });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("update trip_days")) {
+        const [date, title, updated_at, dayId, tripId] = bindings;
+        const day = state.tripDays.find((item) => item.id === dayId && item.trip_id === tripId);
+        if (day) {
+          day.date = date;
+          day.title = title;
+          day.updated_at = updated_at;
+        }
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into trip_places")) {
+        const [
+          id,
+          trip_id,
+          day_id,
+          provider_place_id,
+          source_place_id,
+          title,
+          category,
+          lat,
+          lng,
+          address,
+          visit_order,
+          starts_at,
+          duration_minutes,
+          notes,
+          created_at,
+          updated_at
+        ] = bindings;
+        state.tripPlaces.push({
+          id,
+          trip_id,
+          day_id,
+          provider_place_id,
+          source_place_id,
+          title,
+          category,
+          lat,
+          lng,
+          address,
+          visit_order,
+          starts_at,
+          duration_minutes,
+          notes,
+          created_at,
+          updated_at
+        });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("update trip_places")) {
+        const [title, category, visit_order, starts_at, duration_minutes, notes, updated_at, placeId, tripId] = bindings;
+        const place = state.tripPlaces.find((item) => item.id === placeId && item.trip_id === tripId);
+        if (place) {
+          place.title = title;
+          place.category = category;
+          place.visit_order = visit_order;
+          place.starts_at = starts_at;
+          place.duration_minutes = duration_minutes;
+          place.notes = notes;
+          place.updated_at = updated_at;
+        }
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("delete from trip_places")) {
+        const [placeId, tripId] = bindings;
+        state.tripPlaces = state.tripPlaces.filter(
+          (place) => !(place.id === placeId && place.trip_id === tripId)
+        );
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into share_links")) {
+        const [id, trip_id, share_token, expires_at, created_at] = bindings;
+        state.shareLinks.push({
+          id,
+          trip_id,
+          share_token,
+          expires_at,
+          revoked_at: null,
+          created_at
         });
         return { success: true, meta: {} };
       }

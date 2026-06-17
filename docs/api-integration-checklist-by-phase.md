@@ -94,13 +94,18 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Verify HS256 bearer access tokens with Web Crypto against `JWT_ACCESS_SECRET`.
 - [x] Implement D1-backed trip list, create, and owner-only read handlers.
 - [x] Add negative smoke coverage for missing, malformed, expired, and cross-user access.
+- [x] Implement owner-only trip day create/update handlers.
+- [x] Implement owner-only trip place create/update/delete handlers.
+- [x] Implement opaque public share links with read-only shared trip responses.
+- [x] Add negative smoke coverage for cross-user day/place/share access and expired share links.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
-2. Implement trip update/delete, trip-day, trip-place, share-link, and monetization handlers.
+2. Implement trip update/delete with idempotency and ownership checks.
 3. Add repository-level tests beyond the current Worker smoke surface.
 4. Add JWT issuer/audience policy if the production auth provider requires it.
+5. Add monetization handlers for entitlements, ad events, and affiliate clicks.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
