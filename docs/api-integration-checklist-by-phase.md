@@ -92,8 +92,9 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Add D1, KV, and R2 binding types plus `wrangler.toml` preview/production placeholders.
 - [x] Add initial D1 migration covering users, trips, places, cache, share links, entitlements, ads, affiliate clicks, sponsored places, and audit logs.
 - [x] Verify HS256 bearer access tokens with Web Crypto against `JWT_ACCESS_SECRET`.
+- [x] Enforce configured JWT issuer/audience policy for Worker bearer tokens.
 - [x] Implement D1-backed trip list, create, and owner-only read handlers.
-- [x] Add negative smoke coverage for missing, malformed, expired, and cross-user access.
+- [x] Add negative smoke coverage for missing, malformed, expired, wrong issuer/audience, and cross-user access.
 - [x] Implement owner-only trip day create/update handlers.
 - [x] Implement owner-only trip place create/update/delete handlers.
 - [x] Implement opaque public share links with read-only shared trip responses.
@@ -110,9 +111,9 @@ Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
 2. Add repository-level tests beyond the current Worker smoke surface.
-3. Add JWT issuer/audience policy if the production auth provider requires it.
-4. Add real Apple/Google receipt verification before granting premium entitlements.
-5. Extend idempotency support to remaining mutation endpoints used by mobile retries.
+3. Add real Apple/Google receipt verification before granting premium entitlements.
+4. Extend idempotency support to remaining mutation endpoints used by mobile retries.
+5. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 

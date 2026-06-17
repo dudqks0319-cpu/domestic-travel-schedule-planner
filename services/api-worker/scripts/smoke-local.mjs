@@ -2,11 +2,15 @@ import worker from "../dist/index.js";
 
 const baseUrl = "https://worker.local";
 const jwtSecret = "local-worker-smoke-secret";
+const jwtIssuer = "tripmate-local";
+const jwtAudience = "tripmate-mobile";
 
 const env = {
   ENVIRONMENT: "local",
   CORS_ALLOWED_ORIGINS: "http://localhost:8081",
   JWT_ACCESS_SECRET: jwtSecret,
+  JWT_ISSUER: jwtIssuer,
+  JWT_AUDIENCE: jwtAudience,
   DB: createMockD1(),
   PROVIDER_CACHE: {},
   SHARE_ASSETS: {}
@@ -32,6 +36,16 @@ async function main() {
   const userAToken = await createJwt({ sub: "user_a", exp: Math.floor(Date.now() / 1000) + 3600 });
   const userBToken = await createJwt({ sub: "user_b", exp: Math.floor(Date.now() / 1000) + 3600 });
   const expiredToken = await createJwt({ sub: "user_a", exp: Math.floor(Date.now() / 1000) - 60 });
+  const wrongIssuerToken = await createJwt({
+    sub: "user_a",
+    iss: "wrong-issuer",
+    exp: Math.floor(Date.now() / 1000) + 3600
+  });
+  const wrongAudienceToken = await createJwt({
+    sub: "user_a",
+    aud: "wrong-audience",
+    exp: Math.floor(Date.now() / 1000) + 3600
+  });
 
   const rootHealth = await request("/health", {
     headers: { "x-request-id": "smoke-health-root" }
@@ -90,6 +104,26 @@ async function main() {
   assert(expiredTokenTrips.status === 401, "GET /api/v1/trips with expired token should return 401");
   assert(expiredTokenTripsBody.error.code === "token_expired", "expired token should use token_expired code");
   checks.push("GET /api/v1/trips with expired token -> 401");
+
+  const wrongIssuerTrips = await request("/api/v1/trips", {
+    headers: {
+      authorization: `Bearer ${wrongIssuerToken}`
+    }
+  });
+  const wrongIssuerTripsBody = await readJson(wrongIssuerTrips);
+  assert(wrongIssuerTrips.status === 401, "GET /api/v1/trips with wrong issuer should return 401");
+  assert(wrongIssuerTripsBody.error.code === "invalid_token", "wrong issuer should use invalid_token code");
+  checks.push("GET /api/v1/trips with wrong issuer -> 401");
+
+  const wrongAudienceTrips = await request("/api/v1/trips", {
+    headers: {
+      authorization: `Bearer ${wrongAudienceToken}`
+    }
+  });
+  const wrongAudienceTripsBody = await readJson(wrongAudienceTrips);
+  assert(wrongAudienceTrips.status === 401, "GET /api/v1/trips with wrong audience should return 401");
+  assert(wrongAudienceTripsBody.error.code === "invalid_token", "wrong audience should use invalid_token code");
+  checks.push("GET /api/v1/trips with wrong audience -> 401");
 
   const invalidCreateTrip = await request("/api/v1/trips", {
     method: "POST",
@@ -702,7 +736,12 @@ main().catch((error) => {
 
 async function createJwt(payload) {
   const header = { alg: "HS256", typ: "JWT" };
-  const signingInput = `${base64UrlJson(header)}.${base64UrlJson(payload)}`;
+  const normalizedPayload = {
+    iss: jwtIssuer,
+    aud: jwtAudience,
+    ...payload
+  };
+  const signingInput = `${base64UrlJson(header)}.${base64UrlJson(normalizedPayload)}`;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(jwtSecret),

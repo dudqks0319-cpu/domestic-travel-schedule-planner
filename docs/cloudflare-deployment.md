@@ -67,11 +67,21 @@ wrangler secret put APPLE_SHARED_SECRET --env preview
 wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --env preview
 ```
 
+## JWT Issuer and Audience
+
+`JWT_ISSUER` and `JWT_AUDIENCE` are non-secret Worker vars in `wrangler.toml`.
+They must match the auth provider that signs mobile access tokens:
+
+1. `JWT_ISSUER` must equal the token `iss`.
+2. `JWT_AUDIENCE` must match the token `aud`. Comma-separated audiences are supported for migrations.
+3. Preview and production values are placeholders until the real auth domain/client id is known.
+4. A token with a valid signature but wrong issuer or audience is rejected with `401 invalid_token`.
+
 ## Current Security Posture
 
 1. Health and share routes are public.
 2. Trip, planner, route, and monetization routes require a bearer token before reaching handlers.
-3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`.
+3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`, then checked against configured `JWT_ISSUER` and `JWT_AUDIENCE`.
 4. Trip list, create, read, update, delete, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
 5. Trip update/delete accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
 6. Monetization handlers require auth, validate inputs, hash affiliate URLs and entitlement transaction ids, and do not store raw receipts or purchase tokens.
@@ -84,5 +94,5 @@ wrangler secret put GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --env preview
 
 1. Add real Apple/Google receipt verification before granting premium entitlements.
 2. Extend idempotency support to remaining retryable mutation endpoints.
-3. Add JWT issuer/audience policy if the production auth provider requires it.
+3. Replace placeholder JWT issuer/audience values with the real auth provider values before preview deploy.
 4. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.

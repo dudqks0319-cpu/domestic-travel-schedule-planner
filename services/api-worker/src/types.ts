@@ -39,6 +39,8 @@ export interface Env {
   CORS_ALLOWED_ORIGINS?: string;
   JWT_ACCESS_SECRET?: string;
   JWT_REFRESH_SECRET?: string;
+  JWT_ISSUER?: string;
+  JWT_AUDIENCE?: string;
   NAVER_CLIENT_ID?: string;
   NAVER_CLIENT_SECRET?: string;
   KAKAO_REST_API_KEY?: string;

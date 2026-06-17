@@ -67,6 +67,16 @@ export async function verifyAccessToken(token: string, env: Env): Promise<AuthRe
     return invalidToken();
   }
 
+  const issuerPolicy = env.JWT_ISSUER?.trim();
+  if (issuerPolicy && payload.iss !== issuerPolicy) {
+    return invalidToken();
+  }
+
+  const audiencePolicy = parseAudiencePolicy(env.JWT_AUDIENCE);
+  if (audiencePolicy.length > 0 && !audienceMatches(payload.aud, audiencePolicy)) {
+    return invalidToken();
+  }
+
   return {
     ok: true,
     user: {
@@ -152,4 +162,27 @@ function getString(value: unknown): string | undefined {
 
 function getNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function parseAudiencePolicy(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function audienceMatches(value: unknown, allowedAudiences: string[]): boolean {
+  if (typeof value === "string") {
+    return allowedAudiences.includes(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.some((item) => typeof item === "string" && allowedAudiences.includes(item));
+  }
+
+  return false;
 }
