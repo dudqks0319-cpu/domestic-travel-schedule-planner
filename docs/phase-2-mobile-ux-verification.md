@@ -20,6 +20,7 @@ Branch: `agent/tripmate-v1-release-goal`
 6. Schedule and map screens no longer show raw latitude/longitude as itinerary copy.
 7. Search now separates first-run, empty, loading, provider-error, and retry states.
 8. Existing `as any` suppressions in the touched mobile flow were removed.
+9. Expo web QA surface now exports successfully after explicitly enabling the Expo Router Babel plugin and pinning Metro runtime React resolution to the workspace React package.
 
 ## Verification
 
@@ -31,22 +32,42 @@ Passed:
 4. Static scan found no `as any`, `@ts-ignore`, or `@ts-expect-error` under the touched app/components/services scope.
 5. Static scan found no hardcoded secret-shaped values in the mobile app, planner package, or docs touched for this phase.
 6. Static scan found no user-facing raw `위도`/`경도` copy or `selectedCoord` display under the touched app/components/services scope. Native map coordinate objects still exist where required for map rendering.
+7. `npx expo export --platform web --output-dir dist-qa-direct --clear`
 
-Attempted manual surface checks:
+Manual surface checks:
 
-1. `expo start --web --port 8081 --non-interactive --localhost`
-2. `expo export --platform web --output-dir dist`
+1. Served `apps/mobile/dist-qa-direct` through a local SPA fallback server.
+2. Opened `http://127.0.0.1:4175/trip/create?destination=서울&styleKey=healing_trip` at 390px mobile viewport.
+3. Verified step 1 renders the prefilled Seoul + `바다+카페+맛집` flow.
+4. Verified step 2 date picker opens, blocks past dates, accepts `2026-06-18` to `2026-06-20`, and calculates `2박 3일`.
+5. Verified step 3 accepts trip settings: `혼자`, `대중교통`, `호텔`.
+6. Verified step 4 renders the preference surface and calls the local API backend.
 
-Observed blocker:
+Screenshots:
 
-1. `expo start --web` hangs without opening a port, both inside sandbox and with escalated execution.
-2. `expo export --platform web` fails before app code renders:
+1. `/Users/jyb-m3max/Desktop/codex/tripmate-home-mobile.png`
+2. `/Users/jyb-m3max/Desktop/codex/tripmate-create-step1-390.png`
+3. `/Users/jyb-m3max/Desktop/codex/tripmate-create-step2-390.png`
+4. `/Users/jyb-m3max/Desktop/codex/tripmate-create-step4-api-placeholder-390.png`
+
+Resolved web blocker:
+
+1. Previous blocker: `expo export --platform web` failed before app code rendered with:
    `Invalid call at line 2: process.env.EXPO_ROUTER_APP_ROOT`
-3. The failing module is `apps/mobile/node_modules/expo-router/_ctx.web.js`.
+2. Root cause: `babel-preset-expo` was resolved from the workspace root, while `expo-router` lived under `apps/mobile/node_modules`, so the preset did not auto-apply the Expo Router Babel transform.
+3. Fix: `apps/mobile/babel.config.js` now explicitly includes `expoRouterBabelPlugin`.
+4. Follow-up issue: Metro then resolved runtime `react` through TypeScript's React type path mapping.
+5. Fix: `apps/mobile/metro.config.js` now routes runtime `react` and `react/*` imports to the workspace React package while leaving TypeScript type resolution intact.
+
+Observed external-provider limit:
+
+1. With `services/api` running on `127.0.0.1:4000`, step 4 requests reached the API backend.
+2. The backend returned upstream `401` failures for tourism and restaurant lookups because the QA run used placeholder `DATA_GO_KR_API_KEY` and no real Naver provider credentials.
+3. This confirms the local UI-to-backend path, but not live provider data rendering.
 
 ## Residual Risks
 
 1. Owner: Engineering
-2. Due: before Phase 2 can be called fully manually verified
-3. Required next action: repair the Expo Router / Metro web context transform or validate the same flow on a simulator/native Expo surface.
-4. This blocker prevents the manual web smoke flow from proving region -> dates -> style -> draft behavior in a browser.
+2. Due: Phase 3 provider integration QA
+3. Required next action: run the same step 4 smoke with real server-side `DATA_GO_KR_API_KEY`, `NAVER_CLIENT_ID`, and `NAVER_CLIENT_SECRET` configured outside the mobile bundle.
+4. Remaining manual gap: final AI itinerary generation cannot be called fully verified until live provider data is available or a deliberate local fixture mode is added.
