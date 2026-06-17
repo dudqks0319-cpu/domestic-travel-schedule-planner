@@ -21,9 +21,10 @@
     "planner:build": "npm --prefix packages/planner run build",
     "worker:build": "npm --prefix services/api-worker run build",
     "worker:dev": "npm --prefix services/api-worker run dev",
+    "worker:test": "npm --prefix services/api-worker run test:unit",
     "worker:typecheck": "npm --prefix services/api-worker run typecheck",
     "worker:smoke:local": "npm --prefix services/api-worker run smoke:local",
     "worker:deploy:preview": "npm --prefix services/api-worker run deploy:preview",
-    "gate:local": "npm run -s check:env && npm run -s mobile:typecheck && npm run -s api:build && npm run -s planner:build && npm run -s worker:typecheck && npm run -s api:smoke:gate && npm run -s worker:smoke:local"
+    "gate:local": "npm run -s check:env && npm run -s mobile:typecheck && npm run -s api:build && npm run -s planner:build && npm run -s worker:typecheck && npm run -s worker:test && npm run -s api:smoke:gate && npm run -s worker:smoke:local"
   }
 }

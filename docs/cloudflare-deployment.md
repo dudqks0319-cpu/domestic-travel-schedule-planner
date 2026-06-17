@@ -12,8 +12,15 @@ It intentionally does not move mobile traffic to the Worker yet.
 
 ```bash
 npm run worker:typecheck
+npm run worker:test
 npm run worker:smoke:local
 ```
+
+`worker:test` builds the Worker module and runs Node's built-in test runner against focused unit coverage for:
+
+1. HS256 access-token verification, including issuer and audience policies.
+2. fail-closed auth behavior for expired, malformed, and unconfigured tokens.
+3. idempotency replay, payload-conflict rejection, key validation, and user/route scoping.
 
 `worker:smoke:local` builds the Worker module and drives the exported `fetch` handler with `Request` objects. It verifies:
 

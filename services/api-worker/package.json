@@ -11,6 +11,7 @@
     "deploy:preview": "wrangler deploy --env preview",
     "deploy:production": "wrangler deploy --env production",
     "smoke:local": "npm run -s build && node scripts/smoke-local.mjs",
+    "test:unit": "npm run -s build && node --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "engines": {

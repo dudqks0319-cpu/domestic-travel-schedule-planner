@@ -107,13 +107,13 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Store affiliate targets and entitlement transaction ids as hashes; do not persist raw URLs, receipts, or purchase tokens.
 - [x] Add negative smoke coverage for monetization validation, trip ownership, idempotent replay, and pending entitlements.
 - [x] Add monetization policy documentation.
+- [x] Add Worker unit tests beyond smoke for JWT policy and idempotency replay/conflict behavior, and wire them into `gate:local`.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
-2. Add repository-level tests beyond the current Worker smoke surface.
-3. Add real Apple/Google receipt verification before granting premium entitlements.
-4. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
+2. Add real Apple/Google receipt verification before granting premium entitlements.
+3. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
