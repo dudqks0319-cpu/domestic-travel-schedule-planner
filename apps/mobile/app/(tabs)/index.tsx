@@ -12,6 +12,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import Theme from "../../constants/Theme";
+import {
+  DEFAULT_TRAVEL_STYLE_KEY,
+  TRAVEL_STYLE_OPTIONS
+} from "../../constants/travelStyles";
 import { fetchDestinations } from "../../services/destinations.service";
 import { fetchTopFriends } from "../../services/friends.service";
 import type { Destination } from "../../types";
@@ -22,12 +26,7 @@ interface TopFriend {
   avatar: string;
 }
 
-const CATEGORY_CHIPS = [
-  { key: "family", label: "가족여행", color: "#F8DADA", icon: "people-outline" as const },
-  { key: "solo", label: "혼자여행", color: "#DDE9FB", icon: "walk-outline" as const },
-  { key: "couple", label: "커플여행", color: "#F3E8FB", icon: "heart-outline" as const },
-  { key: "active", label: "액티비티", color: "#DCF4E1", icon: "triangle-outline" as const }
-];
+const QUICK_START_STYLES = TRAVEL_STYLE_OPTIONS.slice(0, 4);
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -79,7 +78,7 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/trip/create",
-                  params: { destination: destination.name }
+                  params: { destination: destination.name, styleKey: DEFAULT_TRAVEL_STYLE_KEY }
                 })
               }
             >
@@ -97,10 +96,20 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.categoryRow}>
-          {CATEGORY_CHIPS.map((chip) => (
-            <TouchableOpacity key={chip.key} style={[styles.categoryChip, { backgroundColor: chip.color }]} activeOpacity={0.8}>
-              <Ionicons name={chip.icon} size={18} color={Theme.colors.textPrimary} />
-              <Text style={styles.categoryLabel}>{chip.label}</Text>
+          {QUICK_START_STYLES.map((styleOption) => (
+            <TouchableOpacity
+              key={styleOption.key}
+              style={[styles.categoryChip, { backgroundColor: styleOption.tintColor }]}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: "/trip/create",
+                  params: { styleKey: styleOption.key }
+                })
+              }
+            >
+              <Ionicons name={styleOption.iconName} size={18} color={Theme.colors.textPrimary} />
+              <Text style={styles.categoryLabel}>{styleOption.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -133,7 +142,16 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.cta} onPress={() => router.push("/trip/create")} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.cta}
+          onPress={() =>
+            router.push({
+              pathname: "/trip/create",
+              params: { styleKey: DEFAULT_TRAVEL_STYLE_KEY }
+            })
+          }
+          activeOpacity={0.85}
+        >
           <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
           <Text style={styles.ctaText}>새 여행 만들기</Text>
         </TouchableOpacity>

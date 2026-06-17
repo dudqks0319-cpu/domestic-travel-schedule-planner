@@ -5,6 +5,7 @@ import {
   getRefreshToken,
   setAccessToken,
 } from "../lib/secure-storage";
+import type { TravelStyleKey } from "../types";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 const API_PREFIX = "/api/v1";
@@ -120,6 +121,7 @@ export const plannerApi = {
     destination: string;
     startDate: string;
     endDate: string;
+    styleKey: TravelStyleKey;
     transport?: string;
     companions?: string;
     attractionKeywords?: string[];

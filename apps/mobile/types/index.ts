@@ -1,3 +1,19 @@
+import type {
+  NormalizedPlace,
+  NormalizedRoute,
+  TripPlanInput,
+  TripPlanResult,
+  TravelStyleKey
+} from "@tripmate/planner";
+
+export type {
+  NormalizedPlace,
+  NormalizedRoute,
+  TripPlanInput,
+  TripPlanResult,
+  TravelStyleKey
+} from "@tripmate/planner";
+
 export type CompanionType =
   | "solo"
   | "friends"
@@ -37,6 +53,26 @@ export type BudgetRange = "under_50" | "50_100" | "100_200" | "unlimited";
 
 export type ChildAgeGroup = "0_2" | "3_5" | "6_7" | "8_10" | "11_13";
 
+export interface Destination {
+  id: string;
+  name: string;
+  image: string;
+  rating: number;
+}
+
+export interface FriendMatch {
+  id: string;
+  name: string;
+  age: number;
+  avatar: string;
+  match: number;
+  destination: string;
+  dateRange: string;
+  tags: string[];
+  bio: string;
+  checklist: string[];
+}
+
 export interface UserSignupProfile {
   email: string;
   nickname: string;
@@ -53,6 +89,7 @@ export interface TripCreateDraft {
   destination?: string;
   startDate?: string;
   endDate?: string;
+  styleKey?: TravelStyleKey;
   companion?: CompanionType;
   purpose?: TripPurpose;
   travelStyle?: TravelStyle;
@@ -66,6 +103,25 @@ export interface TripRouteMapPoint {
   name: string;
   latitude: number;
   longitude: number;
+}
+
+export interface CurrentTripStorage {
+  id: string;
+  title: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  styleKey: TravelStyleKey;
+  companion?: CompanionType | null;
+  transport?: TransportType | null;
+  accommodationType?: string | null;
+  attractions: string[];
+  restaurants: string[];
+  routePoints: TripRouteMapPoint[];
+  createdAt: string;
+  providerWarnings?: TripPlanResult["providerWarnings"];
+  normalizedPlaces?: NormalizedPlace[];
+  normalizedRoute?: NormalizedRoute | null;
 }
 
 export interface TripScheduleItem {

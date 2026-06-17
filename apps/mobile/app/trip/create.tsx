@@ -17,21 +17,42 @@ import StepAttractions from '../../components/trip/StepAttractions';
 import StepRestaurants from '../../components/trip/StepRestaurants';
 import { clearPersistedOptimizedRoute } from '../../services/routeApi';
 import { plannerApi } from '../../services/api';
+import {
+  DEFAULT_TRAVEL_STYLE_KEY,
+  getTravelStyleOption,
+  resolveTravelStyleKey
+} from '../../constants/travelStyles';
 
-import type { CompanionType, TransportType, TripRouteMapPoint } from '../../types';
+import type {
+  CompanionType,
+  CurrentTripStorage,
+  TransportType,
+  TravelStyleKey,
+  TripRouteMapPoint
+} from '../../types';
 import type { AccommodationType } from '../../components/trip/StepAccommodation';
 
 const TOTAL_STEPS = 7;
 const STEP_LABELS = ['목적지', '날짜', '동행자', '이동수단', '숙소', '관광지', '맛집'] as const;
+type StepIconName =
+  | 'location-outline'
+  | 'calendar-outline'
+  | 'people-outline'
+  | 'car-outline'
+  | 'bed-outline'
+  | 'camera-outline'
+  | 'restaurant-outline'
+  | 'ellipse-outline';
 const STEP_ICONS = [
   'location-outline', 'calendar-outline', 'people-outline',
   'car-outline', 'bed-outline', 'camera-outline', 'restaurant-outline',
-] as const;
+] as const satisfies readonly StepIconName[];
 
 interface StepState {
   destination: string;
   startDate: string;
   endDate: string;
+  styleKey: TravelStyleKey;
   companion: CompanionType | null;
   transport: TransportType | null;
   accommodationType: AccommodationType | null;
@@ -41,6 +62,7 @@ interface StepState {
 
 const INITIAL: StepState = {
   destination: '', startDate: '', endDate: '',
+  styleKey: DEFAULT_TRAVEL_STYLE_KEY,
   companion: null, transport: null, accommodationType: null,
   attractions: [], restaurants: [],
 };
@@ -53,14 +75,16 @@ function parseDate(t: string): Date | null {
 
 export default function TripCreateScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ destination?: string }>();
+  const params = useLocalSearchParams<{ destination?: string; styleKey?: string | string[] }>();
   const scrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<StepState>(() => ({
     ...INITIAL,
     destination: params.destination ?? '',
+    styleKey: resolveTravelStyleKey(params.styleKey),
   }));
   const [isSaving, setIsSaving] = useState(false);
+  const selectedStyle = getTravelStyleOption(draft.styleKey);
 
   const update = <K extends keyof StepState>(key: K, val: StepState[K]) =>
     setDraft((p) => ({ ...p, [key]: val }));
@@ -116,8 +140,11 @@ export default function TripCreateScreen() {
         destination: draft.destination.trim(),
         startDate: draft.startDate,
         endDate: draft.endDate,
+        styleKey: draft.styleKey,
         transport: draft.transport,
         companions: draft.companion,
+        attractionKeywords: draft.attractions,
+        restaurantKeywords: draft.restaurants,
       });
       const trip = res.data.trip;
       const routePoints: TripRouteMapPoint[] = [];
@@ -128,23 +155,38 @@ export default function TripCreateScreen() {
           }
         }
       }
-      await Promise.all([
-        AsyncStorage.setItem('currentTrip', JSON.stringify({
-          id: trip.id, title: trip.title, destination: trip.destination,
-          startDate: trip.startDate, endDate: trip.endDate,
-          routePoints, createdAt: trip.createdAt,
-        })),
-        clearPersistedOptimizedRoute(),
-      ]);
+      const currentTrip: CurrentTripStorage = {
+        id: trip.id,
+        title: trip.title,
+        destination: trip.destination,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        styleKey: draft.styleKey,
+        companion: draft.companion,
+        transport: draft.transport,
+        accommodationType: draft.accommodationType,
+        attractions: draft.attractions,
+        restaurants: draft.restaurants,
+        routePoints,
+        createdAt: trip.createdAt,
+      };
+      await Promise.all([AsyncStorage.setItem('currentTrip', JSON.stringify(currentTrip)), clearPersistedOptimizedRoute()]);
       router.push('/trip/route-map');
     } catch {
       Alert.alert('', '서버 연결 실패. 로컬에 저장합니다.');
-      await AsyncStorage.setItem('currentTrip', JSON.stringify({
+      const fallbackTrip: CurrentTripStorage = {
         id: `trip_${Date.now()}`, title: `${draft.destination} 여행`,
         destination: draft.destination.trim(),
         startDate: draft.startDate, endDate: draft.endDate,
+        styleKey: draft.styleKey,
+        companion: draft.companion,
+        transport: draft.transport,
+        accommodationType: draft.accommodationType,
+        attractions: draft.attractions,
+        restaurants: draft.restaurants,
         routePoints: [], createdAt: new Date().toISOString(),
-      }));
+      };
+      await AsyncStorage.setItem('currentTrip', JSON.stringify(fallbackTrip));
       router.push('/trip/route-map');
     } finally { setIsSaving(false); }
   };
@@ -173,6 +215,7 @@ export default function TripCreateScreen() {
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>여행 만들기</Text>
           <Text style={styles.headerSub}>{STEP_LABELS[step - 1]}</Text>
+          <Text style={styles.styleSub}>{selectedStyle.label}</Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.stepCount}>{step}/{TOTAL_STEPS}</Text>
@@ -187,6 +230,7 @@ export default function TripCreateScreen() {
           {STEP_LABELS.map((label, i) => {
             const done = i < step;
             const current = i === step - 1;
+            const iconName = STEP_ICONS[i] ?? 'ellipse-outline';
             return (
               <View key={label} style={styles.stepIconItem}>
                 <View style={[
@@ -195,7 +239,7 @@ export default function TripCreateScreen() {
                   current && styles.stepDotCurrent,
                 ]}>
                   <Ionicons
-                    name={STEP_ICONS[i] as any}
+                    name={iconName}
                     size={12}
                     color={done || current ? '#FFF' : Theme.colors.textTertiary}
                   />
@@ -260,6 +304,7 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: { ...Theme.typography.h3, color: Theme.colors.textPrimary },
   headerSub: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 2 },
+  styleSub: { ...Theme.typography.caption, color: Theme.colors.primary, marginTop: 2, fontWeight: '700' },
   headerRight: { width: 40, alignItems: 'flex-end' },
   stepCount: { ...Theme.typography.caption, color: Theme.colors.primary, fontWeight: '700' },
   progressContainer: {
