@@ -9,7 +9,13 @@ import {
   updateTripDayHandler,
   updateTripPlaceHandler
 } from "./itinerary.js";
-import { createTripHandler, getTripHandler, listTripsHandler } from "./trips.js";
+import {
+  createTripHandler,
+  deleteTripHandler,
+  getTripHandler,
+  listTripsHandler,
+  updateTripHandler
+} from "./trips.js";
 import type { Env, RequestContext, RouteHandler } from "./types.js";
 
 interface RouteDefinition {
@@ -90,8 +96,8 @@ const routes: RouteDefinition[] = [
   { method: "GET", pattern: pattern("/api/v1/trips"), auth: "required", handler: listTripsHandler },
   { method: "POST", pattern: pattern("/api/v1/trips"), auth: "required", handler: createTripHandler },
   { method: "GET", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: getTripHandler },
-  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
-  { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
+  { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: updateTripHandler },
+  { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: deleteTripHandler },
   { method: "POST", pattern: pattern("/api/v1/trips/:tripId/days"), auth: "required", handler: createTripDayHandler },
   { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId/days/:dayId"), auth: "required", handler: updateTripDayHandler },
   { method: "POST", pattern: pattern("/api/v1/trips/:tripId/places"), auth: "required", handler: createTripPlaceHandler },

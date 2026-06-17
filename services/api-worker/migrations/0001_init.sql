@@ -117,6 +117,18 @@ CREATE TABLE IF NOT EXISTS share_links (
   FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  route_key TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  response_status INTEGER NOT NULL,
+  response_body_json TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, route_key, idempotency_key)
+);
+
 CREATE TABLE IF NOT EXISTS subscription_entitlements (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -185,6 +197,7 @@ CREATE INDEX IF NOT EXISTS idx_provider_places_provider_source ON provider_place
 CREATE INDEX IF NOT EXISTS idx_route_cache_expires_at ON route_cache(expires_at);
 CREATE INDEX IF NOT EXISTS idx_place_cache_expires_at ON place_cache(expires_at);
 CREATE INDEX IF NOT EXISTS idx_share_links_trip_id ON share_links(trip_id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_user_route ON idempotency_keys(user_id, route_key);
 CREATE INDEX IF NOT EXISTS idx_subscription_entitlements_user_id ON subscription_entitlements(user_id);
 CREATE INDEX IF NOT EXISTS idx_ad_events_user_id ON ad_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_affiliate_clicks_user_id ON affiliate_clicks(user_id);

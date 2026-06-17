@@ -66,14 +66,15 @@ Production uses the same secret names with `--env production`.
 1. Health and share routes are public.
 2. Trip, planner, route, and monetization routes require a bearer token before reaching handlers.
 3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`.
-4. Trip list, create, read, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
-5. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
-6. CORS is allow-list based. `*` is ignored in production.
-7. API responses include a correlation id via `X-Request-Id` and error payloads.
+4. Trip list, create, read, update, delete, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
+5. Trip update/delete accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
+6. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
+7. CORS is allow-list based. `*` is ignored in production.
+8. API responses include a correlation id via `X-Request-Id` and error payloads.
 
 ## Next Required Slice
 
-1. Implement update/delete trip mutations with idempotency and ownership checks.
-2. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+1. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+2. Extend idempotency support to remaining retryable mutation endpoints.
 3. Add JWT issuer/audience policy if the production auth provider requires it.
 4. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.

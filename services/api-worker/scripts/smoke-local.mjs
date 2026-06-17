@@ -157,6 +157,153 @@ async function main() {
   assert(crossUserTripBody.error.code === "not_found", "cross-user trip response should not reveal ownership");
   checks.push("GET /api/v1/trips/:tripId cross-user -> 404");
 
+  const invalidUpdateTrip = await request(`/api/v1/trips/${tripId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ endDate: "2026-06-19" })
+  });
+  const invalidUpdateTripBody = await readJson(invalidUpdateTrip);
+  assert(invalidUpdateTrip.status === 400, "PATCH /api/v1/trips/:tripId invalid date should return 400");
+  assert(
+    invalidUpdateTripBody.error.code === "validation_failed",
+    "invalid update trip response should use validation_failed"
+  );
+  checks.push("PATCH /api/v1/trips/:tripId invalid payload -> 400");
+
+  const updateTripPayload = JSON.stringify({
+    title: "서울 주말 여행",
+    status: "planned"
+  });
+  const updatedTrip = await request(`/api/v1/trips/${tripId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-update-0001"
+    },
+    body: updateTripPayload
+  });
+  const updatedTripBody = await readJson(updatedTrip);
+  assert(updatedTrip.status === 200, "PATCH /api/v1/trips/:tripId should return 200");
+  assert(updatedTripBody.item.title === "서울 주말 여행", "updated trip should preserve title");
+  assert(updatedTripBody.item.status === "planned", "updated trip should preserve status");
+  checks.push("PATCH /api/v1/trips/:tripId owner -> 200");
+
+  const replayedTripUpdate = await request(`/api/v1/trips/${tripId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-update-0001"
+    },
+    body: updateTripPayload
+  });
+  const replayedTripUpdateBody = await readJson(replayedTripUpdate);
+  assert(replayedTripUpdate.status === 200, "idempotent trip update replay should return 200");
+  assert(
+    replayedTripUpdate.headers.get("x-idempotent-replay") === "true",
+    "idempotent trip update replay should expose replay header"
+  );
+  assert(
+    replayedTripUpdateBody.item.updatedAt === updatedTripBody.item.updatedAt,
+    "idempotent trip update replay should preserve original response"
+  );
+  checks.push("PATCH /api/v1/trips/:tripId idempotent replay -> 200");
+
+  const conflictingTripUpdate = await request(`/api/v1/trips/${tripId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-update-0001"
+    },
+    body: JSON.stringify({ title: "다른 제목" })
+  });
+  const conflictingTripUpdateBody = await readJson(conflictingTripUpdate);
+  assert(conflictingTripUpdate.status === 409, "idempotency key reuse with different body should return 409");
+  assert(
+    conflictingTripUpdateBody.error.code === "idempotency_key_reuse",
+    "idempotency conflict should use idempotency_key_reuse"
+  );
+  checks.push("PATCH /api/v1/trips/:tripId idempotency conflict -> 409");
+
+  const crossUserUpdateTrip = await request(`/api/v1/trips/${tripId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userBToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ title: "다른 사용자" })
+  });
+  const crossUserUpdateTripBody = await readJson(crossUserUpdateTrip);
+  assert(crossUserUpdateTrip.status === 404, "cross-user trip update should return 404");
+  assert(crossUserUpdateTripBody.error.code === "not_found", "cross-user trip update should hide ownership");
+  checks.push("PATCH /api/v1/trips/:tripId cross-user -> 404");
+
+  const deletableTrip = await request("/api/v1/trips", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      destinationName: "부산",
+      startDate: "2026-08-01",
+      endDate: "2026-08-03",
+      styleKey: "drive_trip"
+    })
+  });
+  const deletableTripBody = await readJson(deletableTrip);
+  const deletableTripId = deletableTripBody.item.id;
+
+  const crossUserDeleteTrip = await request(`/api/v1/trips/${tripId}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${userBToken}`
+    }
+  });
+  const crossUserDeleteTripBody = await readJson(crossUserDeleteTrip);
+  assert(crossUserDeleteTrip.status === 404, "cross-user trip delete should return 404");
+  assert(crossUserDeleteTripBody.error.code === "not_found", "cross-user trip delete should hide ownership");
+  checks.push("DELETE /api/v1/trips/:tripId cross-user -> 404");
+
+  const deletedTrip = await request(`/api/v1/trips/${deletableTripId}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "x-idempotency-key": "trip-delete-0001"
+    }
+  });
+  assert(deletedTrip.status === 204, "DELETE /api/v1/trips/:tripId owner should return 204");
+  checks.push("DELETE /api/v1/trips/:tripId owner -> 204");
+
+  const replayedTripDelete = await request(`/api/v1/trips/${deletableTripId}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "x-idempotency-key": "trip-delete-0001"
+    }
+  });
+  assert(replayedTripDelete.status === 204, "idempotent trip delete replay should return 204");
+  assert(
+    replayedTripDelete.headers.get("x-idempotent-replay") === "true",
+    "idempotent trip delete replay should expose replay header"
+  );
+  checks.push("DELETE /api/v1/trips/:tripId idempotent replay -> 204");
+
+  const deletedTripRead = await request(`/api/v1/trips/${deletableTripId}`, {
+    headers: {
+      authorization: `Bearer ${userAToken}`
+    }
+  });
+  const deletedTripReadBody = await readJson(deletedTripRead);
+  assert(deletedTripRead.status === 404, "GET deleted trip should return 404");
+  assert(deletedTripReadBody.error.code === "not_found", "deleted trip read should use not_found");
+  checks.push("GET /api/v1/trips/:tripId deleted -> 404");
+
   const invalidDay = await request(`/api/v1/trips/${tripId}/days`, {
     method: "POST",
     headers: {
@@ -414,6 +561,7 @@ function createMockD1() {
     tripDays: [],
     tripPlaces: [],
     shareLinks: [],
+    idempotencyKeys: [],
     auditLogs: []
   };
 
@@ -517,6 +665,16 @@ function createMockStatement(state, sql, bindings) {
         };
       }
 
+      if (normalized.includes("from idempotency_keys")) {
+        const [userId, routeKey, idempotencyKey] = bindings;
+        return state.idempotencyKeys.find(
+          (item) =>
+            item.user_id === userId &&
+            item.route_key === routeKey &&
+            item.idempotency_key === idempotencyKey
+        ) || null;
+      }
+
       throw new Error(`Mock D1 first() does not support query: ${sql}`);
     },
     async run() {
@@ -546,6 +704,40 @@ function createMockStatement(state, sql, bindings) {
           created_at,
           updated_at
         });
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("update trips")) {
+        const [
+          title,
+          destination_name,
+          start_date,
+          end_date,
+          style_key,
+          status,
+          updated_at,
+          tripId,
+          userId
+        ] = bindings;
+        const trip = state.trips.find((item) => item.id === tripId && item.user_id === userId);
+        if (trip) {
+          trip.title = title;
+          trip.destination_name = destination_name;
+          trip.start_date = start_date;
+          trip.end_date = end_date;
+          trip.style_key = style_key;
+          trip.status = status;
+          trip.updated_at = updated_at;
+        }
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("delete from trips")) {
+        const [tripId, userId] = bindings;
+        state.trips = state.trips.filter((trip) => !(trip.id === tripId && trip.user_id === userId));
+        state.tripDays = state.tripDays.filter((day) => day.trip_id !== tripId);
+        state.tripPlaces = state.tripPlaces.filter((place) => place.trip_id !== tripId);
+        state.shareLinks = state.shareLinks.filter((link) => link.trip_id !== tripId);
         return { success: true, meta: {} };
       }
 
@@ -644,6 +836,30 @@ function createMockStatement(state, sql, bindings) {
 
       if (normalized.startsWith("insert into audit_logs")) {
         state.auditLogs.push(bindings);
+        return { success: true, meta: {} };
+      }
+
+      if (normalized.startsWith("insert into idempotency_keys")) {
+        const [
+          id,
+          user_id,
+          route_key,
+          idempotency_key,
+          request_hash,
+          response_status,
+          response_body_json,
+          created_at
+        ] = bindings;
+        state.idempotencyKeys.push({
+          id,
+          user_id,
+          route_key,
+          idempotency_key,
+          request_hash,
+          response_status,
+          response_body_json,
+          created_at
+        });
         return { success: true, meta: {} };
       }
 

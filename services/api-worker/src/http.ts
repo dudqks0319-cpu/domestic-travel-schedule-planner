@@ -12,7 +12,8 @@ export function createCorsHeaders(request: Request, env: Env): Headers {
   }
 
   headers.set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Request-Id");
+  headers.set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Request-Id,X-Idempotency-Key");
+  headers.set("Access-Control-Expose-Headers", "X-Request-Id,X-Idempotent-Replay");
   headers.set("Access-Control-Max-Age", "86400");
   return headers;
 }

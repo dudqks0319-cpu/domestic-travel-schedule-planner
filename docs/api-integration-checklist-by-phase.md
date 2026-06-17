@@ -98,14 +98,17 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Implement owner-only trip place create/update/delete handlers.
 - [x] Implement opaque public share links with read-only shared trip responses.
 - [x] Add negative smoke coverage for cross-user day/place/share access and expired share links.
+- [x] Implement owner-only trip update/delete handlers.
+- [x] Add `X-Idempotency-Key` replay/conflict handling for trip update/delete retries.
+- [x] Add negative smoke coverage for trip update/delete ownership and idempotency conflicts.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
-2. Implement trip update/delete with idempotency and ownership checks.
-3. Add repository-level tests beyond the current Worker smoke surface.
-4. Add JWT issuer/audience policy if the production auth provider requires it.
-5. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+2. Add repository-level tests beyond the current Worker smoke surface.
+3. Add JWT issuer/audience policy if the production auth provider requires it.
+4. Add monetization handlers for entitlements, ad events, and affiliate clicks.
+5. Extend idempotency support to remaining mutation endpoints used by mobile retries.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
@@ -115,7 +118,7 @@ Checklist:
 
 - [ ] Add collaborator invite/remove and permission endpoints.
 - [ ] Add activity-level change events for notification fan-out.
-- [ ] Add idempotency keys for mutation endpoints used by retries.
+- [ ] Extend idempotency keys beyond trip update/delete to all retryable mutation endpoints.
 - [ ] Add sync endpoint for batched mobile updates.
 - [ ] Add audit trail metadata for trip edits.
 
