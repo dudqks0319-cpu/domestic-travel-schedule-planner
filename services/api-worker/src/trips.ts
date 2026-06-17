@@ -88,7 +88,13 @@ export const createTripHandler: RouteHandler = async (request, context) => {
     return user;
   }
 
-  const input = await parseTripCreateInput(request, context);
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
+  const input = parseTripCreateInput(requestBodyText, request, context);
   if (input instanceof Response) {
     return input;
   }
@@ -127,25 +133,24 @@ export const createTripHandler: RouteHandler = async (request, context) => {
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    {
-      item: {
-        id: tripId,
-        title: input.title,
-        destinationName: input.destinationName,
-        startDate: input.startDate,
-        endDate: input.endDate,
-        styleKey: input.styleKey,
-        status: "draft",
-        createdAt: now,
-        updatedAt: now
-      }
-    },
-    201,
-    context.requestId
-  );
+  const body = {
+    item: {
+      id: tripId,
+      title: input.title,
+      destinationName: input.destinationName,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      styleKey: input.styleKey,
+      status: "draft",
+      createdAt: now,
+      updatedAt: now
+    }
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 201, body))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, body, 201, context.requestId);
 };
 
 export const getTripHandler: RouteHandler = async (request, context, params) => {
@@ -320,13 +325,14 @@ function requireUser(request: Request, context: RequestContext): AuthenticatedUs
   );
 }
 
-async function parseTripCreateInput(
+function parseTripCreateInput(
+  requestBodyText: string,
   request: Request,
   context: RequestContext
-): Promise<TripCreateInput | Response> {
+): TripCreateInput | Response {
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(requestBodyText);
   } catch {
     return errorResponse(
       request,

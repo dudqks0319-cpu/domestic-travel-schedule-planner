@@ -102,6 +102,7 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Implement owner-only trip update/delete handlers.
 - [x] Add `X-Idempotency-Key` replay/conflict handling for trip update/delete retries.
 - [x] Add negative smoke coverage for trip update/delete ownership and idempotency conflicts.
+- [x] Extend `X-Idempotency-Key` replay/conflict handling to trip create, day/place mutations, share-link creation, and monetization retryable writes.
 - [x] Implement monetization handlers for ad events, affiliate clicks, entitlement verify skeleton, and current user entitlements.
 - [x] Store affiliate targets and entitlement transaction ids as hashes; do not persist raw URLs, receipts, or purchase tokens.
 - [x] Add negative smoke coverage for monetization validation, trip ownership, idempotent replay, and pending entitlements.
@@ -112,8 +113,7 @@ Remaining before Worker production cutover:
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
 2. Add repository-level tests beyond the current Worker smoke surface.
 3. Add real Apple/Google receipt verification before granting premium entitlements.
-4. Extend idempotency support to remaining mutation endpoints used by mobile retries.
-5. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
+4. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
@@ -123,7 +123,7 @@ Checklist:
 
 - [ ] Add collaborator invite/remove and permission endpoints.
 - [ ] Add activity-level change events for notification fan-out.
-- [ ] Extend idempotency keys beyond trip update/delete to all retryable mutation endpoints.
+- [x] Extend idempotency keys beyond trip update/delete to current retryable mutation endpoints.
 - [ ] Add sync endpoint for batched mobile updates.
 - [ ] Add audit trail metadata for trip edits.
 

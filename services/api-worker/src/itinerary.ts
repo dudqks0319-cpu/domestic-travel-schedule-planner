@@ -1,4 +1,5 @@
 import { createCorsHeaders, errorResponse, jsonResponse } from "./http.js";
+import { prepareIdempotency, storeIdempotencyResult } from "./idempotency.js";
 import type { AuthenticatedUser, D1Database, RequestContext, RouteHandler } from "./types.js";
 
 interface TripDayRow {
@@ -105,7 +106,13 @@ export const createTripDayHandler: RouteHandler = async (request, context, param
     return notFound(request, context, "Trip not found.");
   }
 
-  const input = await parseTripDayInput(request, context);
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
+  const input = parseTripDayInput(requestBodyText, request, context);
   if (input instanceof Response) {
     return input;
   }
@@ -129,23 +136,22 @@ export const createTripDayHandler: RouteHandler = async (request, context, param
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    {
-      item: {
-        id: dayId,
-        tripId,
-        dayIndex: input.dayIndex,
-        date: input.date,
-        title: input.title || null,
-        createdAt: now,
-        updatedAt: now
-      }
-    },
-    201,
-    context.requestId
-  );
+  const body = {
+    item: {
+      id: dayId,
+      tripId,
+      dayIndex: input.dayIndex,
+      date: input.date,
+      title: input.title || null,
+      createdAt: now,
+      updatedAt: now
+    }
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 201, body))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, body, 201, context.requestId);
 };
 
 export const updateTripDayHandler: RouteHandler = async (request, context, params) => {
@@ -160,7 +166,13 @@ export const updateTripDayHandler: RouteHandler = async (request, context, param
     return notFound(request, context, "Trip day not found.");
   }
 
-  const body = await parseJsonObject(request, context);
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
+  const body = parseJsonObject(requestBodyText, request, context);
   if (body instanceof Response) {
     return body;
   }
@@ -197,13 +209,14 @@ export const updateTripDayHandler: RouteHandler = async (request, context, param
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    { item: toDayResponse({ ...existing, date: updatedDate, title: updatedTitle, updated_at: updatedAt }) },
-    200,
-    context.requestId
-  );
+  const responseBody = {
+    item: toDayResponse({ ...existing, date: updatedDate, title: updatedTitle, updated_at: updatedAt })
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 200, responseBody))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, responseBody, 200, context.requestId);
 };
 
 export const createTripPlaceHandler: RouteHandler = async (request, context, params) => {
@@ -217,7 +230,13 @@ export const createTripPlaceHandler: RouteHandler = async (request, context, par
     return notFound(request, context, "Trip not found.");
   }
 
-  const input = await parseTripPlaceInput(request, context);
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
+  const input = parseTripPlaceInput(requestBodyText, request, context);
   if (input instanceof Response) {
     return input;
   }
@@ -263,32 +282,31 @@ export const createTripPlaceHandler: RouteHandler = async (request, context, par
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    {
-      item: toPlaceResponse({
-        id: placeId,
-        trip_id: tripId,
-        day_id: input.dayId,
-        provider_place_id: input.providerPlaceId || null,
-        source_place_id: input.sourcePlaceId || null,
-        title: input.title,
-        category: input.category,
-        lat: input.lat ?? null,
-        lng: input.lng ?? null,
-        address: input.address || null,
-        visit_order: input.visitOrder,
-        starts_at: input.startsAt || null,
-        duration_minutes: input.durationMinutes ?? null,
-        notes: input.notes || null,
-        created_at: now,
-        updated_at: now
-      })
-    },
-    201,
-    context.requestId
-  );
+  const body = {
+    item: toPlaceResponse({
+      id: placeId,
+      trip_id: tripId,
+      day_id: input.dayId,
+      provider_place_id: input.providerPlaceId || null,
+      source_place_id: input.sourcePlaceId || null,
+      title: input.title,
+      category: input.category,
+      lat: input.lat ?? null,
+      lng: input.lng ?? null,
+      address: input.address || null,
+      visit_order: input.visitOrder,
+      starts_at: input.startsAt || null,
+      duration_minutes: input.durationMinutes ?? null,
+      notes: input.notes || null,
+      created_at: now,
+      updated_at: now
+    })
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 201, body))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, body, 201, context.requestId);
 };
 
 export const updateTripPlaceHandler: RouteHandler = async (request, context, params) => {
@@ -303,12 +321,18 @@ export const updateTripPlaceHandler: RouteHandler = async (request, context, par
     return notFound(request, context, "Trip place not found.");
   }
 
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
   const existing = await getTripPlace(context.env.DB, tripId, placeId);
   if (!existing) {
     return notFound(request, context, "Trip place not found.");
   }
 
-  const body = await parseJsonObject(request, context);
+  const body = parseJsonObject(requestBodyText, request, context);
   if (body instanceof Response) {
     return body;
   }
@@ -364,24 +388,23 @@ export const updateTripPlaceHandler: RouteHandler = async (request, context, par
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    {
-      item: toPlaceResponse({
-        ...existing,
-        title,
-        category,
-        visit_order: visitOrder,
-        starts_at: startsAt,
-        duration_minutes: durationMinutes,
-        notes,
-        updated_at: updatedAt
-      })
-    },
-    200,
-    context.requestId
-  );
+  const responseBody = {
+    item: toPlaceResponse({
+      ...existing,
+      title,
+      category,
+      visit_order: visitOrder,
+      starts_at: startsAt,
+      duration_minutes: durationMinutes,
+      notes,
+      updated_at: updatedAt
+    })
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 200, responseBody))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, responseBody, 200, context.requestId);
 };
 
 export const deleteTripPlaceHandler: RouteHandler = async (request, context, params) => {
@@ -394,6 +417,12 @@ export const deleteTripPlaceHandler: RouteHandler = async (request, context, par
   const placeId = params.placeId;
   if (!tripId || !placeId || !(await userOwnsTrip(context.env.DB, user.id, tripId))) {
     return notFound(request, context, "Trip place not found.");
+  }
+
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
   }
 
   const existing = await getTripPlace(context.env.DB, tripId, placeId);
@@ -411,6 +440,10 @@ export const deleteTripPlaceHandler: RouteHandler = async (request, context, par
   }
 
   if (!(await writeAuditLog(context.env.DB, user.id, "trip_place.delete", "trip_place", placeId))) {
+    return databaseError(request, context);
+  }
+
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 204, undefined))) {
     return databaseError(request, context);
   }
 
@@ -433,7 +466,13 @@ export const createShareLinkHandler: RouteHandler = async (request, context, par
     return notFound(request, context, "Trip not found.");
   }
 
-  const body = await parseOptionalJsonObject(request, context);
+  const requestBodyText = await request.text();
+  const idempotency = await prepareIdempotency(request, context, user.id, requestBodyText);
+  if (idempotency instanceof Response) {
+    return idempotency;
+  }
+
+  const body = parseOptionalJsonObject(requestBodyText, request, context);
   if (body instanceof Response) {
     return body;
   }
@@ -468,22 +507,21 @@ export const createShareLinkHandler: RouteHandler = async (request, context, par
     return databaseError(request, context);
   }
 
-  return jsonResponse(
-    request,
-    context.env,
-    {
-      item: {
-        id: shareId,
-        tripId,
-        shareId: shareToken,
-        sharePath: `/api/v1/share/${shareToken}`,
-        expiresAt: normalizedExpiresAt,
-        createdAt: now
-      }
-    },
-    201,
-    context.requestId
-  );
+  const responseBody = {
+    item: {
+      id: shareId,
+      tripId,
+      shareId: shareToken,
+      sharePath: `/api/v1/share/${shareToken}`,
+      expiresAt: normalizedExpiresAt,
+      createdAt: now
+    }
+  };
+  if (!(await storeIdempotencyResult(context.env.DB, idempotency, 201, responseBody))) {
+    return databaseError(request, context);
+  }
+
+  return jsonResponse(request, context.env, responseBody, 201, context.requestId);
 };
 
 export const getSharedTripHandler: RouteHandler = async (request, context, params) => {
@@ -593,11 +631,12 @@ function requireUser(request: Request, context: RequestContext): AuthenticatedUs
   );
 }
 
-async function parseTripDayInput(
+function parseTripDayInput(
+  requestBodyText: string,
   request: Request,
   context: RequestContext
-): Promise<TripDayInput | Response> {
-  const body = await parseJsonObject(request, context);
+): TripDayInput | Response {
+  const body = parseJsonObject(requestBodyText, request, context);
   if (body instanceof Response) {
     return body;
   }
@@ -612,11 +651,12 @@ async function parseTripDayInput(
   return { dayIndex, date, title };
 }
 
-async function parseTripPlaceInput(
+function parseTripPlaceInput(
+  requestBodyText: string,
   request: Request,
   context: RequestContext
-): Promise<TripPlaceInput | Response> {
-  const body = await parseJsonObject(request, context);
+): TripPlaceInput | Response {
+  const body = parseJsonObject(requestBodyText, request, context);
   if (body instanceof Response) {
     return body;
   }
@@ -660,14 +700,14 @@ async function parseTripPlaceInput(
   };
 }
 
-async function parseJsonObject(
+function parseJsonObject(
+  requestBodyText: string,
   request: Request,
   context: RequestContext
-): Promise<Record<string, unknown> | Response> {
-  const text = await request.text();
+): Record<string, unknown> | Response {
   let body: unknown;
   try {
-    body = JSON.parse(text);
+    body = JSON.parse(requestBodyText);
   } catch {
     return errorResponse(
       request,
@@ -686,18 +726,18 @@ async function parseJsonObject(
   return body;
 }
 
-async function parseOptionalJsonObject(
+function parseOptionalJsonObject(
+  requestBodyText: string,
   request: Request,
   context: RequestContext
-): Promise<Record<string, unknown> | undefined | Response> {
-  const text = await request.text();
-  if (!text.trim()) {
+): Record<string, unknown> | undefined | Response {
+  if (!requestBodyText.trim()) {
     return undefined;
   }
 
   let body: unknown;
   try {
-    body = JSON.parse(text);
+    body = JSON.parse(requestBodyText);
   } catch {
     return errorResponse(
       request,

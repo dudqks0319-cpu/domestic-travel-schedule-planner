@@ -83,7 +83,7 @@ They must match the auth provider that signs mobile access tokens:
 2. Trip, planner, route, and monetization routes require a bearer token before reaching handlers.
 3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`, then checked against configured `JWT_ISSUER` and `JWT_AUDIENCE`.
 4. Trip list, create, read, update, delete, day, and place handlers enforce owner-only access by filtering D1 queries with token `sub`.
-5. Trip update/delete accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
+5. Current retryable mutation handlers accept `X-Idempotency-Key` for retry replay and return `409` when a key is reused with a different request payload.
 6. Monetization handlers require auth, validate inputs, hash affiliate URLs and entitlement transaction ids, and do not store raw receipts or purchase tokens.
 7. Entitlement verify is a skeleton only: it records `pending_verification` and does not grant premium access until real Apple/Google server verification is implemented.
 8. Share links are opaque `sh_` tokens, public, read-only, and return `404` when expired or missing.
@@ -93,6 +93,5 @@ They must match the auth provider that signs mobile access tokens:
 ## Next Required Slice
 
 1. Add real Apple/Google receipt verification before granting premium entitlements.
-2. Extend idempotency support to remaining retryable mutation endpoints.
-3. Replace placeholder JWT issuer/audience values with the real auth provider values before preview deploy.
-4. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.
+2. Replace placeholder JWT issuer/audience values with the real auth provider values before preview deploy.
+3. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids before preview deploy.

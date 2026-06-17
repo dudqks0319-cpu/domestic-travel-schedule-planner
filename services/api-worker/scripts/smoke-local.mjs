@@ -141,24 +141,69 @@ async function main() {
   );
   checks.push("POST /api/v1/trips invalid payload -> 400");
 
+  const createTripPayload = JSON.stringify({
+    destinationName: "서울",
+    startDate: "2026-06-20",
+    endDate: "2026-06-22",
+    styleKey: "healing_trip"
+  });
   const createdTrip = await request("/api/v1/trips", {
     method: "POST",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-create-0001"
     },
-    body: JSON.stringify({
-      destinationName: "서울",
-      startDate: "2026-06-20",
-      endDate: "2026-06-22",
-      styleKey: "healing_trip"
-    })
+    body: createTripPayload
   });
   const createdTripBody = await readJson(createdTrip);
   assert(createdTrip.status === 201, "POST /api/v1/trips with valid token should return 201");
   assert(createdTripBody.item.destinationName === "서울", "created trip should preserve destinationName");
   assert(createdTripBody.item.styleKey === "healing_trip", "created trip should preserve styleKey");
   checks.push("POST /api/v1/trips valid payload -> 201");
+
+  const replayedTripCreate = await request("/api/v1/trips", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-create-0001"
+    },
+    body: createTripPayload
+  });
+  const replayedTripCreateBody = await readJson(replayedTripCreate);
+  assert(replayedTripCreate.status === 201, "idempotent trip create replay should return 201");
+  assert(
+    replayedTripCreate.headers.get("x-idempotent-replay") === "true",
+    "idempotent trip create replay should expose replay header"
+  );
+  assert(
+    replayedTripCreateBody.item.id === createdTripBody.item.id,
+    "idempotent trip create replay should preserve original trip id"
+  );
+  checks.push("POST /api/v1/trips idempotent replay -> 201");
+
+  const conflictingTripCreate = await request("/api/v1/trips", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-create-0001"
+    },
+    body: JSON.stringify({
+      destinationName: "제주",
+      startDate: "2026-06-20",
+      endDate: "2026-06-22",
+      styleKey: "healing_trip"
+    })
+  });
+  const conflictingTripCreateBody = await readJson(conflictingTripCreate);
+  assert(conflictingTripCreate.status === 409, "trip create idempotency conflict should return 409");
+  assert(
+    conflictingTripCreateBody.error.code === "idempotency_key_reuse",
+    "trip create idempotency conflict should use idempotency_key_reuse"
+  );
+  checks.push("POST /api/v1/trips idempotency conflict -> 409");
 
   const listedTrips = await request("/api/v1/trips", {
     headers: {
@@ -522,22 +567,45 @@ async function main() {
   assert(invalidDayBody.error.code === "validation_failed", "invalid day response should use validation_failed code");
   checks.push("POST /api/v1/trips/:tripId/days invalid payload -> 400");
 
+  const createDayPayload = JSON.stringify({
+    dayIndex: 0,
+    date: "2026-06-20",
+    title: "서울 도착"
+  });
   const createdDay = await request(`/api/v1/trips/${tripId}/days`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-day-create-0001"
     },
-    body: JSON.stringify({
-      dayIndex: 0,
-      date: "2026-06-20",
-      title: "서울 도착"
-    })
+    body: createDayPayload
   });
   const createdDayBody = await readJson(createdDay);
   assert(createdDay.status === 201, "POST /api/v1/trips/:tripId/days valid payload should return 201");
   assert(createdDayBody.item.date === "2026-06-20", "created day should preserve date");
   checks.push("POST /api/v1/trips/:tripId/days valid payload -> 201");
+
+  const replayedDayCreate = await request(`/api/v1/trips/${tripId}/days`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-day-create-0001"
+    },
+    body: createDayPayload
+  });
+  const replayedDayCreateBody = await readJson(replayedDayCreate);
+  assert(replayedDayCreate.status === 201, "idempotent day create replay should return 201");
+  assert(
+    replayedDayCreate.headers.get("x-idempotent-replay") === "true",
+    "idempotent day create replay should expose replay header"
+  );
+  assert(
+    replayedDayCreateBody.item.id === createdDayBody.item.id,
+    "idempotent day create replay should preserve original day id"
+  );
+  checks.push("POST /api/v1/trips/:tripId/days idempotent replay -> 201");
 
   const dayId = createdDayBody.item.id;
   const crossUserDay = await request(`/api/v1/trips/${tripId}/days`, {
@@ -553,18 +621,41 @@ async function main() {
   assert(crossUserDayBody.error.code === "not_found", "cross-user day response should hide ownership");
   checks.push("POST /api/v1/trips/:tripId/days cross-user -> 404");
 
+  const updateDayPayload = JSON.stringify({ title: "한강 산책" });
   const updatedDay = await request(`/api/v1/trips/${tripId}/days/${dayId}`, {
     method: "PATCH",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-day-update-0001"
     },
-    body: JSON.stringify({ title: "한강 산책" })
+    body: updateDayPayload
   });
   const updatedDayBody = await readJson(updatedDay);
   assert(updatedDay.status === 200, "PATCH /api/v1/trips/:tripId/days/:dayId should return 200");
   assert(updatedDayBody.item.title === "한강 산책", "updated day should preserve title");
   checks.push("PATCH /api/v1/trips/:tripId/days/:dayId owner -> 200");
+
+  const replayedDayUpdate = await request(`/api/v1/trips/${tripId}/days/${dayId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-day-update-0001"
+    },
+    body: updateDayPayload
+  });
+  const replayedDayUpdateBody = await readJson(replayedDayUpdate);
+  assert(replayedDayUpdate.status === 200, "idempotent day update replay should return 200");
+  assert(
+    replayedDayUpdate.headers.get("x-idempotent-replay") === "true",
+    "idempotent day update replay should expose replay header"
+  );
+  assert(
+    replayedDayUpdateBody.item.updatedAt === updatedDayBody.item.updatedAt,
+    "idempotent day update replay should preserve original response"
+  );
+  checks.push("PATCH /api/v1/trips/:tripId/days/:dayId idempotent replay -> 200");
 
   const invalidPlaceDay = await request(`/api/v1/trips/${tripId}/places`, {
     method: "POST",
@@ -584,40 +675,86 @@ async function main() {
   assert(invalidPlaceDayBody.error.code === "not_found", "missing day place response should use not_found");
   checks.push("POST /api/v1/trips/:tripId/places missing day -> 404");
 
+  const createPlacePayload = JSON.stringify({
+    dayId,
+    title: "경복궁",
+    category: "attraction",
+    visitOrder: 0,
+    lat: 37.5796,
+    lng: 126.977,
+    durationMinutes: 90
+  });
   const createdPlace = await request(`/api/v1/trips/${tripId}/places`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-place-create-0001"
     },
-    body: JSON.stringify({
-      dayId,
-      title: "경복궁",
-      category: "attraction",
-      visitOrder: 0,
-      lat: 37.5796,
-      lng: 126.977,
-      durationMinutes: 90
-    })
+    body: createPlacePayload
   });
   const createdPlaceBody = await readJson(createdPlace);
   assert(createdPlace.status === 201, "POST /api/v1/trips/:tripId/places valid payload should return 201");
   assert(createdPlaceBody.item.title === "경복궁", "created place should preserve title");
   checks.push("POST /api/v1/trips/:tripId/places valid payload -> 201");
 
+  const replayedPlaceCreate = await request(`/api/v1/trips/${tripId}/places`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-place-create-0001"
+    },
+    body: createPlacePayload
+  });
+  const replayedPlaceCreateBody = await readJson(replayedPlaceCreate);
+  assert(replayedPlaceCreate.status === 201, "idempotent place create replay should return 201");
+  assert(
+    replayedPlaceCreate.headers.get("x-idempotent-replay") === "true",
+    "idempotent place create replay should expose replay header"
+  );
+  assert(
+    replayedPlaceCreateBody.item.id === createdPlaceBody.item.id,
+    "idempotent place create replay should preserve original place id"
+  );
+  checks.push("POST /api/v1/trips/:tripId/places idempotent replay -> 201");
+
   const placeId = createdPlaceBody.item.id;
+  const updatePlacePayload = JSON.stringify({ notes: "오전 방문", visitOrder: 1 });
   const updatedPlace = await request(`/api/v1/trips/${tripId}/places/${placeId}`, {
     method: "PATCH",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-place-update-0001"
     },
-    body: JSON.stringify({ notes: "오전 방문", visitOrder: 1 })
+    body: updatePlacePayload
   });
   const updatedPlaceBody = await readJson(updatedPlace);
   assert(updatedPlace.status === 200, "PATCH /api/v1/trips/:tripId/places/:placeId should return 200");
   assert(updatedPlaceBody.item.notes === "오전 방문", "updated place should preserve notes");
   checks.push("PATCH /api/v1/trips/:tripId/places/:placeId owner -> 200");
+
+  const replayedPlaceUpdate = await request(`/api/v1/trips/${tripId}/places/${placeId}`, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-place-update-0001"
+    },
+    body: updatePlacePayload
+  });
+  const replayedPlaceUpdateBody = await readJson(replayedPlaceUpdate);
+  assert(replayedPlaceUpdate.status === 200, "idempotent place update replay should return 200");
+  assert(
+    replayedPlaceUpdate.headers.get("x-idempotent-replay") === "true",
+    "idempotent place update replay should expose replay header"
+  );
+  assert(
+    replayedPlaceUpdateBody.item.updatedAt === updatedPlaceBody.item.updatedAt,
+    "idempotent place update replay should preserve original response"
+  );
+  checks.push("PATCH /api/v1/trips/:tripId/places/:placeId idempotent replay -> 200");
 
   const crossUserPlace = await request(`/api/v1/trips/${tripId}/places/${placeId}`, {
     method: "PATCH",
@@ -649,11 +786,26 @@ async function main() {
   const deletedPlace = await request(`/api/v1/trips/${tripId}/places/${deletablePlaceBody.item.id}`, {
     method: "DELETE",
     headers: {
-      authorization: `Bearer ${userAToken}`
+      authorization: `Bearer ${userAToken}`,
+      "x-idempotency-key": "trip-place-delete-0001"
     }
   });
   assert(deletedPlace.status === 204, "DELETE /api/v1/trips/:tripId/places/:placeId owner should return 204");
   checks.push("DELETE /api/v1/trips/:tripId/places/:placeId owner -> 204");
+
+  const replayedPlaceDelete = await request(`/api/v1/trips/${tripId}/places/${deletablePlaceBody.item.id}`, {
+    method: "DELETE",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "x-idempotency-key": "trip-place-delete-0001"
+    }
+  });
+  assert(replayedPlaceDelete.status === 204, "idempotent place delete replay should return 204");
+  assert(
+    replayedPlaceDelete.headers.get("x-idempotent-replay") === "true",
+    "idempotent place delete replay should expose replay header"
+  );
+  checks.push("DELETE /api/v1/trips/:tripId/places/:placeId idempotent replay -> 204");
 
   const crossUserShare = await request(`/api/v1/trips/${tripId}/share`, {
     method: "POST",
@@ -682,18 +834,41 @@ async function main() {
   );
   checks.push("POST /api/v1/trips/:tripId/share invalid payload -> 400");
 
+  const createSharePayload = JSON.stringify({ expiresAt: "2026-07-01T00:00:00.000Z" });
   const createdShare = await request(`/api/v1/trips/${tripId}/share`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${userAToken}`,
-      "content-type": "application/json"
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-share-create-0001"
     },
-    body: JSON.stringify({ expiresAt: "2026-07-01T00:00:00.000Z" })
+    body: createSharePayload
   });
   const createdShareBody = await readJson(createdShare);
   assert(createdShare.status === 201, "POST /api/v1/trips/:tripId/share owner should return 201");
   assert(createdShareBody.item.shareId.startsWith("sh_"), "share id should use opaque sh_ token");
   checks.push("POST /api/v1/trips/:tripId/share owner -> 201");
+
+  const replayedShareCreate = await request(`/api/v1/trips/${tripId}/share`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${userAToken}`,
+      "content-type": "application/json",
+      "x-idempotency-key": "trip-share-create-0001"
+    },
+    body: createSharePayload
+  });
+  const replayedShareCreateBody = await readJson(replayedShareCreate);
+  assert(replayedShareCreate.status === 201, "idempotent share create replay should return 201");
+  assert(
+    replayedShareCreate.headers.get("x-idempotent-replay") === "true",
+    "idempotent share create replay should expose replay header"
+  );
+  assert(
+    replayedShareCreateBody.item.shareId === createdShareBody.item.shareId,
+    "idempotent share create replay should preserve original share id"
+  );
+  checks.push("POST /api/v1/trips/:tripId/share idempotent replay -> 201");
 
   const publicShare = await request(`/api/v1/share/${createdShareBody.item.shareId}`);
   const publicShareBody = await readJson(publicShare);
