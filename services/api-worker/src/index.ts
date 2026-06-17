@@ -1,16 +1,13 @@
-import type { ApiErrorBody, Env, RequestContext } from "./types";
-
-type Handler = (
-  request: Request,
-  context: RequestContext,
-  params: Record<string, string>
-) => Response | Promise<Response>;
+import { verifyAccessToken } from "./auth.js";
+import { createCorsHeaders, errorResponse, jsonResponse } from "./http.js";
+import { createTripHandler, getTripHandler, listTripsHandler } from "./trips.js";
+import type { Env, RequestContext, RouteHandler } from "./types.js";
 
 interface RouteDefinition {
   method: string;
   pattern: RegExp;
   auth: "public" | "required";
-  handler: Handler;
+  handler: RouteHandler;
 }
 
 const API_VERSION = "v1";
@@ -18,69 +15,6 @@ const API_VERSION = "v1";
 function createRequestId(request: Request): string {
   const incoming = request.headers.get("x-request-id")?.trim();
   return incoming || crypto.randomUUID();
-}
-
-function parseAllowedOrigins(raw: string | undefined): string[] {
-  if (!raw) {
-    return [];
-  }
-
-  return raw
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
-
-function createCorsHeaders(request: Request, env: Env): Headers {
-  const headers = new Headers();
-  const origin = request.headers.get("origin");
-  const allowedOrigins = parseAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
-  const allowWildcard = env.ENVIRONMENT !== "production" && allowedOrigins.includes("*");
-
-  if (origin && (allowWildcard || allowedOrigins.includes(origin))) {
-    headers.set("Access-Control-Allow-Origin", origin);
-    headers.set("Vary", "Origin");
-  }
-
-  headers.set("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
-  headers.set("Access-Control-Allow-Headers", "Authorization,Content-Type,X-Request-Id");
-  headers.set("Access-Control-Max-Age", "86400");
-  return headers;
-}
-
-function jsonResponse(
-  request: Request,
-  env: Env,
-  body: unknown,
-  status = 200,
-  requestId?: string
-): Response {
-  const headers = createCorsHeaders(request, env);
-  headers.set("Content-Type", "application/json; charset=utf-8");
-  if (requestId) {
-    headers.set("X-Request-Id", requestId);
-  }
-
-  return new Response(JSON.stringify(body), { status, headers });
-}
-
-function errorResponse(
-  request: Request,
-  env: Env,
-  requestId: string,
-  status: number,
-  code: string,
-  message: string
-): Response {
-  const body: ApiErrorBody = {
-    error: {
-      code,
-      message,
-      requestId
-    }
-  };
-
-  return jsonResponse(request, env, body, status, requestId);
 }
 
 function extractBearerToken(request: Request): string | undefined {
@@ -144,9 +78,9 @@ const routes: RouteDefinition[] = [
   { method: "POST", pattern: pattern("/api/v1/planner/generate"), auth: "required", handler: notImplementedHandler },
   { method: "POST", pattern: pattern("/api/v1/planner/replan"), auth: "required", handler: notImplementedHandler },
   { method: "POST", pattern: pattern("/api/v1/routes/optimize"), auth: "required", handler: notImplementedHandler },
-  { method: "GET", pattern: pattern("/api/v1/trips"), auth: "required", handler: notImplementedHandler },
-  { method: "POST", pattern: pattern("/api/v1/trips"), auth: "required", handler: notImplementedHandler },
-  { method: "GET", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
+  { method: "GET", pattern: pattern("/api/v1/trips"), auth: "required", handler: listTripsHandler },
+  { method: "POST", pattern: pattern("/api/v1/trips"), auth: "required", handler: createTripHandler },
+  { method: "GET", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: getTripHandler },
   { method: "PATCH", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
   { method: "DELETE", pattern: pattern("/api/v1/trips/:tripId"), auth: "required", handler: notImplementedHandler },
   { method: "POST", pattern: pattern("/api/v1/trips/:tripId/days"), auth: "required", handler: notImplementedHandler },
@@ -198,21 +132,39 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   const token = extractBearerToken(request);
-  if (matched.route.auth === "required" && !token) {
-    return errorResponse(
-      request,
-      env,
-      requestId,
-      401,
-      "unauthorized",
-      "A bearer access token is required for this route."
-    );
+  let user: RequestContext["user"];
+  if (matched.route.auth === "required") {
+    if (!token) {
+      return errorResponse(
+        request,
+        env,
+        requestId,
+        401,
+        "unauthorized",
+        "A bearer access token is required for this route."
+      );
+    }
+
+    const authResult = await verifyAccessToken(token, env);
+    if (!authResult.ok) {
+      return errorResponse(
+        request,
+        env,
+        requestId,
+        authResult.status,
+        authResult.code,
+        authResult.message
+      );
+    }
+
+    user = authResult.user;
   }
 
   const context: RequestContext = {
     requestId,
     env,
-    authenticated: Boolean(token)
+    authenticated: Boolean(user),
+    user
   };
 
   return matched.route.handler(request, context, matched.params);

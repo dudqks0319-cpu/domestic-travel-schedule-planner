@@ -91,13 +91,16 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Add auth gate skeleton for trip, planner, route, and monetization endpoints.
 - [x] Add D1, KV, and R2 binding types plus `wrangler.toml` preview/production placeholders.
 - [x] Add initial D1 migration covering users, trips, places, cache, share links, entitlements, ads, affiliate clicks, sponsored places, and audit logs.
+- [x] Verify HS256 bearer access tokens with Web Crypto against `JWT_ACCESS_SECRET`.
+- [x] Implement D1-backed trip list, create, and owner-only read handlers.
+- [x] Add negative smoke coverage for missing, malformed, expired, and cross-user access.
 
 Remaining before Worker production cutover:
 
 1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
-2. Implement JWT signature verification and ownership checks.
-3. Implement D1 repositories and handlers behind registered routes.
-4. Add negative tests for malformed/expired tokens and cross-user access.
+2. Implement trip update/delete, trip-day, trip-place, share-link, and monetization handlers.
+3. Add repository-level tests beyond the current Worker smoke surface.
+4. Add JWT issuer/audience policy if the production auth provider requires it.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 

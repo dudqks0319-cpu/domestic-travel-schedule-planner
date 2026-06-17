@@ -48,10 +48,16 @@ export interface Env {
   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON?: string;
 }
 
+export interface AuthenticatedUser {
+  id: string;
+  subject: string;
+}
+
 export interface RequestContext {
   requestId: string;
   env: Env;
   authenticated: boolean;
+  user?: AuthenticatedUser;
 }
 
 export interface ApiErrorBody {
@@ -61,3 +67,9 @@ export interface ApiErrorBody {
     requestId: string;
   };
 }
+
+export type RouteHandler = (
+  request: Request,
+  context: RequestContext,
+  params: Record<string, string>
+) => Response | Promise<Response>;

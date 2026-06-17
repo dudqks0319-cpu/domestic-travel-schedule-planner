@@ -65,13 +65,14 @@ Production uses the same secret names with `--env production`.
 
 1. Health and share routes are public.
 2. Trip, planner, route, and monetization routes require a bearer token before reaching handlers.
-3. Token signature verification and ownership checks are not implemented in this slice.
-4. CORS is allow-list based. `*` is ignored in production.
-5. API responses include a correlation id via `X-Request-Id` and error payloads.
+3. Bearer access tokens are verified with HS256 Web Crypto against `JWT_ACCESS_SECRET`.
+4. Trip list, create, and read handlers enforce owner-only access by filtering D1 queries with token `sub`.
+5. CORS is allow-list based. `*` is ignored in production.
+6. API responses include a correlation id via `X-Request-Id` and error payloads.
 
 ## Next Required Slice
 
-1. Implement JWT verification with Web Crypto.
-2. Add D1 repositories for users, trips, days, places, and share links.
-3. Enforce trip ownership and read-only share access.
-4. Add negative tests for missing, malformed, expired, and cross-user access.
+1. Add D1 repositories and handlers for trip days, trip places, and share links.
+2. Implement update/delete trip mutations with idempotency and ownership checks.
+3. Make share links read-only and hard to guess.
+4. Add monetization handlers for entitlements, ad events, and affiliate clicks.
