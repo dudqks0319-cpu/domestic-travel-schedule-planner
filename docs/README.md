@@ -10,6 +10,7 @@ This folder contains the v3.0 planning baseline for architecture, phased API int
 4. [Phase 2 Mobile UX Verification](./phase-2-mobile-ux-verification.md)
 5. [Phase 3 Provider Degraded Mode](./phase-3-provider-degraded-mode.md)
 6. [Cloudflare Worker Deployment Path](./cloudflare-deployment.md)
+7. [Environment Variables](./env.md)
 
 ## Working Assumptions
 

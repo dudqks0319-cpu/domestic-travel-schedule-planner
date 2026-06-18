@@ -149,7 +149,7 @@ export default function LoginScreen() {
           ) : null}
 
           <View style={styles.signupRow}>
-            <Text style={styles.signupText}>카카오는 개발 빌드와 앱 키 설정 후 사용할 수 있어요. </Text>
+            <Text style={styles.signupText}>카카오는 개발 빌드와 네이티브 앱 키 설정 후 사용할 수 있어요. </Text>
             <TouchableOpacity onPress={() => router.push("/auth/signup")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={styles.signupLink}>기본 설정으로 이동</Text>
             </TouchableOpacity>

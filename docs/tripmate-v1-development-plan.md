@@ -53,7 +53,7 @@ TripMate v1.0 must include:
 8. Unified search with merged provider results, deduplication, filters, and add-to-itinerary flow.
 9. Trip save/list/detail/edit/delete and read-only share links.
 10. Monetization scaffolding for ads, premium entitlement, affiliate clicks, and sponsored places.
-11. Cloudflare Workers + Hono + D1 + KV/Cache + R2 deployment path.
+11. Cloudflare Workers native fetch router + D1 + KV/Cache + R2 deployment path.
 12. Documentation for environment variables, providers, monetization, privacy/security, deployment, and local operation.
 
 ## 4. Non-Negotiable Constraints
@@ -158,7 +158,7 @@ Fallback behavior:
 Production API target:
 
 1. `services/api-worker`.
-2. Hono on Cloudflare Workers.
+2. Cloudflare Workers native `fetch` router with explicit route definitions.
 3. D1 for relational data.
 4. KV or Cache API for provider lookup cache.
 5. R2 for share thumbnails or export files.
@@ -322,7 +322,7 @@ Commit:
 Deliverables:
 
 1. Create `services/api-worker`.
-2. Add Hono, TypeScript, Wrangler, and Worker bindings.
+2. Add TypeScript, Wrangler, and Worker bindings.
 3. Add `wrangler.toml` with preview/prod separation.
 4. Implement health endpoints.
 5. Implement error schema, correlation ID, CORS, auth middleware skeleton, D1/KV/R2 binding types, and route registration.

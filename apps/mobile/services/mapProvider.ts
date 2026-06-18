@@ -27,16 +27,25 @@ function readPublicEnv(key: string): string | undefined {
   return value ? value : undefined;
 }
 
+export function getPublicAppEnv(): "development" | "preview" | "production" {
+  const value = readPublicEnv("EXPO_PUBLIC_APP_ENV");
+  if (value === "preview" || value === "production") {
+    return value;
+  }
+
+  return "development";
+}
+
 export function isProductionRuntime(): boolean {
-  return readPublicEnv("NODE_ENV") === "production";
+  return getPublicAppEnv() === "production";
 }
 
 export function canUseMockMapPreview(): boolean {
   if (isProductionRuntime()) {
-    return readPublicEnv("EXPO_PUBLIC_ALLOW_MOCK_MAP_PREVIEW") === "true";
+    return false;
   }
 
-  return true;
+  return readPublicEnv("EXPO_PUBLIC_ALLOW_MOCK_MAP_PREVIEW") === "true";
 }
 
 export function getKakaoJavascriptKey(): string | undefined {
