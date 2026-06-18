@@ -10,9 +10,9 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 import Button from "../../components/common/Button";
 
 const { width, height } = Dimensions.get("window");
@@ -20,35 +20,35 @@ const { width, height } = Dimensions.get("window");
 const slides = [
   {
     id: "1",
-    emoji: "🗺️",
+    iconName: "map-outline" as const,
     title: "나에게 딱 맞는\n여행을 만들어요",
-    description: "혼자, 가족, 부모님과...\n누구와 가든 맞춤 추천!",
-    backgroundColor: "#4A90E2",
-    secondaryColor: "#74B3FF"
+    description: "동행자, 이동 방식, 취향을 반영해 바로 실행 가능한 일정을 만듭니다.",
+    backgroundColor: Theme.colors.primary,
+    secondaryColor: Theme.colors.primaryLight
   },
   {
     id: "2",
-    emoji: "📍",
+    iconName: "navigate-outline" as const,
     title: "가장 효율적인\n동선을 짜드려요",
-    description: "지도 위에 최적 경로를 그려주고\n이동시간까지 자동 계산!",
-    backgroundColor: "#7ED321",
-    secondaryColor: "#A8E86C"
+    description: "지도 위 장소와 이동 시간을 함께 보고 하루 동선을 빠르게 정리합니다.",
+    backgroundColor: "#0D9488",
+    secondaryColor: "#CCFBF1"
   },
   {
     id: "3",
-    emoji: "✈️",
+    iconName: "restaurant-outline" as const,
     title: "비행기부터 맛집까지\nA to Z 한번에",
-    description: "항공권, 숙소, 렌트카, 맛집, 카페\n하나의 앱에서 전부 해결!",
-    backgroundColor: "#F5A623",
-    secondaryColor: "#FFD280"
+    description: "관광지, 숙소, 맛집, 카페 후보를 일정 흐름 안에서 비교합니다.",
+    backgroundColor: "#F59E0B",
+    secondaryColor: "#FEF3C7"
   },
   {
     id: "4",
-    emoji: "🏥",
+    iconName: "medkit-outline" as const,
     title: "안전한 여행을\n도와드려요",
-    description: "가까운 병원, 약국, 기저귀갈이대\n어디서든 바로 찾아줘요!",
-    backgroundColor: "#0D9488",
-    secondaryColor: "#2DD4BF"
+    description: "병원, 약국, 가족 편의 정보를 필요할 때 바로 확인합니다.",
+    backgroundColor: "#2563EB",
+    secondaryColor: "#DBEAFE"
   }
 ] as const;
 
@@ -71,7 +71,7 @@ export default function OnboardingScreen() {
 
   const handleFinish = async () => {
     await AsyncStorage.setItem("hasSeenOnboarding", "true");
-    router.replace("/auth/signup");
+    router.replace("/(tabs)");
   };
 
   return (
@@ -89,7 +89,9 @@ export default function OnboardingScreen() {
             <View style={[styles.bgCircle1, { backgroundColor: item.secondaryColor }]} />
             <View style={[styles.bgCircle2, { backgroundColor: `${item.secondaryColor}40` }]} />
             <View style={styles.slideContent}>
-              <Text style={styles.emoji}>{item.emoji}</Text>
+              <View style={styles.iconPanel}>
+                <Ionicons name={item.iconName} size={58} color="#FFFFFF" />
+              </View>
               <Text style={styles.title}>{item.title}</Text>
               <Text style={styles.description}>{item.description}</Text>
             </View>
@@ -133,7 +135,7 @@ export default function OnboardingScreen() {
                   {
                     width: dotWidth,
                     opacity: dotOpacity,
-                    backgroundColor: slides[currentIndex]?.backgroundColor ?? Colors.young.primary
+                    backgroundColor: slides[currentIndex]?.backgroundColor ?? Theme.colors.primary
                   }
                 ]}
               />
@@ -149,9 +151,10 @@ export default function OnboardingScreen() {
           ) : null}
 
           <Button
-            title={currentIndex === slides.length - 1 ? "시작하기! 🎉" : "다음"}
+            title={currentIndex === slides.length - 1 ? "로그인 없이 시작" : "다음"}
             onPress={handleNext}
             size="large"
+            iconName={currentIndex === slides.length - 1 ? "arrow-forward-outline" : undefined}
             color={slides[currentIndex]?.backgroundColor}
             style={{ flex: currentIndex === slides.length - 1 ? 1 : undefined, minWidth: 120 }}
           />
@@ -164,7 +167,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF"
+    backgroundColor: Theme.colors.surface
   },
   slide: {
     width,
@@ -195,12 +198,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 40
   },
-  emoji: {
-    fontSize: 100,
-    marginBottom: 30
+  iconPanel: {
+    width: 112,
+    height: 112,
+    borderRadius: 32,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 28
   },
   title: {
-    fontSize: 30,
+    fontSize: 29,
     fontWeight: "800",
     color: "#FFFFFF",
     textAlign: "center",
@@ -208,15 +218,16 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   description: {
-    fontSize: 17,
+    fontSize: 16,
     color: "rgba(255,255,255,0.85)",
     textAlign: "center",
-    lineHeight: 26
+    lineHeight: 25,
+    fontWeight: "600"
   },
   bottomContainer: {
     flex: 1,
-    backgroundColor: "#FFF",
-    paddingHorizontal: Spacing.screenPadding,
+    backgroundColor: Theme.colors.surface,
+    paddingHorizontal: 20,
     paddingTop: 30,
     justifyContent: "space-between",
     paddingBottom: 40
@@ -243,7 +254,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 16,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     fontWeight: "500"
   }
 });

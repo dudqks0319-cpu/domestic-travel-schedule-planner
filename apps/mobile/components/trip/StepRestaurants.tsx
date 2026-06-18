@@ -124,7 +124,11 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
           return (
             <TouchableOpacity style={[styles.card, sel && styles.cardSel]} onPress={() => toggle(item.title)} activeOpacity={0.7}>
               <View style={[styles.cardIcon, sel && styles.cardIconSel]}>
-                <Text style={{ fontSize: 22 }}>🍽️</Text>
+                <Ionicons
+                  name="restaurant-outline"
+                  size={22}
+                  color={sel ? Theme.colors.primaryDark : Theme.colors.textSecondary}
+                />
               </View>
               <View style={styles.cardBody}>
                 <View style={styles.catBadge}>

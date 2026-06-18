@@ -10,9 +10,10 @@ import {
   Alert
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import ProgressBar from "../../components/common/ProgressBar";
@@ -84,7 +85,9 @@ export default function SignupScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.emoji}>🗺️</Text>
+          <View style={styles.brandMark}>
+            <Ionicons name="map-outline" size={28} color={Theme.colors.primary} />
+          </View>
           <Text style={styles.title}>TripMate 가입하기</Text>
           <Text style={styles.subtitle}>여행의 시작, 계정을 만들어볼까요?</Text>
         </View>
@@ -94,7 +97,7 @@ export default function SignupScreen() {
         <View style={styles.form}>
           <Input
             label="이메일"
-            icon="📧"
+            iconName="mail-outline"
             placeholder="example@email.com"
             value={email}
             onChangeText={setEmail}
@@ -105,7 +108,7 @@ export default function SignupScreen() {
 
           <Input
             label="닉네임"
-            icon="😊"
+            iconName="person-outline"
             placeholder="여행에서 사용할 이름"
             value={nickname}
             onChangeText={setNickname}
@@ -115,7 +118,7 @@ export default function SignupScreen() {
 
           <Input
             label="비밀번호"
-            icon="🔒"
+            iconName="lock-closed-outline"
             placeholder="8자리 이상"
             value={password}
             onChangeText={setPassword}
@@ -125,7 +128,7 @@ export default function SignupScreen() {
 
           <Input
             label="비밀번호 확인"
-            icon="🔒"
+            iconName="lock-closed-outline"
             placeholder="비밀번호를 한번 더 입력"
             value={passwordConfirm}
             onChangeText={setPasswordConfirm}
@@ -136,10 +139,11 @@ export default function SignupScreen() {
 
         <View style={styles.buttonArea}>
           <Button
-            title="다음 단계로 →"
+            title="다음 단계로"
             onPress={() => void handleSignup()}
             size="large"
             loading={loading}
+            iconName="arrow-forward-outline"
             style={{ width: "100%" }}
           />
 
@@ -158,7 +162,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF"
+    backgroundColor: Theme.colors.background
   },
   scrollContent: {
     flexGrow: 1,
@@ -169,18 +173,23 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 10
   },
-  emoji: {
-    fontSize: 50,
+  brandMark: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12
   },
   title: {
     fontSize: 26,
     fontWeight: "800",
-    color: Colors.common.black
+    color: Theme.colors.textPrimary
   },
   subtitle: {
     fontSize: 15,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     marginTop: 6
   },
   form: {
@@ -198,11 +207,11 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 14,
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   loginLink: {
     fontSize: 14,
-    color: Colors.young.primary,
+    color: Theme.colors.primary,
     fontWeight: "700"
   }
 });

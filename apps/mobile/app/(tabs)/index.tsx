@@ -247,8 +247,8 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   logo: {
-    fontSize: 35,
-    lineHeight: 40,
+    fontSize: 25,
+    lineHeight: 31,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
@@ -257,9 +257,9 @@ const styles = StyleSheet.create({
     gap: 8
   },
   iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Theme.colors.surface,
     borderWidth: 1,
     borderColor: Theme.colors.border,
@@ -268,15 +268,15 @@ const styles = StyleSheet.create({
   },
   greeting: {
     marginTop: 12,
-    fontSize: 34,
-    lineHeight: 40,
+    fontSize: 27,
+    lineHeight: 34,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
   subGreeting: {
     marginTop: 2,
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 24,
     color: Theme.colors.textPrimary,
     fontWeight: "700",
     marginBottom: 14
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     fontWeight: "600"
   },
   destCard: {
-    height: 134,
+    height: 116,
     borderRadius: 14,
     overflow: "hidden",
     ...Theme.shadow.sm
@@ -444,8 +444,8 @@ const styles = StyleSheet.create({
   },
   destName: {
     color: "#FFFFFF",
-    fontSize: 40,
-    lineHeight: 44,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: "800"
   },
   ratingWrap: {
@@ -455,8 +455,8 @@ const styles = StyleSheet.create({
   },
   rating: {
     color: "#FFFFFF",
-    fontSize: 24,
-    lineHeight: 28,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "700"
   },
   categoryRow: {
@@ -477,8 +477,8 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     marginTop: 5,
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 15,
+    lineHeight: 20,
     color: Theme.colors.textPrimary,
     fontWeight: "700"
   },
@@ -490,8 +490,8 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   sectionTitle: {
-    fontSize: 33,
-    lineHeight: 38,
+    fontSize: 22,
+    lineHeight: 28,
     fontWeight: "800",
     color: Theme.colors.textPrimary
   },
@@ -530,8 +530,8 @@ const styles = StyleSheet.create({
   },
   friendName: {
     marginTop: 6,
-    fontSize: 24,
-    lineHeight: 28,
+    fontSize: 13,
+    lineHeight: 17,
     color: Theme.colors.textPrimary,
     fontWeight: "600"
   },

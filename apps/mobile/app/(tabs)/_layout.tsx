@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import { Text, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
+import Theme from "../../constants/Theme";
 
 type IconName = "home" | "search" | "add-circle" | "map" | "person";
 type TabIoniconName =
@@ -33,7 +33,7 @@ function TabIcon({ icon, label, focused }: { icon: IconName; label: string; focu
       <Ionicons
         name={iconName}
         size={24}
-        color={focused ? Colors.young.primary : Colors.common.gray400}
+        color={focused ? Theme.colors.primary : Theme.colors.textTertiary}
       />
       <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
     </View>
@@ -76,10 +76,10 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     height: 85, paddingTop: 8, paddingBottom: 25,
-    backgroundColor: "#FFFFFF", borderTopWidth: 0,
+    backgroundColor: Theme.colors.surface, borderTopWidth: 0,
     shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 12,
   },
   tabItem: { alignItems: "center", justifyContent: "center" },
-  tabLabel: { fontSize: 11, marginTop: 2, color: Colors.common.gray400, fontWeight: "500" },
-  tabLabelActive: { color: Colors.young.primary, fontWeight: "700" },
+  tabLabel: { fontSize: 11, marginTop: 2, color: Theme.colors.textTertiary, fontWeight: "500" },
+  tabLabelActive: { color: Theme.colors.primary, fontWeight: "700" },
 });

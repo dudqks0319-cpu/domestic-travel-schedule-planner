@@ -1,11 +1,11 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 
 interface SelectCardProps {
-  emoji: string;
+  iconName?: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle?: string;
   isSelected: boolean;
@@ -15,13 +15,13 @@ interface SelectCardProps {
 }
 
 export default function SelectCard({
-  emoji,
+  iconName,
   title,
   subtitle,
   isSelected,
   onPress,
   size = "normal",
-  color = Colors.young.primary
+  color = Theme.colors.primary
 }: SelectCardProps) {
   const isSenior = size === "senior";
   const isLarge = size === "large" || isSenior;
@@ -40,11 +40,17 @@ export default function SelectCard({
     >
       {isSelected ? (
         <View style={[styles.checkBadge, { backgroundColor: color }]}>
-          <Text style={styles.checkText}>✓</Text>
+          <Ionicons name="checkmark" size={14} color={Theme.colors.textOnPrimary} />
         </View>
       ) : null}
 
-      <Text style={[styles.emoji, isLarge && styles.emojiLarge]}>{emoji}</Text>
+      <View style={[styles.iconBox, isLarge && styles.iconBoxLarge, isSelected && { backgroundColor: `${color}16` }]}>
+        <Ionicons
+          name={iconName ?? "ellipse-outline"}
+          size={isLarge ? 28 : 24}
+          color={isSelected ? color : Theme.colors.textSecondary}
+        />
+      </View>
       <Text style={[styles.title, isSenior && styles.titleSenior, isSelected && { color }]}>{title}</Text>
       {subtitle ? <Text style={[styles.subtitle, isSenior && styles.subtitleSenior]}>{subtitle}</Text> : null}
     </TouchableOpacity>
@@ -53,11 +59,11 @@ export default function SelectCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.common.white,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: Colors.common.gray200,
-    padding: Spacing.lg,
+    backgroundColor: Theme.colors.surface,
+    borderRadius: Theme.radius.lg,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: Theme.spacing.lg,
     alignItems: "center",
     justifyContent: "center",
     minWidth: "45%",
@@ -70,7 +76,7 @@ const styles = StyleSheet.create({
     elevation: 3
   },
   cardLarge: {
-    padding: Spacing.xl,
+    padding: Theme.spacing.xl,
     minWidth: "45%",
     minHeight: 140
   },
@@ -84,23 +90,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center"
   },
-  checkText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700"
-  },
-  emoji: {
-    fontSize: 36,
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: Theme.radius.md,
+    backgroundColor: Theme.colors.background,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 8
   },
-  emojiLarge: {
-    fontSize: 48,
+  iconBoxLarge: {
+    width: 56,
+    height: 56,
     marginBottom: 12
   },
   title: {
     fontSize: 15,
     fontWeight: "700",
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     textAlign: "center"
   },
   titleSenior: {
@@ -108,7 +115,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     marginTop: 4,
     textAlign: "center"
   },

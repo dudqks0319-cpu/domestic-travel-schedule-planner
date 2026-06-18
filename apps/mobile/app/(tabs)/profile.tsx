@@ -115,7 +115,8 @@ export default function ProfileScreen() {
   const point = 1850;
   const nextTierPoint = 2000;
   const progress = Math.min(1, point / nextTierPoint);
-  const profileName = user?.nickname?.trim() || "여행자";
+  const isAuthenticated = authStatus === "authenticated";
+  const profileName = user?.nickname?.trim() || "게스트 여행자";
   const profileImage =
     "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80";
 
@@ -215,7 +216,12 @@ export default function ProfileScreen() {
     };
   }, [authStatus, premiumExpiresAt, premiumLoadState, premiumTone]);
 
-  const handleLogout = () => {
+  const handleAuthAction = () => {
+    if (!isAuthenticated) {
+      router.push("/auth/login");
+      return;
+    }
+
     Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
       { text: "취소", style: "cancel" },
       {
@@ -223,7 +229,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           await logout();
-          router.replace("/auth/login");
+          router.replace("/(tabs)");
         }
       }
     ]);
@@ -241,7 +247,7 @@ export default function ProfileScreen() {
             <Text style={styles.name}>{profileName}</Text>
             <View style={styles.badge}>
               <Ionicons name="checkmark-circle" size={13} color="#111827" />
-              <Text style={styles.badgeText}>Star Reviewer</Text>
+              <Text style={styles.badgeText}>{isAuthenticated ? "Star Reviewer" : "게스트 모드"}</Text>
             </View>
           </View>
         </View>
@@ -329,8 +335,14 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.75}>
-          <Text style={styles.logoutText}>로그아웃</Text>
+        <TouchableOpacity
+          style={[styles.authButton, isAuthenticated ? styles.logoutButton : styles.loginButton]}
+          onPress={handleAuthAction}
+          activeOpacity={0.75}
+        >
+          <Text style={isAuthenticated ? styles.logoutText : styles.loginText}>
+            {isAuthenticated ? "로그아웃" : "카카오 로그인 연결"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -363,8 +375,8 @@ const styles = StyleSheet.create({
     gap: 8
   },
   name: {
-    fontSize: 52,
-    lineHeight: 56,
+    fontSize: 30,
+    lineHeight: 36,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
@@ -393,8 +405,8 @@ const styles = StyleSheet.create({
     ...Theme.shadow.sm
   },
   pointValue: {
-    fontSize: 66,
-    lineHeight: 72,
+    fontSize: 38,
+    lineHeight: 45,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
@@ -438,8 +450,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginTop: 20,
     marginBottom: 10,
-    fontSize: 42,
-    lineHeight: 46,
+    fontSize: 22,
+    lineHeight: 28,
     color: Theme.colors.textPrimary,
     fontWeight: "800"
   },
@@ -600,17 +612,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center"
   },
-  logoutButton: {
+  authButton: {
     marginTop: 22,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: Theme.colors.error,
     paddingVertical: 12,
     alignItems: "center"
+  },
+  logoutButton: {
+    borderColor: Theme.colors.error
+  },
+  loginButton: {
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.primaryLight
   },
   logoutText: {
     fontSize: 14,
     color: Theme.colors.error,
+    fontWeight: "800"
+  },
+  loginText: {
+    fontSize: 14,
+    color: Theme.colors.primary,
     fontWeight: "800"
   }
 });

@@ -19,7 +19,7 @@ interface Props {
 
 interface DestinationOption {
   name: string;
-  emoji: string;
+  iconName: keyof typeof Ionicons.glyphMap;
   desc: string;
   lat: number;
   lng: number;
@@ -50,12 +50,12 @@ interface KakaoGlobal {
 type KakaoMapStatus = 'idle' | 'loading' | 'ready' | 'error' | 'no-key';
 
 const DESTINATIONS: DestinationOption[] = [
-  { name: '제주도', emoji: '🏝️', desc: '자연과 힐링', lat: 33.4996, lng: 126.5312 },
-  { name: '부산', emoji: '🌊', desc: '바다와 미식', lat: 35.1796, lng: 129.0756 },
-  { name: '서울', emoji: '🏙️', desc: '도심 여행', lat: 37.5665, lng: 126.978 },
-  { name: '강릉', emoji: '☕', desc: '커피와 해변', lat: 37.7519, lng: 128.8761 },
-  { name: '여수', emoji: '🌙', desc: '밤바다', lat: 34.7604, lng: 127.6622 },
-  { name: '경주', emoji: '🏛️', desc: '역사 탐방', lat: 35.8562, lng: 129.2247 },
+  { name: '제주도', iconName: 'leaf-outline', desc: '자연과 힐링', lat: 33.4996, lng: 126.5312 },
+  { name: '부산', iconName: 'water-outline', desc: '바다와 미식', lat: 35.1796, lng: 129.0756 },
+  { name: '서울', iconName: 'business-outline', desc: '도심 여행', lat: 37.5665, lng: 126.978 },
+  { name: '강릉', iconName: 'cafe-outline', desc: '커피와 해변', lat: 37.7519, lng: 128.8761 },
+  { name: '여수', iconName: 'moon-outline', desc: '밤바다', lat: 34.7604, lng: 127.6622 },
+  { name: '경주', iconName: 'library-outline', desc: '역사 탐방', lat: 35.8562, lng: 129.2247 },
 ];
 
 const RANDOM_POOL = ['제주도', '부산', '서울', '강릉', '여수', '경주', '전주', '인천', '속초', '포항'];
@@ -231,7 +231,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
 
   const handleRandom = () => {
     const picked = RANDOM_POOL[Math.floor(Math.random() * RANDOM_POOL.length)];
-    setRandomMsg(`🎯 ${picked}`);
+    setRandomMsg(picked);
     onChangeDestination(picked);
   };
 
@@ -250,7 +250,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
       useNativeDriver: false,
     }).start(() => {
       setSpinning(false);
-      setRandomMsg(`🎰 ${picked}`);
+      setRandomMsg(picked);
       onChangeDestination(picked);
     });
   };
@@ -292,7 +292,13 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
               onPress={() => onChangeDestination(d.name)}
               activeOpacity={0.7}
             >
-              <Text style={styles.destEmoji}>{d.emoji}</Text>
+              <View style={[styles.destIconBox, selected && styles.destIconBoxActive]}>
+                <Ionicons
+                  name={d.iconName}
+                  size={20}
+                  color={selected ? Theme.colors.primaryDark : Theme.colors.textSecondary}
+                />
+              </View>
               <View>
                 <Text style={[styles.destName, selected && styles.destNameActive]}>{d.name}</Text>
                 <Text style={styles.destDesc}>{d.desc}</Text>
@@ -440,7 +446,15 @@ const styles = StyleSheet.create({
     ...Theme.shadow.sm,
   },
   destChipActive: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
-  destEmoji: { fontSize: 24 },
+  destIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destIconBoxActive: { backgroundColor: Theme.colors.surface },
   destName: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.textPrimary },
   destNameActive: { color: Theme.colors.primary },
   destDesc: { ...Theme.typography.caption, color: Theme.colors.textTertiary },

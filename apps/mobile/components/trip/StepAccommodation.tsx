@@ -21,12 +21,12 @@ interface StayItem {
   firstimage?: string; tel?: string;
 }
 
-const OPTIONS: { key: AccommodationType; emoji: string; title: string; desc: string }[] = [
-  { key: 'hotel', emoji: '🏨', title: '호텔', desc: '접근성 중심' },
-  { key: 'resort', emoji: '🏝️', title: '리조트', desc: '휴양형' },
-  { key: 'pension', emoji: '🏡', title: '펜션', desc: '단독/프라이빗' },
-  { key: 'guesthouse', emoji: '🛏️', title: '게스트하우스', desc: '가성비형' },
-  { key: 'pool_villa', emoji: '🏖️', title: '풀빌라', desc: '프리미엄' },
+const OPTIONS: { key: AccommodationType; icon: keyof typeof Ionicons.glyphMap; title: string; desc: string }[] = [
+  { key: 'hotel', icon: 'business-outline', title: '호텔', desc: '접근성 중심' },
+  { key: 'resort', icon: 'leaf-outline', title: '리조트', desc: '휴양형' },
+  { key: 'pension', icon: 'home-outline', title: '펜션', desc: '단독/프라이빗' },
+  { key: 'guesthouse', icon: 'bed-outline', title: '게스트하우스', desc: '가성비형' },
+  { key: 'pool_villa', icon: 'sparkles-outline', title: '풀빌라', desc: '프리미엄' },
 ];
 
 export default function StepAccommodation({ destination, accommodationType, onSelectAccommodation }: Props) {
@@ -84,7 +84,13 @@ export default function StepAccommodation({ destination, accommodationType, onSe
                   <Ionicons name="checkmark" size={14} color="#FFF" />
                 </View>
               )}
-              <Text style={styles.emoji}>{opt.emoji}</Text>
+              <View style={[styles.stayTypeIcon, sel && styles.stayTypeIconSel]}>
+                <Ionicons
+                  name={opt.icon}
+                  size={26}
+                  color={sel ? Theme.colors.primaryDark : Theme.colors.textSecondary}
+                />
+              </View>
               <Text style={[styles.cardTitle, sel && styles.cardTitleSel]}>{opt.title}</Text>
               <Text style={styles.cardDesc}>{opt.desc}</Text>
             </TouchableOpacity>
@@ -116,7 +122,7 @@ export default function StepAccommodation({ destination, accommodationType, onSe
                   <Image source={{ uri: item.firstimage }} style={styles.stayImg} />
                 ) : (
                   <View style={[styles.stayImg, styles.stayImgPh]}>
-                    <Text style={{ fontSize: 20 }}>🏠</Text>
+                    <Ionicons name="bed-outline" size={22} color={Theme.colors.textTertiary} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
@@ -158,7 +164,16 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
-  emoji: { fontSize: 32, marginBottom: Theme.spacing.sm },
+  stayTypeIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: Theme.radius.md,
+    backgroundColor: Theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  stayTypeIconSel: { backgroundColor: Theme.colors.surface },
   cardTitle: { ...Theme.typography.body1, fontWeight: '700', color: Theme.colors.textPrimary },
   cardTitleSel: { color: Theme.colors.primaryDark },
   cardDesc: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 4 },
