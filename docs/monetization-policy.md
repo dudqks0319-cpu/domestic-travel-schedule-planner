@@ -20,6 +20,8 @@ The entitlement verify endpoint performs server-side store verification when con
 4. Store-rejected purchases store `verification_failed` and do not unlock premium.
 5. Only server-verified purchases store `active`.
 
+The mobile profile screen reads `GET /api/v1/monetization/entitlements/me` and keeps premium affordances locked unless the Worker reports an active entitlement.
+
 ## Data Minimization
 
 1. Do not store raw App Store receipts, Google purchase tokens, or client receipt blobs.
@@ -47,6 +49,6 @@ The entitlement verify endpoint performs server-side store verification when con
 ## Remaining Release Work
 
 1. Configure production App Store / Google Play credentials and Android package name.
-2. Add premium gates in mobile UI using `GET /api/v1/monetization/entitlements/me`.
+2. Extend premium gates from the profile status card into every paid feature entry point.
 3. Add sponsored labels to all paid recommendation surfaces.
 4. Re-check current App Store, Play Store, ad-network, and affiliate-network rules before final submission.

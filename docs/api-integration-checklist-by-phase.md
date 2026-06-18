@@ -109,6 +109,7 @@ Completed toward the v1.0 Cloudflare target:
 - [x] Add monetization policy documentation.
 - [x] Add Worker unit tests beyond smoke for JWT policy and idempotency replay/conflict behavior, and wire them into `gate:local`.
 - [x] Add server-side Apple and Google Play purchase verification adapters; premium entitlements become active only after store verification succeeds.
+- [x] Add mobile profile premium status/gate using `GET /api/v1/monetization/entitlements/me`.
 
 Remaining before Worker production cutover:
 

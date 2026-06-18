@@ -90,6 +90,30 @@ export interface ProviderListResponse<T> {
   meta?: ProviderResponseMeta;
 }
 
+export type EntitlementStatus =
+  | "active"
+  | "verified"
+  | "pending_verification"
+  | "verification_failed"
+  | string;
+
+export interface EntitlementItem {
+  id: string;
+  store: "apple" | "google" | string;
+  productId: string;
+  status: EntitlementStatus;
+  active: boolean;
+  expiresAt: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MyEntitlementsResponse {
+  items: EntitlementItem[];
+  active: boolean;
+}
+
 export function getProviderNoticeMessage(
   meta: ProviderResponseMeta | undefined,
   label: string
@@ -147,6 +171,11 @@ export const authApi = {
     apiClient.post("/auth/login/kakao", { kakaoAccessToken }),
   getMe: () => apiClient.get("/auth/me"),
   logout: () => apiClient.post("/auth/logout"),
+};
+
+export const monetizationApi = {
+  getEntitlements: () =>
+    apiClient.get<MyEntitlementsResponse>("/monetization/entitlements/me"),
 };
 
 export const plannerApi = {
