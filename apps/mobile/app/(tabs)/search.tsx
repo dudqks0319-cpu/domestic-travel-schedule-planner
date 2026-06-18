@@ -3,13 +3,13 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   FlatList, Image, ActivityIndicator, Keyboard, Platform
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
-import Typography from "../../constants/Typography";
+import Theme from "../../constants/Theme";
 import { tourismApi, restaurantApi } from "../../services/api";
 
 type TabKey = "attractions" | "restaurants" | "festivals";
+type TabIconName = "camera-outline" | "restaurant-outline" | "ticket-outline";
 
 interface SearchResultItem {
   id: string;
@@ -20,10 +20,10 @@ interface SearchResultItem {
   tab: TabKey;
 }
 
-const TABS: { key: TabKey; label: string; emoji: string }[] = [
-  { key: "attractions", label: "관광지", emoji: "🏞️" },
-  { key: "restaurants", label: "맛집", emoji: "🍽️" },
-  { key: "festivals", label: "축제", emoji: "🎪" },
+const TABS: { key: TabKey; label: string; iconName: TabIconName }[] = [
+  { key: "attractions", label: "관광지", iconName: "camera-outline" },
+  { key: "restaurants", label: "맛집", iconName: "restaurant-outline" },
+  { key: "festivals", label: "축제", iconName: "ticket-outline" },
 ];
 
 const NON_FOOD_CATEGORY_KEYWORDS = [
@@ -67,6 +67,7 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = useCallback(async () => {
     const trimmed = query.trim();
@@ -74,6 +75,7 @@ export default function SearchScreen() {
     Keyboard.dismiss();
     setLoading(true);
     setSearched(true);
+    setError(null);
 
     try {
       let items: SearchResultItem[] = [];
@@ -115,6 +117,7 @@ export default function SearchScreen() {
       setResults(items);
     } catch {
       setResults([]);
+      setError("provider 응답이 불안정해 검색 결과를 불러오지 못했어요.");
     } finally {
       setLoading(false);
     }
@@ -126,9 +129,11 @@ export default function SearchScreen() {
         <Image source={{ uri: item.image }} style={styles.resultImage} />
       ) : (
         <View style={[styles.resultImage, styles.resultImagePlaceholder]}>
-          <Text style={{ fontSize: 24 }}>
-            {item.tab === "restaurants" ? "🍽️" : item.tab === "festivals" ? "🎪" : "📷"}
-          </Text>
+          <Ionicons
+            name={item.tab === "restaurants" ? "restaurant-outline" : item.tab === "festivals" ? "ticket-outline" : "camera-outline"}
+            size={24}
+            color={Theme.colors.textSecondary}
+          />
         </View>
       )}
       <View style={styles.resultContent}>
@@ -150,7 +155,7 @@ export default function SearchScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="관광지, 맛집, 축제 검색..."
-            placeholderTextColor={Colors.common.gray400}
+            placeholderTextColor={Theme.colors.textTertiary}
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={() => void handleSearch()}
@@ -166,9 +171,13 @@ export default function SearchScreen() {
             <TouchableOpacity
               key={tab.key}
               style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); }}
+              onPress={() => { setActiveTab(tab.key); setResults([]); setSearched(false); setError(null); }}
             >
-              <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+            <Ionicons
+              name={tab.iconName}
+              size={16}
+              color={activeTab === tab.key ? Theme.colors.primary : Theme.colors.textSecondary}
+              />
               <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
                 {tab.label}
               </Text>
@@ -177,7 +186,7 @@ export default function SearchScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator color={Colors.young.primary} size="large" style={styles.loader} />
+          <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
         ) : (
           <FlatList
             data={results}
@@ -186,14 +195,22 @@ export default function SearchScreen() {
             style={styles.list}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              searched ? (
+              error ? (
                 <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Ionicons name="cloud-offline-outline" size={42} color={Theme.colors.textSecondary} />
+                  <Text style={styles.emptyText}>{error}</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={() => void handleSearch()}>
+                    <Text style={styles.retryButtonText}>다시 검색</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : searched ? (
+                <View style={styles.emptyWrap}>
+                  <Ionicons name="search-outline" size={42} color={Theme.colors.textSecondary} />
                   <Text style={styles.emptyText}>검색 결과가 없습니다</Text>
                 </View>
               ) : (
                 <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyEmoji}>✨</Text>
+                  <Ionicons name="map-outline" size={42} color={Theme.colors.primary} />
                   <Text style={styles.emptyText}>여행지, 맛집, 축제를 검색해보세요</Text>
                 </View>
               )
@@ -206,58 +223,69 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F9FA" },
+  container: { flex: 1, backgroundColor: Theme.colors.background },
   frame: {
     flex: 1,
     width: "100%",
     maxWidth: Platform.OS === "web" ? 520 : "100%",
     alignSelf: "center"
   },
-  header: { paddingTop: 60, paddingHorizontal: Spacing.screenPadding, paddingBottom: 12 },
-  headerTitle: { fontSize: 28, fontWeight: "800", color: Colors.common.black },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 12 },
+  headerTitle: { fontSize: 26, lineHeight: 32, fontWeight: "800", color: Theme.colors.textPrimary },
   searchBar: {
-    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
-    backgroundColor: "#FFF", borderRadius: 16, borderWidth: 1, borderColor: Colors.common.gray200,
+    flexDirection: "row", marginHorizontal: 20,
+    backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.lg, borderWidth: 1, borderColor: Theme.colors.border,
     overflow: "hidden", marginBottom: 12,
+    minHeight: 52,
+    ...Theme.shadow.sm
   },
-  searchInput: { flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 16, color: Colors.common.black },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 14, paddingHorizontal: 16, color: Theme.colors.textPrimary },
   searchButton: {
-    backgroundColor: Colors.young.primary, paddingHorizontal: 20,
+    backgroundColor: Theme.colors.primary, paddingHorizontal: 20,
     justifyContent: "center", alignItems: "center",
+    minWidth: 72
   },
-  searchButtonText: { color: "#FFF", fontSize: 15, fontWeight: "700" },
+  searchButtonText: { color: Theme.colors.textOnPrimary, fontSize: 15, fontWeight: "800" },
   tabRow: {
-    flexDirection: "row", marginHorizontal: Spacing.screenPadding,
+    flexDirection: "row", marginHorizontal: 20,
     marginBottom: 16, gap: 8,
   },
   tab: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: 10, borderRadius: 12, backgroundColor: "#FFF",
-    borderWidth: 1, borderColor: Colors.common.gray200, gap: 4,
+    minHeight: 44, borderRadius: Theme.radius.md, backgroundColor: Theme.colors.surface,
+    borderWidth: 1, borderColor: Theme.colors.border, gap: 4,
   },
-  tabActive: { backgroundColor: "#E8F4FD", borderColor: Colors.young.primary },
-  tabEmoji: { fontSize: 16 },
-  tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.common.gray600 },
-  tabLabelActive: { color: Colors.young.primary },
+  tabActive: { backgroundColor: Theme.colors.primaryLight, borderColor: Theme.colors.primary },
+  tabLabel: { fontSize: 13, fontWeight: "700", color: Theme.colors.textSecondary },
+  tabLabelActive: { color: Theme.colors.primary },
   list: { flex: 1 },
-  listContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 30, flexGrow: 1 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 30, flexGrow: 1 },
   resultCard: {
-    flexDirection: "row", backgroundColor: "#FFF", borderRadius: 16,
-    marginBottom: 10, overflow: "hidden",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+    flexDirection: "row", backgroundColor: Theme.colors.surface, borderRadius: Theme.radius.lg,
+    marginBottom: 10, overflow: "hidden", borderWidth: 1, borderColor: Theme.colors.borderLight,
+    ...Theme.shadow.sm
   },
   resultImage: { width: 90, height: 90 },
-  resultImagePlaceholder: { backgroundColor: Colors.common.gray100, alignItems: "center", justifyContent: "center" },
+  resultImagePlaceholder: { backgroundColor: Theme.colors.background, alignItems: "center", justifyContent: "center" },
   resultContent: { flex: 1, padding: 12, justifyContent: "center" },
-  resultTitle: { ...Typography.normal.body, fontWeight: "700", color: Colors.common.gray800 },
-  resultAddress: { ...Typography.normal.caption, color: Colors.common.gray500, marginTop: 4 },
+  resultTitle: { ...Theme.typography.body2, fontWeight: "800", color: Theme.colors.textPrimary },
+  resultAddress: { ...Theme.typography.caption, color: Theme.colors.textSecondary, marginTop: 4 },
   resultCategory: {
-    ...Typography.normal.caption, color: Colors.young.primary, marginTop: 4,
-    backgroundColor: "#E8F4FD", paddingHorizontal: 8, paddingVertical: 2,
+    ...Theme.typography.caption, color: Theme.colors.primary, marginTop: 4,
+    backgroundColor: Theme.colors.primaryLight, paddingHorizontal: 8, paddingVertical: 2,
     borderRadius: 6, alignSelf: "flex-start", overflow: "hidden",
   },
   emptyWrap: { alignItems: "center", marginTop: 80 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: Colors.common.gray500 },
+  emptyText: { fontSize: 15, color: Theme.colors.textSecondary, marginTop: 12, textAlign: "center", lineHeight: 22, fontWeight: "700" },
+  retryButton: {
+    marginTop: 14,
+    minHeight: 44,
+    borderRadius: 999,
+    backgroundColor: Theme.colors.primary,
+    paddingHorizontal: 18,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  retryButtonText: { color: Theme.colors.textOnPrimary, fontSize: 14, fontWeight: "800" },
   loader: { marginTop: 80 },
 });

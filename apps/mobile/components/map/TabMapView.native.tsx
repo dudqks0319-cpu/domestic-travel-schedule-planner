@@ -5,6 +5,7 @@ import MapView, { Marker } from "react-native-maps";
 
 import Theme from "../../constants/Theme";
 import { tripsApi } from "../../services/api";
+import { resolveMapProviderState } from "../../services/mapProvider";
 
 interface PlaceMarker {
   id: string;
@@ -33,6 +34,7 @@ export default function TabMapViewNative() {
   const [markers, setMarkers] = useState<PlaceMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+  const mapProvider = useMemo(() => resolveMapProviderState(), []);
 
   const loadMarkers = useCallback(async () => {
     setLoading(true);
@@ -99,6 +101,10 @@ export default function TabMapViewNative() {
             </View>
           ))}
         </View>
+        <View style={styles.providerNotice}>
+          <Ionicons name="map-outline" size={14} color={Theme.colors.primary} />
+          <Text style={styles.providerNoticeText}>{mapProvider.label}</Text>
+        </View>
       </View>
 
       <View style={styles.mapCard}>
@@ -131,13 +137,10 @@ export default function TabMapViewNative() {
                 { backgroundColor: CATEGORY_META[selectedMarker.category]?.color ?? Theme.colors.primary }
               ]}
             />
-            <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
-          </View>
-          <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
-          <Text style={styles.selectedCoord}>
-            {selectedMarker.lat.toFixed(4)}, {selectedMarker.lng.toFixed(4)}
-          </Text>
+          <Text style={styles.selectedTitle}>{selectedMarker.name}</Text>
         </View>
+        <Text style={styles.selectedSub}>{selectedMarker.tripTitle}</Text>
+      </View>
       ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.markerScroll}>
@@ -219,6 +222,23 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     fontWeight: "600"
   },
+  providerNotice: {
+    marginTop: 10,
+    minHeight: 36,
+    borderRadius: 12,
+    backgroundColor: Theme.colors.primaryLight,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  providerNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.primary,
+    fontWeight: "700"
+  },
   mapCard: {
     flex: 1,
     minHeight: 320,
@@ -259,13 +279,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     color: Theme.colors.textSecondary,
-    fontWeight: "600"
-  },
-  selectedCoord: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
-    color: Theme.colors.textTertiary,
     fontWeight: "600"
   },
   markerScroll: {

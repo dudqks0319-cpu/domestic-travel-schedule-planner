@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Animated, Easing,
 } from 'react-native';
+import type { DimensionValue } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../../constants/Theme';
 
@@ -12,12 +13,12 @@ interface Props {
 }
 
 const DESTINATIONS = [
-  { name: '제주도', emoji: '🏝️', desc: '자연과 힐링' },
-  { name: '부산', emoji: '🌊', desc: '바다와 미식' },
-  { name: '서울', emoji: '🏙️', desc: '도심 여행' },
-  { name: '강릉', emoji: '☕', desc: '커피와 해변' },
-  { name: '여수', emoji: '🌙', desc: '밤바다' },
-  { name: '경주', emoji: '🏛️', desc: '역사 탐방' },
+  { name: '제주도', iconName: 'leaf-outline' as const, desc: '자연과 힐링' },
+  { name: '부산', iconName: 'water-outline' as const, desc: '바다와 미식' },
+  { name: '서울', iconName: 'business-outline' as const, desc: '도심 여행' },
+  { name: '강릉', iconName: 'cafe-outline' as const, desc: '커피와 해변' },
+  { name: '여수', iconName: 'moon-outline' as const, desc: '밤바다' },
+  { name: '경주', iconName: 'library-outline' as const, desc: '역사 탐방' },
 ];
 
 const MAP_PINS = [
@@ -28,7 +29,7 @@ const MAP_PINS = [
   { name: '부산', left: '73%', top: '61%' },
   { name: '여수', left: '54%', top: '62%' },
   { name: '제주도', left: '37%', top: '82%' },
-];
+] as const satisfies readonly { name: string; left: DimensionValue; top: DimensionValue }[];
 
 const RANDOM_POOL = ['제주도', '부산', '서울', '강릉', '여수', '경주', '전주', '인천', '속초', '포항'];
 
@@ -57,7 +58,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
 
   const handleRandom = () => {
     const picked = RANDOM_POOL[Math.floor(Math.random() * RANDOM_POOL.length)];
-    setRandomMsg(`🎯 ${picked}`);
+    setRandomMsg(picked);
     onChangeDestination(picked);
   };
 
@@ -76,7 +77,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
       useNativeDriver: false,
     }).start(() => {
       setSpinning(false);
-      setRandomMsg(`🎰 ${picked}`);
+      setRandomMsg(picked);
       onChangeDestination(picked);
     });
   };
@@ -118,7 +119,13 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
               onPress={() => onChangeDestination(d.name)}
               activeOpacity={0.7}
             >
-              <Text style={styles.destEmoji}>{d.emoji}</Text>
+              <View style={[styles.destIconBox, selected && styles.destIconBoxActive]}>
+                <Ionicons
+                  name={d.iconName}
+                  size={20}
+                  color={selected ? Theme.colors.primaryDark : Theme.colors.textSecondary}
+                />
+              </View>
               <View>
                 <Text style={[styles.destName, selected && styles.destNameActive]}>{d.name}</Text>
                 <Text style={styles.destDesc}>{d.desc}</Text>
@@ -149,7 +156,7 @@ export default function StepDestination({ destination, onChangeDestination }: Pr
             return (
               <TouchableOpacity
                 key={pin.name}
-                style={[styles.mapPin, { left: pin.left as any, top: pin.top as any }]}
+                style={[styles.mapPin, { left: pin.left, top: pin.top }]}
                 onPress={() => onChangeDestination(pin.name)}
               >
                 <View style={[styles.mapPinDot, selected && styles.mapPinDotActive]}>
@@ -256,7 +263,15 @@ const styles = StyleSheet.create({
     ...Theme.shadow.sm,
   },
   destChipActive: { borderColor: Theme.colors.primary, backgroundColor: Theme.colors.primaryLight },
-  destEmoji: { fontSize: 24 },
+  destIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  destIconBoxActive: { backgroundColor: Theme.colors.surface },
   destName: { ...Theme.typography.body2, fontWeight: '700', color: Theme.colors.textPrimary },
   destNameActive: { color: Theme.colors.primary },
   destDesc: { ...Theme.typography.caption, color: Theme.colors.textTertiary },

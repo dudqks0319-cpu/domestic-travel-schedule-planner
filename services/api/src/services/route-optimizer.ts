@@ -1,4 +1,5 @@
 import { normalizeRouteWarning, sanitizePublicText } from "../utils/response-safety";
+import { hasUsableProviderCredential } from "../utils/provider-availability";
 
 export type RouteTransportMode = "driving" | "transit" | "walking";
 export type RouteEstimateProvider = "kakao" | "odsay" | "fallback";
@@ -69,11 +70,14 @@ function clonePoint(point: RoutePoint): RoutePoint {
 }
 
 function resolveProviderKeys(): ProviderKeys {
-  const kakao =
-    process.env.KAKAO_REST_API_KEY ??
-    process.env.KAKAO_API_KEY ??
-    process.env.KAKAO_KEY;
-  const odsay = process.env.ODSAY_API_KEY ?? process.env.ODSAY_KEY;
+  const kakao = [
+    process.env.KAKAO_REST_API_KEY,
+    process.env.KAKAO_API_KEY,
+    process.env.KAKAO_KEY
+  ].find((value) => typeof value === "string" && hasUsableProviderCredential(value));
+  const odsay = [process.env.ODSAY_API_KEY, process.env.ODSAY_KEY].find(
+    (value) => typeof value === "string" && hasUsableProviderCredential(value)
+  );
 
   return {
     kakaoKey: kakao?.trim() || undefined,

@@ -1,3 +1,9 @@
 export async function requestKakaoAccessToken(): Promise<string> {
-  throw new Error("카카오 네이티브 로그인은 모바일 앱(iOS/Android)에서만 지원됩니다.");
+  throw new Error(
+    "카카오 웹 로그인은 서버 OAuth broker가 준비된 뒤 활성화합니다. 모바일/웹 번들에는 KAKAO_REST_API_KEY를 넣지 마세요."
+  );
+}
+
+export async function completeKakaoRedirectIfPresent(): Promise<string | null> {
+  return null;
 }

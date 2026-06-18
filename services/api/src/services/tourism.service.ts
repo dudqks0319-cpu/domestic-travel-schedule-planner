@@ -1,5 +1,9 @@
 import axios from "axios";
 import { env } from "../config/env";
+import {
+  getDataGoKrProviderAvailability,
+  logProviderUnavailable
+} from "../utils/provider-availability";
 
 const TOUR_API_BASE = "https://apis.data.go.kr/B551011/KorService2";
 
@@ -61,6 +65,12 @@ export async function searchAttractions(params: {
   pageNo?: number;
   numOfRows?: number;
 }) {
+  const availability = getDataGoKrProviderAvailability();
+  if (!availability.available) {
+    logProviderUnavailable("tourism.areaBasedList2", availability);
+    return [];
+  }
+
   const response = await axios.get<TourApiResponse>(withServiceKey("areaBasedList2"), {
     params: {
       numOfRows: params.numOfRows ?? 20,
@@ -79,6 +89,12 @@ export async function searchAttractions(params: {
 
 // 키워드 검색
 export async function searchByKeyword(keyword: string, pageNo?: number) {
+  const availability = getDataGoKrProviderAvailability();
+  if (!availability.available) {
+    logProviderUnavailable("tourism.searchKeyword2", availability);
+    return [];
+  }
+
   const response = await axios.get<TourApiResponse>(withServiceKey("searchKeyword2"), {
     params: {
       numOfRows: 20,
@@ -100,6 +116,12 @@ export async function searchFestivals(params: {
   areaCode?: string;
   pageNo?: number;
 }) {
+  const availability = getDataGoKrProviderAvailability();
+  if (!availability.available) {
+    logProviderUnavailable("tourism.searchFestival2", availability);
+    return [];
+  }
+
   const response = await axios.get<TourApiResponse>(withServiceKey("searchFestival2"), {
     params: {
       numOfRows: 20,

@@ -8,8 +8,9 @@ import {
   ViewStyle,
   TextStyle
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
+import Theme from "../../constants/Theme";
 
 interface ButtonProps {
   title: string;
@@ -18,7 +19,7 @@ interface ButtonProps {
   size?: "small" | "medium" | "large" | "senior";
   disabled?: boolean;
   loading?: boolean;
-  icon?: string;
+  iconName?: keyof typeof Ionicons.glyphMap;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   color?: string;
@@ -31,11 +32,13 @@ export default function Button({
   size = "medium",
   disabled = false,
   loading = false,
-  icon,
+  iconName,
   style,
   textStyle,
   color
 }: ButtonProps) {
+  const foregroundColor =
+    variant === "primary" ? Theme.colors.textOnPrimary : color ?? Theme.colors.primary;
   const buttonStyles = [
     styles.base,
     styles[variant],
@@ -66,11 +69,14 @@ export default function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? "#FFF" : Colors.young.primary}
+          color={foregroundColor}
           size="small"
         />
       ) : (
-        <Text style={textStyles}>{icon ? `${icon} ${title}` : title}</Text>
+        <>
+          {iconName ? <Ionicons name={iconName} size={18} color={foregroundColor} /> : null}
+          <Text style={textStyles}>{title}</Text>
+        </>
       )}
     </TouchableOpacity>
   );
@@ -81,18 +87,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row"
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 44
   },
   primary: {
-    backgroundColor: Colors.young.primary
+    backgroundColor: Theme.colors.primary
   },
   secondary: {
-    backgroundColor: Colors.common.gray100
+    backgroundColor: Theme.colors.borderLight
   },
   outline: {
     backgroundColor: "transparent",
-    borderWidth: 2,
-    borderColor: Colors.young.primary
+    borderWidth: 1,
+    borderColor: Theme.colors.primary
   },
   ghost: {
     backgroundColor: "transparent"
@@ -118,23 +126,23 @@ const styles = StyleSheet.create({
     borderRadius: 20
   },
   disabled: {
-    backgroundColor: Colors.common.gray300,
-    borderColor: Colors.common.gray300
+    backgroundColor: Theme.colors.border,
+    borderColor: Theme.colors.border
   },
   text: {
     fontWeight: "600"
   },
   text_primary: {
-    color: "#FFFFFF"
+    color: Theme.colors.textOnPrimary
   },
   text_secondary: {
-    color: Colors.common.gray700
+    color: Theme.colors.textPrimary
   },
   text_outline: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   text_ghost: {
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   textSize_small: {
     fontSize: 14
@@ -149,6 +157,6 @@ const styles = StyleSheet.create({
     fontSize: 22
   },
   textDisabled: {
-    color: Colors.common.gray500
+    color: Theme.colors.textTertiary
   }
 });

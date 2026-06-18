@@ -65,13 +65,57 @@ Checklist:
 - [ ] Enforce timeout/retry/circuit-breaker policy per adapter.
 - [ ] Add provider response normalization into shared domain models.
 - [ ] Add cache strategy for repeat lookup endpoints.
-- [ ] Add feature flags to disable individual providers safely.
+- [x] Add feature flags to disable individual providers safely.
 
 Exit criteria:
 
 1. Provider outage does not block core itinerary read/write flows.
 2. Adapter failures are visible in logs/metrics with provider-level tags.
 3. At least one fallback response path is verified in staging.
+
+Current implementation note:
+
+1. `PROVIDER_DATA_GO_KR_ENABLED` and `PROVIDER_NAVER_LOCAL_ENABLED` gate outbound tourism and restaurant lookups.
+2. Missing, disabled, or placeholder credentials return `200` with `items: []` and degraded provider metadata instead of blocking the mobile planning flow.
+3. Mobile attraction and restaurant steps render a provider notice when degraded metadata is present.
+
+## Current Worker/D1 Foundation
+
+Completed toward the v1.0 Cloudflare target:
+
+- [x] Create `services/api-worker`.
+- [x] Register required v1 endpoint paths with standard JSON error responses.
+- [x] Implement `GET /health` and `GET /api/v1/health`.
+- [x] Add correlation id propagation via `X-Request-Id`.
+- [x] Add allow-list CORS with production wildcard denial.
+- [x] Add auth gate skeleton for trip, planner, route, and monetization endpoints.
+- [x] Add D1, KV, and R2 binding types plus `wrangler.toml` preview/production placeholders.
+- [x] Add initial D1 migration covering users, trips, places, cache, share links, entitlements, ads, affiliate clicks, sponsored places, and audit logs.
+- [x] Verify HS256 bearer access tokens with Web Crypto against `JWT_ACCESS_SECRET`.
+- [x] Enforce configured JWT issuer/audience policy for Worker bearer tokens.
+- [x] Implement D1-backed trip list, create, and owner-only read handlers.
+- [x] Add negative smoke coverage for missing, malformed, expired, wrong issuer/audience, and cross-user access.
+- [x] Implement owner-only trip day create/update handlers.
+- [x] Implement owner-only trip place create/update/delete handlers.
+- [x] Implement opaque public share links with read-only shared trip responses.
+- [x] Add negative smoke coverage for cross-user day/place/share access and expired share links.
+- [x] Implement owner-only trip update/delete handlers.
+- [x] Add `X-Idempotency-Key` replay/conflict handling for trip update/delete retries.
+- [x] Add negative smoke coverage for trip update/delete ownership and idempotency conflicts.
+- [x] Extend `X-Idempotency-Key` replay/conflict handling to trip create, day/place mutations, share-link creation, and monetization retryable writes.
+- [x] Implement monetization handlers for ad events, affiliate clicks, entitlement verify skeleton, and current user entitlements.
+- [x] Store affiliate targets and entitlement transaction ids as hashes; do not persist raw URLs, receipts, or purchase tokens.
+- [x] Add negative smoke coverage for monetization validation, trip ownership, idempotent replay, and pending entitlements.
+- [x] Add monetization policy documentation.
+- [x] Add Worker unit tests beyond smoke for JWT policy and idempotency replay/conflict behavior, and wire them into `gate:local`.
+- [x] Add server-side Apple and Google Play purchase verification adapters; premium entitlements become active only after store verification succeeds.
+- [x] Add mobile profile premium status/gate using `GET /api/v1/monetization/entitlements/me`.
+
+Remaining before Worker production cutover:
+
+1. Replace `wrangler.toml` placeholder ids with real Cloudflare resource ids.
+2. Configure production App Store / Google Play verification secrets and `GOOGLE_PLAY_PACKAGE_NAME` before paid release.
+3. Replace placeholder JWT issuer/audience values with the production auth provider values before preview deploy.
 
 ## Phase 4: Collaboration, Notifications, and Sync
 
@@ -81,7 +125,7 @@ Checklist:
 
 - [ ] Add collaborator invite/remove and permission endpoints.
 - [ ] Add activity-level change events for notification fan-out.
-- [ ] Add idempotency keys for mutation endpoints used by retries.
+- [x] Extend idempotency keys beyond trip update/delete to current retryable mutation endpoints.
 - [ ] Add sync endpoint for batched mobile updates.
 - [ ] Add audit trail metadata for trip edits.
 

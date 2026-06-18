@@ -5,7 +5,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Theme } from '../../constants/Theme';
-import { restaurantApi } from '../../services/api';
+import {
+  getProviderNoticeMessage,
+  restaurantApi,
+  type ProviderListResponse,
+} from '../../services/api';
 
 interface Props {
   destination: string;
@@ -20,7 +24,16 @@ interface Item {
   address: string; roadAddress: string; telephone: string;
 }
 
-const CATS = [
+type RestaurantIconName =
+  | 'restaurant-outline'
+  | 'flame-outline'
+  | 'fish-outline'
+  | 'nutrition-outline'
+  | 'cafe-outline'
+  | 'ice-cream-outline'
+  | 'fast-food-outline';
+
+const CATS: Array<{ key: string; label: string; icon: RestaurantIconName }> = [
   { key: '맛집', label: '전체', icon: 'restaurant-outline' },
   { key: '한식', label: '한식', icon: 'flame-outline' },
   { key: '해산물', label: '해산물', icon: 'fish-outline' },
@@ -34,16 +47,19 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
   const [items, setItems] = useState<Item[]>([]);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState('');
+  const [providerNotice, setProviderNotice] = useState('');
   const [cat, setCat] = useState('맛집');
 
   const fetch_ = useCallback(async (c: string) => {
     if (!destination) return;
-    setFetching(true); setError('');
+    setFetching(true); setError(''); setProviderNotice('');
     try {
       const q = c === '맛집' ? `${destination} 맛집` : `${destination} ${c}`;
       const res = await restaurantApi.search(q, 20);
-      setItems((res.data.items ?? []) as Item[]);
-    } catch { setError('맛집 정보를 불러올 수 없습니다'); }
+      const data = res.data as ProviderListResponse<Item>;
+      setProviderNotice(getProviderNoticeMessage(data.meta, '맛집'));
+      setItems(data.items ?? []);
+    } catch { setProviderNotice(''); setError('맛집 정보를 불러올 수 없습니다'); }
     finally { setFetching(false); }
   }, [destination]);
 
@@ -76,7 +92,7 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
             style={[styles.filterChip, cat === c.key && styles.filterChipActive]}
             onPress={() => setCat(c.key)}
           >
-            <Ionicons name={c.icon as any} size={14} color={cat === c.key ? '#A15B00' : Theme.colors.textTertiary} />
+            <Ionicons name={c.icon} size={14} color={cat === c.key ? '#A15B00' : Theme.colors.textTertiary} />
             <Text style={[styles.filterText, cat === c.key && styles.filterTextActive]}>{c.label}</Text>
           </TouchableOpacity>
         )}
@@ -86,6 +102,13 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
         <View style={styles.errBox}>
           <Ionicons name="warning-outline" size={16} color={Theme.colors.error} />
           <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {providerNotice ? (
+        <View style={styles.noticeBox}>
+          <Ionicons name="alert-circle-outline" size={16} color={Theme.colors.warning} />
+          <Text style={styles.noticeText}>{providerNotice}</Text>
         </View>
       ) : null}
 
@@ -101,7 +124,11 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
           return (
             <TouchableOpacity style={[styles.card, sel && styles.cardSel]} onPress={() => toggle(item.title)} activeOpacity={0.7}>
               <View style={[styles.cardIcon, sel && styles.cardIconSel]}>
-                <Text style={{ fontSize: 22 }}>🍽️</Text>
+                <Ionicons
+                  name="restaurant-outline"
+                  size={22}
+                  color={sel ? Theme.colors.primaryDark : Theme.colors.textSecondary}
+                />
               </View>
               <View style={styles.cardBody}>
                 <View style={styles.catBadge}>
@@ -218,5 +245,12 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
   },
   errText: { ...Theme.typography.body2, color: Theme.colors.error },
+  noticeBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFFBEB', borderRadius: Theme.radius.md,
+    borderWidth: 1, borderColor: '#FDE68A',
+    padding: Theme.spacing.md, marginBottom: Theme.spacing.md,
+  },
+  noticeText: { ...Theme.typography.body2, color: '#92400E', flex: 1 },
   emptyText: { ...Theme.typography.body1, color: Theme.colors.textTertiary, textAlign: 'center', marginTop: 40 },
 });

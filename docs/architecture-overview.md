@@ -24,14 +24,18 @@ This architecture covers:
 3. `services/api`
    - API gateway/BFF plus domain orchestration
    - Auth integration, persistence, provider adapter calls, audit logging
+4. `services/api-worker`
+   - Cloudflare Worker production API target
+   - D1/KV/R2 bindings, edge CORS, auth gate, route registration, and deployment config
 
 ## 4) Target Runtime Topology
 
 ```text
 Mobile App (apps/mobile)
-  -> TripMate API (services/api)
-      -> Core DB (trip/user/itinerary state)
-      -> Cache + Job Queue (rate-limited or slow workflows)
+  -> TripMate API (services/api for current local BFF, services/api-worker for Worker target)
+      -> Core DB / D1 (trip/user/itinerary state)
+      -> Cache / KV (provider cache and rate-limited workflows)
+      -> R2 (share thumbnails and export files)
       -> External Provider Adapters (maps, weather, booking/price, content)
   <- Typed API Responses + Error Schema
 

@@ -1,9 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
 import Typography from "../../constants/Typography";
+import Theme from "../../constants/Theme";
 import type { RouteSegmentEstimate, RouteTransportMode } from "../../services/routeApi";
 
 interface RouteDetailCardProps {
@@ -12,16 +14,16 @@ interface RouteDetailCardProps {
   mode: RouteTransportMode;
 }
 
-function getTransportIcon(mode: RouteTransportMode): string {
+function getTransportIcon(mode: RouteTransportMode): keyof typeof Ionicons.glyphMap {
   if (mode === "transit") {
-    return "🚌";
+    return "bus-outline";
   }
 
   if (mode === "walking") {
-    return "🚶";
+    return "walk-outline";
   }
 
-  return "🚗";
+  return "car-outline";
 }
 
 function getProviderLabel(provider: RouteSegmentEstimate["provider"]): string {
@@ -67,7 +69,10 @@ export default function RouteDetailCard({ segment, segmentIndex, mode }: RouteDe
       <View style={styles.headerRow}>
         <View style={styles.titleRow}>
           <Text style={styles.stepText}>구간 {segmentIndex + 1}</Text>
-          <Text style={styles.moveText}>{`${getTransportIcon(mode)} ${fromName} → ${toName}`}</Text>
+          <View style={styles.moveRow}>
+            <Ionicons name={getTransportIcon(mode)} size={15} color={Theme.colors.primary} />
+            <Text style={styles.moveText}>{`${fromName} → ${toName}`}</Text>
+          </View>
         </View>
         <Text style={[styles.providerBadge, { color: getProviderColor(segment.provider) }]}>
           {getProviderLabel(segment.provider)}
@@ -113,8 +118,13 @@ const styles = StyleSheet.create({
   moveText: {
     ...Typography.normal.bodySmall,
     color: Colors.common.gray800,
-    marginTop: 2,
     fontWeight: "700"
+  },
+  moveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2
   },
   providerBadge: {
     ...Typography.normal.caption,

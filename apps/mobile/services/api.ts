@@ -5,6 +5,7 @@ import {
   getRefreshToken,
   setAccessToken,
 } from "../lib/secure-storage";
+import type { TravelStyleKey } from "../types";
 
 const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 const API_PREFIX = "/api/v1";
@@ -75,6 +76,63 @@ apiClient.interceptors.response.use(
 
 export default apiClient;
 
+export type ProviderDegradedReason = "disabled" | "missing_credentials";
+
+export interface ProviderResponseMeta {
+  degraded?: boolean;
+  provider?: string;
+  reason?: ProviderDegradedReason;
+  retryable?: boolean;
+}
+
+export interface ProviderListResponse<T> {
+  items?: T[];
+  meta?: ProviderResponseMeta;
+}
+
+export type EntitlementStatus =
+  | "active"
+  | "verified"
+  | "pending_verification"
+  | "verification_failed"
+  | string;
+
+export interface EntitlementItem {
+  id: string;
+  store: "apple" | "google" | string;
+  productId: string;
+  status: EntitlementStatus;
+  active: boolean;
+  expiresAt: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MyEntitlementsResponse {
+  items: EntitlementItem[];
+  active: boolean;
+}
+
+export function getProviderNoticeMessage(
+  meta: ProviderResponseMeta | undefined,
+  label: string
+): string {
+  if (!meta?.degraded) {
+    return "";
+  }
+
+  if (meta.reason === "disabled") {
+    return `${label} 제공처가 현재 비활성화되어 있어요. 선택 없이도 일정을 만들 수 있습니다.`;
+  }
+
+  if (meta.reason === "missing_credentials") {
+    return `${label} 제공처 설정이 아직 없어 결과를 불러오지 않았어요. 선택 없이도 일정을 만들 수 있습니다.`;
+  }
+
+  return `${label} 제공처를 잠시 사용할 수 없어요. 선택 없이도 일정을 만들 수 있습니다.`;
+}
+
 export const tourismApi = {
   getAttractions: (area: string, page?: number, contentType?: string) =>
     apiClient.get("/tourism/attractions", { params: { area, page, contentType } }),
@@ -115,11 +173,17 @@ export const authApi = {
   logout: () => apiClient.post("/auth/logout"),
 };
 
+export const monetizationApi = {
+  getEntitlements: () =>
+    apiClient.get<MyEntitlementsResponse>("/monetization/entitlements/me"),
+};
+
 export const plannerApi = {
   generate: (params: {
     destination: string;
     startDate: string;
     endDate: string;
+    styleKey: TravelStyleKey;
     transport?: string;
     companions?: string;
     attractionKeywords?: string[];

@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import Colors from "../../constants/Colors";
 import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 import Button from "../../components/common/Button";
 import SelectCard from "../../components/common/SelectCard";
 import MultiSelectCard from "../../components/common/MultiSelectCard";
@@ -20,6 +22,8 @@ import type {
   ChildAgeGroup,
   UserSignupProfile
 } from "../../types";
+
+type SetupIconName = keyof typeof Ionicons.glyphMap;
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
@@ -151,13 +155,15 @@ export default function ProfileSetupScreen() {
       case 1:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepEmoji}>👥</Text>
+            <View style={styles.stepIcon}>
+              <Ionicons name="people-outline" size={28} color={Theme.colors.primary} />
+            </View>
             <Text style={styles.stepTitle}>누구와 여행하나요?</Text>
             <Text style={styles.stepDescription}>함께하는 사람에 따라 추천이 달라져요!</Text>
 
             <View style={styles.cardGrid}>
               <SelectCard
-                emoji="🧑"
+                iconName="person-outline"
                 title="혼자"
                 subtitle="자유로운 나홀로 여행"
                 isSelected={companion === "solo"}
@@ -165,7 +171,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="👫"
+                iconName="people-outline"
                 title="친구와"
                 subtitle="20-30대 친구 여행"
                 isSelected={companion === "friends"}
@@ -173,7 +179,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="💑"
+                iconName="heart-outline"
                 title="커플"
                 subtitle="연인과 함께"
                 isSelected={companion === "couple"}
@@ -181,7 +187,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="👨‍👩‍👧‍👦"
+                iconName="happy-outline"
                 title="가족 (아이)"
                 subtitle="아이와 함께하는 여행"
                 isSelected={companion === "family_kids"}
@@ -190,7 +196,7 @@ export default function ProfileSetupScreen() {
                 color={Colors.family.primary}
               />
               <SelectCard
-                emoji="👨‍👩‍👧"
+                iconName="home-outline"
                 title="가족"
                 subtitle="아이 없는 가족여행"
                 isSelected={companion === "family_no_kids"}
@@ -199,7 +205,7 @@ export default function ProfileSetupScreen() {
                 color={Colors.family.primary}
               />
               <SelectCard
-                emoji="👴👵"
+                iconName="accessibility-outline"
                 title="부모님과"
                 subtitle="효도여행·시니어"
                 isSelected={companion === "parents"}
@@ -211,18 +217,18 @@ export default function ProfileSetupScreen() {
 
             {companion === "family_kids" ? (
               <View style={styles.childAgeContainer}>
-                <Text style={styles.childAgeTitle}>👶 아이 나이대를 선택해주세요 (복수 선택)</Text>
+                <Text style={styles.childAgeTitle}>아이 나이대를 선택해주세요 (복수 선택)</Text>
                 <View style={styles.childAgeGrid}>
                   {[
-                    { key: "0_2", emoji: "🍼", title: "0~2세 (영아)" },
-                    { key: "3_5", emoji: "🧒", title: "3~5세 (유아)" },
-                    { key: "6_7", emoji: "👦", title: "6~7세" },
-                    { key: "8_10", emoji: "👧", title: "8~10세" },
-                    { key: "11_13", emoji: "🧑", title: "11~13세" }
+                    { key: "0_2", iconName: "bed-outline" as const, title: "0~2세 (영아)" },
+                    { key: "3_5", iconName: "happy-outline" as const, title: "3~5세 (유아)" },
+                    { key: "6_7", iconName: "school-outline" as const, title: "6~7세" },
+                    { key: "8_10", iconName: "book-outline" as const, title: "8~10세" },
+                    { key: "11_13", iconName: "person-outline" as const, title: "11~13세" }
                   ].map((item) => (
                     <MultiSelectCard
                       key={item.key}
-                      emoji={item.emoji}
+                      iconName={item.iconName}
                       title={item.title}
                       isSelected={childAgeGroups.includes(item.key as ChildAgeGroup)}
                       onPress={() => toggleAgeGroup(item.key as ChildAgeGroup)}
@@ -237,13 +243,15 @@ export default function ProfileSetupScreen() {
       case 2:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepEmoji}>🎯</Text>
+            <View style={styles.stepIcon}>
+              <Ionicons name="flag-outline" size={28} color={Theme.colors.primary} />
+            </View>
             <Text style={styles.stepTitle}>여행 목적은?</Text>
             <Text style={styles.stepDescription}>목적에 맞는 장소를 추천해드려요!</Text>
 
             <View style={styles.cardGrid}>
               <SelectCard
-                emoji="📸"
+                iconName="camera-outline"
                 title="관광"
                 subtitle="관광지·포토존 중심"
                 isSelected={purpose === "sightseeing"}
@@ -251,7 +259,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🏖️"
+                iconName="leaf-outline"
                 title="휴식·호캉스"
                 subtitle="편하게 쉬는 여행"
                 isSelected={purpose === "relaxation"}
@@ -259,7 +267,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🏄"
+                iconName="bicycle-outline"
                 title="액티비티"
                 subtitle="체험·레포츠 중심"
                 isSelected={purpose === "activity"}
@@ -267,7 +275,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🍽️"
+                iconName="restaurant-outline"
                 title="맛집투어"
                 subtitle="먹방 여행"
                 isSelected={purpose === "food_tour"}
@@ -275,7 +283,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🙏"
+                iconName="accessibility-outline"
                 title="효도여행"
                 subtitle="부모님 모시고"
                 isSelected={purpose === "filial"}
@@ -290,13 +298,15 @@ export default function ProfileSetupScreen() {
       case 3:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepEmoji}>🎒</Text>
+            <View style={styles.stepIcon}>
+              <Ionicons name="trail-sign-outline" size={28} color={Theme.colors.primary} />
+            </View>
             <Text style={styles.stepTitle}>여행 스타일은?</Text>
             <Text style={styles.stepDescription}>일정을 어떻게 짜드릴까요?</Text>
 
             <View style={styles.styleCardContainer}>
               <SelectCard
-                emoji="📋"
+                iconName="calendar-outline"
                 title="J형 (계획형)"
                 subtitle="시간대별로 촘촘한 일정"
                 isSelected={travelStyle === "J"}
@@ -309,7 +319,7 @@ export default function ProfileSetupScreen() {
               </View>
 
               <SelectCard
-                emoji="🌊"
+                iconName="map-outline"
                 title="P형 (여유형)"
                 subtitle="블록 단위 자유 일정"
                 isSelected={travelStyle === "P"}
@@ -321,21 +331,21 @@ export default function ProfileSetupScreen() {
             {travelStyle ? (
               <View style={styles.previewBox}>
                 <Text style={styles.previewTitle}>
-                  {travelStyle === "J" ? "📋 J형 일정표 예시" : "🌊 P형 일정표 예시"}
+                  {travelStyle === "J" ? "J형 일정표 예시" : "P형 일정표 예시"}
                 </Text>
                 {travelStyle === "J" ? (
                   <View>
-                    <Text style={styles.previewItem}>09:00  🏔️ 성산일출봉 (90분)</Text>
-                    <Text style={styles.previewItem}>↓ 🚗 10분</Text>
-                    <Text style={styles.previewItem}>11:00  🐠 아쿠아리움 (120분)</Text>
-                    <Text style={styles.previewItem}>↓ 🚗 5분</Text>
-                    <Text style={styles.previewItem}>13:30  🍽️ 점심 (60분)</Text>
+                    <Text style={styles.previewItem}>09:00 성산일출봉 (90분)</Text>
+                    <Text style={styles.previewItem}>이동 10분</Text>
+                    <Text style={styles.previewItem}>11:00 아쿠아리움 (120분)</Text>
+                    <Text style={styles.previewItem}>이동 5분</Text>
+                    <Text style={styles.previewItem}>13:30 점심 (60분)</Text>
                   </View>
                 ) : (
                   <View>
-                    <Text style={styles.previewItem}>🌅 오전  성산일출봉, 아쿠아리움</Text>
-                    <Text style={styles.previewItem}>🍽️ 점심  근처 맛집 추천 3곳</Text>
-                    <Text style={styles.previewItem}>🌇 오후  월정리 해변 + 카페</Text>
+                    <Text style={styles.previewItem}>오전  성산일출봉, 아쿠아리움</Text>
+                    <Text style={styles.previewItem}>점심  근처 맛집 추천 3곳</Text>
+                    <Text style={styles.previewItem}>오후  월정리 해변 + 카페</Text>
                     <Text style={styles.previewItem}>기분 가는 대로 다니세요.</Text>
                   </View>
                 )}
@@ -347,13 +357,15 @@ export default function ProfileSetupScreen() {
       case 4:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepEmoji}>🚗</Text>
+            <View style={styles.stepIcon}>
+              <Ionicons name="navigate-outline" size={28} color={Theme.colors.primary} />
+            </View>
             <Text style={styles.stepTitle}>주로 어떻게 이동하나요?</Text>
             <Text style={styles.stepDescription}>교통수단에 따라 동선이 달라져요!</Text>
 
             <View style={styles.cardGrid}>
               <SelectCard
-                emoji="🚗"
+                iconName="car-outline"
                 title="자차 / 렌트카"
                 subtitle="하루 5~8곳 가능"
                 isSelected={transport === "car"}
@@ -361,7 +373,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🚌"
+                iconName="bus-outline"
                 title="대중교통"
                 subtitle="버스·지하철 환승"
                 isSelected={transport === "transit"}
@@ -369,7 +381,7 @@ export default function ProfileSetupScreen() {
                 size="large"
               />
               <SelectCard
-                emoji="🚶"
+                iconName="walk-outline"
                 title="도보"
                 subtitle="걸어서 여행"
                 isSelected={transport === "walk"}
@@ -381,9 +393,9 @@ export default function ProfileSetupScreen() {
             {transport ? (
               <View style={styles.previewBox}>
                 <Text style={styles.previewTitle}>
-                  {transport === "car" && "🚗 자차/렌트카 여행"}
-                  {transport === "transit" && "🚌 대중교통 여행"}
-                  {transport === "walk" && "🚶 도보 여행"}
+                  {transport === "car" && "자차/렌트카 여행"}
+                  {transport === "transit" && "대중교통 여행"}
+                  {transport === "walk" && "도보 여행"}
                 </Text>
                 <Text style={styles.previewItem}>
                   {transport === "car" && "• 하루 5~8곳 방문\n• 먼 거리도 빠르게\n• 주차장 정보 제공"}
@@ -398,28 +410,30 @@ export default function ProfileSetupScreen() {
       case 5:
         return (
           <View style={styles.stepContainer}>
-            <Text style={styles.stepEmoji}>🍽️</Text>
+            <View style={styles.stepIcon}>
+              <Ionicons name="restaurant-outline" size={28} color={Theme.colors.primary} />
+            </View>
             <Text style={styles.stepTitle}>좋아하는 음식은?</Text>
             <Text style={styles.stepDescription}>여러 개 선택할 수 있어요. 맛집 추천에 활용됩니다.</Text>
 
             <View style={styles.foodGrid}>
               {([
-                { key: "korean", emoji: "🍚", title: "한식" },
-                { key: "chinese", emoji: "🥟", title: "중식" },
-                { key: "japanese", emoji: "🍣", title: "일식" },
-                { key: "western", emoji: "🍝", title: "양식" },
-                { key: "seafood", emoji: "🦐", title: "해산물" },
-                { key: "meat", emoji: "🥩", title: "고기" },
-                { key: "noodle", emoji: "🍜", title: "면류" },
-                { key: "salad", emoji: "🥗", title: "샐러드" },
-                { key: "cafe", emoji: "☕", title: "카페" },
-                { key: "dessert", emoji: "🧁", title: "디저트" },
-                { key: "pub", emoji: "🍺", title: "술집" },
-                { key: "other", emoji: "🌮", title: "기타" }
-              ] as { key: FoodPreference; emoji: string; title: string }[]).map((item) => (
+                { key: "korean", iconName: "flame-outline", title: "한식" },
+                { key: "chinese", iconName: "restaurant-outline", title: "중식" },
+                { key: "japanese", iconName: "fish-outline", title: "일식" },
+                { key: "western", iconName: "pizza-outline", title: "양식" },
+                { key: "seafood", iconName: "fish-outline", title: "해산물" },
+                { key: "meat", iconName: "nutrition-outline", title: "고기" },
+                { key: "noodle", iconName: "fast-food-outline", title: "면류" },
+                { key: "salad", iconName: "leaf-outline", title: "샐러드" },
+                { key: "cafe", iconName: "cafe-outline", title: "카페" },
+                { key: "dessert", iconName: "ice-cream-outline", title: "디저트" },
+                { key: "pub", iconName: "beer-outline", title: "술집" },
+                { key: "other", iconName: "apps-outline", title: "기타" }
+              ] as { key: FoodPreference; iconName: SetupIconName; title: string }[]).map((item) => (
                 <MultiSelectCard
                   key={item.key}
-                  emoji={item.emoji}
+                  iconName={item.iconName}
                   title={item.title}
                   isSelected={foods.includes(item.key)}
                   onPress={() => toggleFood(item.key)}
@@ -427,7 +441,7 @@ export default function ProfileSetupScreen() {
               ))}
             </View>
 
-            {foods.length > 0 ? <Text style={styles.foodCount}>✅ {foods.length}개 선택됨</Text> : null}
+            {foods.length > 0 ? <Text style={styles.foodCount}>{foods.length}개 선택됨</Text> : null}
           </View>
         );
 
@@ -455,9 +469,10 @@ export default function ProfileSetupScreen() {
           />
         ) : null}
         <Button
-          title={step === totalSetupSteps ? "완료! 🎉" : "다음 →"}
+          title={step === totalSetupSteps ? "완료" : "다음"}
           onPress={handleNext}
           size="large"
+          iconName={step === totalSetupSteps ? "checkmark-circle-outline" : "arrow-forward-outline"}
           style={{ flex: step > 1 ? 1 : undefined, width: step === 1 ? "100%" : undefined }}
         />
       </View>
@@ -468,7 +483,7 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Theme.colors.background,
     paddingTop: 50
   },
   scrollContent: {
@@ -479,21 +494,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screenPadding,
     paddingTop: 10
   },
-  stepEmoji: {
-    fontSize: 50,
-    textAlign: "center",
+  stepIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: Theme.colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
     marginBottom: 12
   },
   stepTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: Colors.common.black,
+    color: Theme.colors.textPrimary,
     textAlign: "center",
     marginBottom: 8
   },
   stepDescription: {
     fontSize: 15,
-    color: Colors.common.gray500,
+    color: Theme.colors.textSecondary,
     textAlign: "center",
     marginBottom: 28
   },
@@ -510,7 +530,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: Colors.common.gray100,
+    backgroundColor: Theme.colors.borderLight,
     alignItems: "center",
     justifyContent: "center",
     marginVertical: 4
@@ -518,40 +538,40 @@ const styles = StyleSheet.create({
   vsText: {
     fontSize: 18,
     fontWeight: "800",
-    color: Colors.common.gray500
+    color: Theme.colors.textSecondary
   },
   previewBox: {
-    backgroundColor: Colors.common.gray50,
+    backgroundColor: Theme.colors.surface,
     borderRadius: 16,
     padding: 20,
     marginTop: 24,
     borderWidth: 1,
-    borderColor: Colors.common.gray200
+    borderColor: Theme.colors.border
   },
   previewTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     marginBottom: 12
   },
   previewItem: {
     fontSize: 14,
-    color: Colors.common.gray600,
+    color: Theme.colors.textSecondary,
     lineHeight: 24,
     marginBottom: 2
   },
   childAgeContainer: {
     marginTop: 24,
     padding: 20,
-    backgroundColor: "#FFF9E6",
+    backgroundColor: Theme.colors.primaryLight,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#FFE680"
+    borderColor: Theme.colors.border
   },
   childAgeTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.common.gray800,
+    color: Theme.colors.textPrimary,
     marginBottom: 12
   },
   childAgeGrid: {
@@ -568,7 +588,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     fontWeight: "600",
-    color: Colors.young.primary
+    color: Theme.colors.primary
   },
   bottomButtons: {
     flexDirection: "row",
@@ -576,7 +596,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: Colors.common.gray100,
-    backgroundColor: "#FFF"
+    borderTopColor: Theme.colors.borderLight,
+    backgroundColor: Theme.colors.surface
   }
 });

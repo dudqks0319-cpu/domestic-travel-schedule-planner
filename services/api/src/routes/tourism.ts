@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { searchAttractions, searchByKeyword, searchFestivals, AREA_CODES } from "../services/tourism.service";
 import { sanitizePublicText } from "../utils/response-safety";
+import {
+  createProviderListResponse,
+  getDataGoKrProviderAvailability
+} from "../utils/provider-availability";
 
 const tourismRouter = Router();
 
@@ -13,7 +17,7 @@ tourismRouter.get("/attractions", async (req, res) => {
       contentTypeId: contentType as string,
       pageNo: page ? Number(page) : 1
     });
-    return res.json({ items });
+    return res.json(createProviderListResponse(items, getDataGoKrProviderAvailability()));
   } catch (error) {
     const message = error instanceof Error ? sanitizePublicText(error.message) : "unknown";
     console.error(`[tourism] attractions lookup failed: ${message || "unknown"}`);
@@ -26,7 +30,7 @@ tourismRouter.get("/search", async (req, res) => {
     const { keyword, page } = req.query;
     if (!keyword) return res.status(400).json({ message: "검색어가 필요합니다" });
     const items = await searchByKeyword(keyword as string, page ? Number(page) : 1);
-    return res.json({ items });
+    return res.json(createProviderListResponse(items, getDataGoKrProviderAvailability()));
   } catch (error) {
     const message = error instanceof Error ? sanitizePublicText(error.message) : "unknown";
     console.error(`[tourism] keyword lookup failed: ${message || "unknown"}`);
@@ -44,7 +48,7 @@ tourismRouter.get("/festivals", async (req, res) => {
       areaCode,
       pageNo: page ? Number(page) : 1
     });
-    return res.json({ items });
+    return res.json(createProviderListResponse(items, getDataGoKrProviderAvailability()));
   } catch (error) {
     const message = error instanceof Error ? sanitizePublicText(error.message) : "unknown";
     console.error(`[tourism] festival lookup failed: ${message || "unknown"}`);

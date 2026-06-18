@@ -7,14 +7,15 @@ import {
   TouchableOpacity,
   TextInputProps
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
-import Spacing from "../../constants/Spacing";
+import Theme from "../../constants/Theme";
 
 interface InputProps extends TextInputProps {
   label: string;
   error?: string;
   icon?: string;
+  iconName?: keyof typeof Ionicons.glyphMap;
   isPassword?: boolean;
   size?: "normal" | "senior";
 }
@@ -22,7 +23,7 @@ interface InputProps extends TextInputProps {
 export default function Input({
   label,
   error,
-  icon,
+  iconName,
   isPassword = false,
   size = "normal",
   ...rest
@@ -34,9 +35,7 @@ export default function Input({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, isSenior && styles.labelSenior]}>
-        {icon ? `${icon} ${label}` : label}
-      </Text>
+      <Text style={[styles.label, isSenior && styles.labelSenior]}>{label}</Text>
 
       <View
         style={[
@@ -46,9 +45,17 @@ export default function Input({
           isSenior && styles.inputContainerSenior
         ]}
       >
+        {iconName ? (
+          <Ionicons
+            name={iconName}
+            size={isSenior ? 24 : 18}
+            color={isFocused ? Theme.colors.primary : Theme.colors.textTertiary}
+            style={styles.leadingIcon}
+          />
+        ) : null}
         <TextInput
           style={[styles.input, isSenior && styles.inputSenior]}
-          placeholderTextColor={Colors.common.gray400}
+          placeholderTextColor={Theme.colors.textTertiary}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={isPassword && !showPassword}
@@ -61,69 +68,91 @@ export default function Input({
             style={styles.eyeButton}
             accessibilityRole="button"
             accessibilityLabel={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={{ fontSize: isSenior ? 22 : 18 }}>{showPassword ? "🙈" : "👁️"}</Text>
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={isSenior ? 24 : 20}
+              color={Theme.colors.textSecondary}
+            />
           </TouchableOpacity>
         ) : null}
       </View>
 
-      {error ? <Text style={[styles.error, isSenior && styles.errorSenior]}>⚠️ {error}</Text> : null}
+      {error ? (
+        <View style={styles.errorRow}>
+          <Ionicons name="alert-circle-outline" size={14} color={Theme.colors.error} />
+          <Text style={[styles.error, isSenior && styles.errorSenior]}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: Spacing.lg
+    marginBottom: Theme.spacing.lg
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.common.gray700,
-    marginBottom: Spacing.sm
+    color: Theme.colors.textPrimary,
+    marginBottom: Theme.spacing.sm
   },
   labelSenior: {
     fontSize: 20,
-    marginBottom: Spacing.md
+    marginBottom: Theme.spacing.md
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.common.gray50,
+    backgroundColor: Theme.colors.surface,
     borderRadius: 14,
-    borderWidth: 2,
-    borderColor: "transparent",
-    paddingHorizontal: Spacing.lg
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    paddingHorizontal: Theme.spacing.lg,
+    minHeight: 52
   },
   inputContainerSenior: {
     borderRadius: 18,
-    paddingHorizontal: Spacing.xl
+    paddingHorizontal: Theme.spacing.xl
   },
   inputFocused: {
-    borderColor: Colors.young.primary,
-    backgroundColor: "#FFFFFF"
+    borderColor: Theme.colors.primary,
+    backgroundColor: Theme.colors.surface
   },
   inputError: {
-    borderColor: Colors.common.error,
+    borderColor: Theme.colors.error,
     backgroundColor: "#FFF5F5"
   },
   input: {
     flex: 1,
     fontSize: 16,
     paddingVertical: 14,
-    color: Colors.common.black
+    color: Theme.colors.textPrimary
   },
   inputSenior: {
     fontSize: 22,
     paddingVertical: 18
   },
   eyeButton: {
-    padding: 4
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  leadingIcon: {
+    marginRight: Theme.spacing.sm
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 5
   },
   error: {
     fontSize: 12,
-    color: Colors.common.error,
-    marginTop: 4
+    color: Theme.colors.error
   },
   errorSenior: {
     fontSize: 16

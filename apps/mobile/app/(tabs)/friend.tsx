@@ -91,7 +91,14 @@ export default function FriendScreen() {
             </View>
 
             <Text style={styles.bio}>{item.bio}</Text>
-            <Text style={styles.checklist}>✓ {item.checklist.join("  ✓ ")}</Text>
+            <View style={styles.checklistRow}>
+              {item.checklist.map((text) => (
+                <View key={`${item.id}-${text}`} style={styles.checkItem}>
+                  <Ionicons name="checkmark-circle-outline" size={15} color={Theme.colors.primary} />
+                  <Text style={styles.checkText}>{text}</Text>
+                </View>
+              ))}
+            </View>
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={[styles.actionButton, styles.chatButton]} activeOpacity={0.85}>
@@ -123,12 +130,12 @@ const styles = StyleSheet.create({
     alignSelf: "center"
   },
   title: {
-    fontSize: 48,
-    lineHeight: 54,
+    fontSize: 27,
+    lineHeight: 34,
     fontWeight: "800",
     color: Theme.colors.textPrimary,
     marginBottom: 15,
-    letterSpacing: -0.6
+    letterSpacing: 0
   },
   filterRow: {
     flexDirection: "row",
@@ -146,8 +153,8 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   filterChipActive: {
-    backgroundColor: "#EE8F79",
-    borderColor: "#EE8F79"
+    backgroundColor: Theme.colors.primary,
+    borderColor: Theme.colors.primary
   },
   filterText: {
     fontSize: 16,
@@ -236,8 +243,23 @@ const styles = StyleSheet.create({
     color: Theme.colors.textSecondary,
     fontWeight: "600"
   },
-  checklist: {
+  checklistRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
     marginTop: 8,
+  },
+  checkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 999,
+    backgroundColor: Theme.colors.primaryLight,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    minHeight: 28
+  },
+  checkText: {
     fontSize: 16,
     lineHeight: 21,
     color: Theme.colors.textPrimary,
@@ -257,7 +279,7 @@ const styles = StyleSheet.create({
     minHeight: 44
   },
   chatButton: {
-    backgroundColor: "#EE8F79"
+    backgroundColor: Theme.colors.primary
   },
   chatButtonText: {
     color: "#FFFFFF",
