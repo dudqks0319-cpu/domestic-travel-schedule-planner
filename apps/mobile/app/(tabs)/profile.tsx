@@ -44,14 +44,14 @@ export default function ProfileScreen() {
   const progress = Math.min(1, point / nextTierPoint);
 
   const handleLogout = () => {
-    Alert.alert("로그아웃", "정말 로그아웃 하시겠어요?", [
+    Alert.alert("게스트 모드 초기화", "게스트 상태를 초기화하고 홈으로 돌아갈까요?", [
       { text: "취소", style: "cancel" },
       {
-        text: "로그아웃",
+        text: "초기화",
         style: "destructive",
         onPress: async () => {
           await logout();
-          router.replace("/auth/login");
+          router.replace("/(tabs)");
         }
       }
     ]);
@@ -113,8 +113,15 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        <Text style={styles.sectionTitle}>부가 기능</Text>
+        <TouchableOpacity style={styles.menuButton} onPress={() => router.push("/(tabs)/friend")} activeOpacity={0.75}>
+          <Ionicons name="people-outline" size={18} color={Theme.colors.textPrimary} />
+          <Text style={styles.menuButtonText}>여행 친구 찾기</Text>
+          <Ionicons name="chevron-forward" size={17} color={Theme.colors.textTertiary} />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.75}>
-          <Text style={styles.logoutText}>로그아웃</Text>
+          <Text style={styles.logoutText}>게스트 모드 초기화</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -282,6 +289,25 @@ const styles = StyleSheet.create({
     color: Theme.colors.textPrimary,
     fontWeight: "700",
     textAlign: "center"
+  },
+  menuButton: {
+    minHeight: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    backgroundColor: Theme.colors.surface,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    ...Theme.shadow.sm
+  },
+  menuButtonText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800"
   },
   logoutButton: {
     marginTop: 22,

@@ -73,6 +73,32 @@ function formatDuration(durationMin: number): string {
   return `${Math.round(durationMin)}분`;
 }
 
+function toModePathPoints(points: Array<{ lat: number; lng: number }>, mode: RouteTransportMode) {
+  if (points.length < 2 || mode === "driving") {
+    return points;
+  }
+
+  const path: Array<{ lat: number; lng: number }> = [];
+  const offsetScale = mode === "transit" ? 0.006 : 0.0035;
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const from = points[index];
+    const to = points[index + 1];
+    const direction = index % 2 === 0 ? 1 : -1;
+    const mid = {
+      lat: (from.lat + to.lat) / 2 + offsetScale * direction,
+      lng: (from.lng + to.lng) / 2 - offsetScale * direction
+    };
+
+    if (index === 0) {
+      path.push(from);
+    }
+    path.push(mid, to);
+  }
+
+  return path;
+}
+
 function readKakaoMapWebKey(): string | undefined {
   const maybeProcess = (
     globalThis as {
@@ -184,7 +210,10 @@ export default function RouteMapView({ route, mode, loading = false }: RouteMapV
         });
 
         const bounds = new kakao.maps.LatLngBounds();
-        const path = points.map((point) => {
+        const path = toModePathPoints(
+          points.map((point) => ({ lat: point.lat, lng: point.lng })),
+          mode
+        ).map((point) => {
           const latLng = new kakao.maps.LatLng(point.lat, point.lng);
           bounds.extend(latLng);
           return latLng;

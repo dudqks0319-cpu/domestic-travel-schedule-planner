@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import Colors from "../../constants/Colors";
+import HIG from "../../constants/HIG";
 import Spacing from "../../constants/Spacing";
 
 interface InputProps extends TextInputProps {
@@ -89,8 +90,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
+    minHeight: HIG.minTouchTarget,
     backgroundColor: Colors.common.gray50,
-    borderRadius: 14,
+    borderRadius: HIG.cornerRadiusLarge,
     borderWidth: 2,
     borderColor: "transparent",
     paddingHorizontal: Spacing.lg

@@ -8,6 +8,8 @@ export interface EnvConfig {
   port: number;
   apiPrefix: string;
   databaseUrl: string;
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
   jwtAccessSecret: string;
   jwtRefreshSecret: string;
   // 외부 API 키
@@ -79,14 +81,16 @@ export const env: EnvConfig = {
   host: getRequired("HOST", "0.0.0.0"),
   port: getPort(),
   apiPrefix: normalizeApiPrefix(getRequired("API_PREFIX", "/api/v1")),
-  databaseUrl: getRequired("DATABASE_URL"),
+  databaseUrl: getOptional("DATABASE_URL"),
+  supabaseUrl: getOptional("SUPABASE_URL"),
+  supabaseServiceRoleKey: getOptional("SUPABASE_SERVICE_ROLE_KEY"),
   jwtAccessSecret: getRequired("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: getRequired("JWT_REFRESH_SECRET"),
   kakaoRestApiKey: getOptional("KAKAO_REST_API_KEY"),
   kakaoNativeAppKey: getOptional("KAKAO_NATIVE_APP_KEY"),
   naverClientId: getOptional("NAVER_CLIENT_ID"),
   naverClientSecret: getOptional("NAVER_CLIENT_SECRET"),
-  dataGoKrApiKey: getRequired("DATA_GO_KR_API_KEY"),
+  dataGoKrApiKey: getOptional("DATA_GO_KR_API_KEY"),
   kmaApiKey: getOptional("KMA_API_KEY"),
   odsayApiKey: getOptional("ODSAY_API_KEY"),
   jusoSearchApiKey: getOptional("JUSO_SEARCH_API_KEY"),

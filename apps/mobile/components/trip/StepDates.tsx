@@ -151,7 +151,7 @@ export default function StepDates({ startDate, endDate, onChangeStartDate, onCha
           <Ionicons name="calendar" size={32} color={Theme.colors.primary} />
         </View>
         <Text style={styles.title}>언제 떠나시나요?</Text>
-        <Text style={styles.subtitle}>출발일과 도착일을 선택해주세요</Text>
+        <Text style={styles.subtitle}>기본 2박 3일 일정이 자동으로 준비되어 있어요</Text>
       </View>
 
       <CalendarPicker label="출발일" value={startDate} onChange={onChangeStartDate} />

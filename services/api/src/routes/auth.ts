@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { prisma } from "../config/database";
+import { supabase } from "../config/database";
 import { getKakaoUserByToken } from "../services/kakao-auth.service";
 import {
   generateAccessToken,
@@ -28,21 +28,50 @@ authRouter.post("/login/kakao", async (req, res) => {
     const profileImage = kakaoUser.kakao_account?.profile?.profile_image_url ?? null;
 
     // DB에서 유저 찾기 또는 새로 만들기
-    let user = await prisma.user.findUnique({ where: { kakaoId } });
+    const { data: existingUser } = await supabase
+      .from("users")
+      .select("*")
+      .eq("kakao_id", kakaoId)
+      .single();
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: { kakaoId, nickname, email, profileImage }
-      });
+    let user;
+
+    if (!existingUser) {
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          kakao_id: kakaoId,
+          nickname,
+          email,
+          profile_image: profileImage,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+      user = newUser;
     } else {
-      user = await prisma.user.update({
-        where: { kakaoId },
-        data: { nickname, email, profileImage }
-      });
+      const { data: updatedUser, error: updateError } = await supabase
+        .from("users")
+        .update({
+          nickname,
+          email,
+          profile_image: profileImage,
+        })
+        .eq("kakao_id", kakaoId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+      user = updatedUser;
     }
 
     // JWT 토큰 발급
-    const tokenPayload = { userId: user.id, kakaoId: user.kakaoId };
+    const tokenPayload = { userId: user.id, kakaoId: user.kakao_id };
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
@@ -53,7 +82,7 @@ authRouter.post("/login/kakao", async (req, res) => {
         id: user.id,
         nickname: user.nickname,
         email: user.email,
-        profileImage: user.profileImage
+        profileImage: user.profile_image
       }
     });
   } catch (error) {
@@ -87,22 +116,25 @@ authRouter.post("/refresh", async (req, res) => {
 // 내 정보 조회
 authRouter.get("/me", authMiddleware, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: {
-        id: true,
-        nickname: true,
-        email: true,
-        profileImage: true,
-        createdAt: true
-      }
-    });
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("id, nickname, email, profile_image, created_at")
+      .eq("id", req.user!.userId)
+      .single();
 
-    if (!user) {
+    if (error || !user) {
       return res.status(404).json({ message: "사용자를 찾을 수 없습니다" });
     }
 
-    return res.json({ user });
+    return res.json({
+      user: {
+        id: user.id,
+        nickname: user.nickname,
+        email: user.email,
+        profileImage: user.profile_image,
+        createdAt: user.created_at,
+      }
+    });
   } catch {
     return res.status(500).json({ message: "사용자 정보 조회 중 오류가 발생했습니다" });
   }

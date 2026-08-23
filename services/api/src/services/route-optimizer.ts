@@ -158,13 +158,25 @@ function getFallbackSpeedKmh(mode: RouteTransportMode): number {
   return 35;
 }
 
+function getFallbackDistanceFactor(mode: RouteTransportMode): number {
+  if (mode === "walking") {
+    return 1.08;
+  }
+
+  if (mode === "transit") {
+    return 1.35;
+  }
+
+  return 1.25;
+}
+
 function estimateFallbackSegment(
   from: RoutePoint,
   to: RoutePoint,
   mode: RouteTransportMode
 ): RawEstimate {
   const lineDistanceKm = haversineKm(from, to);
-  const adjustedDistanceKm = lineDistanceKm * 1.25;
+  const adjustedDistanceKm = lineDistanceKm * getFallbackDistanceFactor(mode);
   const speedKmh = getFallbackSpeedKmh(mode);
   const durationMin = (adjustedDistanceKm / speedKmh) * 60;
 
@@ -273,32 +285,36 @@ async function estimateSegment(
 ): Promise<RawEstimate> {
   const estimators: Array<{ provider: "kakao" | "odsay"; run: () => Promise<RawEstimate> }> = [];
 
-  if (mode === "transit") {
+  if (mode === "driving") {
+    if (keys.kakaoKey) {
+      estimators.push({
+        provider: "kakao",
+        run: () => estimateWithKakao(from, to, keys.kakaoKey as string)
+      });
+    }
     if (keys.odsayKey) {
       estimators.push({
         provider: "odsay",
         run: () => estimateWithOdsay(from, to, keys.odsayKey as string)
       });
     }
-    if (keys.kakaoKey) {
+  } else if (mode === "transit") {
+    if (keys.odsayKey) {
       estimators.push({
-        provider: "kakao",
-        run: () => estimateWithKakao(from, to, keys.kakaoKey as string)
+        provider: "odsay",
+        run: () => estimateWithOdsay(from, to, keys.odsayKey as string)
       });
+    } else {
+      addWarning(
+        warnings,
+        "Transit route provider key is missing. Using fallback transit estimates."
+      );
     }
   } else {
-    if (keys.kakaoKey) {
-      estimators.push({
-        provider: "kakao",
-        run: () => estimateWithKakao(from, to, keys.kakaoKey as string)
-      });
-    }
-    if (keys.odsayKey) {
-      estimators.push({
-        provider: "odsay",
-        run: () => estimateWithOdsay(from, to, keys.odsayKey as string)
-      });
-    }
+    addWarning(
+      warnings,
+      "Walking mode currently uses local estimates. Live walking provider is not configured."
+    );
   }
 
   for (const estimator of estimators) {

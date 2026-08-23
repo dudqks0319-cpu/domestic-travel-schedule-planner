@@ -43,12 +43,24 @@ interface BackendAuthUser {
 interface AuthContextValue {
   status: AuthStatus;
   user: UserSignupProfile | null;
+  isGuest: boolean;
   loginWithKakao: (kakaoAccessToken: string) => Promise<void>;
+  continueAsGuest: () => Promise<void>;
   setSession: (session: AuthSession) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const DEMO_USER: UserSignupProfile = {
+  email: "guest@tripmate.local",
+  nickname: "여행자",
+  companion: "solo",
+  purpose: "sightseeing",
+  travelStyle: "P",
+  transport: "transit",
+  foods: ["korean", "cafe"],
+  childAgeGroups: []
+};
 
 function mergeUserProfile(
   backendUser: BackendAuthUser,
@@ -75,6 +87,14 @@ function mergeUserProfile(
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<UserSignupProfile | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
+
+  const activateGuest = useCallback(async () => {
+    await Promise.all([clearAuthToken(), clearSessionTokens(), setUserProfile(DEMO_USER)]);
+    setIsGuest(true);
+    setUser(DEMO_USER);
+    setStatus("authenticated");
+  }, []);
 
   const setSession = useCallback(async (session: AuthSession) => {
     await Promise.all([
@@ -84,15 +104,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(session.user)
     ]);
 
+    setIsGuest(false);
     setUser(session.user);
     setStatus("authenticated");
   }, []);
 
   const logout = useCallback(async () => {
-    await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
-    setUser(null);
-    setStatus("unauthenticated");
-  }, []);
+    await activateGuest();
+  }, [activateGuest]);
+
+  const continueAsGuest = useCallback(async () => {
+    await activateGuest();
+  }, [activateGuest]);
 
   const loginWithKakao = useCallback(
     async (kakaoAccessToken: string) => {
@@ -134,8 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const hasSessionToken = Boolean(authToken || accessToken || refreshToken);
         if (!hasSessionToken) {
-          setUser(null);
-          setStatus("unauthenticated");
+          await activateGuest();
           return;
         }
 
@@ -157,23 +179,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
+          setIsGuest(false);
           setUser(mergedProfile ?? null);
           setStatus("authenticated");
         } catch {
-          await Promise.all([clearAuthToken(), clearSessionTokens(), clearUserProfile()]);
-          if (!isActive) {
-            return;
-          }
-          setUser(null);
-          setStatus("unauthenticated");
+          if (!isActive) return;
+          await activateGuest();
         }
       } catch {
         if (!isActive) {
           return;
         }
 
-        setUser(null);
-        setStatus("unauthenticated");
+        setIsGuest(true);
+        setUser(DEMO_USER);
+        setStatus("authenticated");
       }
     };
 
@@ -182,20 +202,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [activateGuest]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
+      isGuest,
       loginWithKakao,
+      continueAsGuest,
       setSession,
       logout
     }),
-    [loginWithKakao, logout, setSession, status, user]
+    [continueAsGuest, isGuest, loginWithKakao, logout, setSession, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export default function AuthProviderRouteShim() {
+  return null;
 }
 
 export function useAuth(): AuthContextValue {

@@ -6,7 +6,7 @@ import { authMiddleware } from "../middleware/auth";
 import { optimizeRouteRateLimit } from "../middleware/route-rate-limit";
 import { searchRestaurants, type NaverLocalItem } from "../services/restaurant.service";
 import {
-  AREA_CODES,
+  resolveAreaCode,
   searchAttractions,
   searchByKeyword,
   type TourItem
@@ -295,14 +295,14 @@ function normalizeLimit(value: unknown, defaultValue = 5, max = 20): number {
   return Math.max(1, Math.min(max, Math.trunc(parsed)));
 }
 
-function pickAreaCode(destination: string, area?: string): string {
-  const byArea = area ? AREA_CODES[area] : undefined;
+function pickAreaCode(destination: string, area?: string): string | undefined {
+  const byArea = area ? resolveAreaCode(area) : undefined;
   if (byArea) {
     return byArea;
   }
 
-  const byDestination = AREA_CODES[destination];
-  return byDestination ?? "1";
+  const byDestination = resolveAreaCode(destination);
+  return byDestination;
 }
 
 function logInternalError(scope: string, error: unknown) {
@@ -317,11 +317,13 @@ async function fetchPlannerCandidates(input: PlannerCandidateInput): Promise<Pla
 
   const attractionsPromise = input.keyword
     ? searchByKeyword(input.keyword, 1)
-    : searchAttractions({
-        areaCode,
-        pageNo: 1,
-        numOfRows: Math.max(limit, 10)
-      });
+    : areaCode
+      ? searchAttractions({
+          areaCode,
+          pageNo: 1,
+          numOfRows: Math.max(limit, 10)
+        })
+      : searchByKeyword(`${input.destination} 관광지`, 1);
 
   const [attractionsResult, restaurantsResult] = await Promise.allSettled([
     attractionsPromise,

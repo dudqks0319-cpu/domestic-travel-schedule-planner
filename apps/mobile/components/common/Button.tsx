@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import Colors from "../../constants/Colors";
+import HIG from "../../constants/HIG";
 
 interface ButtonProps {
   title: string;
@@ -79,6 +80,7 @@ export default function Button({
 const styles = StyleSheet.create({
   base: {
     borderRadius: 16,
+    minHeight: HIG.minTouchTarget,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row"
@@ -100,12 +102,12 @@ const styles = StyleSheet.create({
   size_small: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 12
+    borderRadius: HIG.cornerRadiusMedium
   },
   size_medium: {
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 16
+    borderRadius: HIG.cornerRadiusLarge
   },
   size_large: {
     paddingVertical: 18,

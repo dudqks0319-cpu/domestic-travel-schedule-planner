@@ -1,0 +1,29 @@
+{
+  "source": ["design-tokens/**/*.json"],
+  "usesDtcg": true,
+  "platforms": {
+    "css": {
+      "transformGroup": "css",
+      "buildPath": "src/styles/",
+      "files": [
+        {
+          "destination": "tokens.css",
+          "format": "css/variables",
+          "options": {
+            "outputReferences": true
+          }
+        }
+      ]
+    },
+    "js": {
+      "transformGroup": "js",
+      "buildPath": "src/styles/",
+      "files": [
+        {
+          "destination": "tokens.js",
+          "format": "javascript/es6"
+        }
+      ]
+    }
+  }
+}

@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import Theme from "../../constants/Theme";
 import { fetchDestinations } from "../../services/destinations.service";
 import { fetchTopFriends } from "../../services/friends.service";
+import { fetchKSkillTravelInfo, type KSkillTravelInfo } from "../../services/kskill.service";
 import type { Destination } from "../../types";
 
 interface TopFriend {
@@ -33,6 +34,9 @@ export default function HomeScreen() {
   const router = useRouter();
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [friends, setFriends] = useState<TopFriend[]>([]);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [kskillInfo, setKskillInfo] = useState<KSkillTravelInfo | null>(null);
+  const [kskillLoading, setKskillLoading] = useState(false);
 
   useEffect(() => {
     void Promise.all([fetchDestinations(), fetchTopFriends()]).then(([destinationsRes, friendsRes]) => {
@@ -40,6 +44,14 @@ export default function HomeScreen() {
       setFriends((friendsRes as TopFriend[]).slice(0, 5));
     });
   }, []);
+
+  useEffect(() => {
+    const target = destinations[0]?.name ?? "서울";
+    setKskillLoading(true);
+    void fetchKSkillTravelInfo(target)
+      .then(setKskillInfo)
+      .finally(() => setKskillLoading(false));
+  }, [destinations]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -70,6 +82,70 @@ export default function HomeScreen() {
         <Text style={styles.greeting}>{greeting}, 김지수님!</Text>
         <Text style={styles.subGreeting}>오늘 어디로 여행 가시겠어요?</Text>
 
+        <View style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <View>
+              <Text style={styles.statusTitle}>공공 여행 정보</Text>
+              <Text style={styles.statusSub}>
+                {kskillInfo?.sourceLabel ?? "K-skill 공공데이터 확인 중"}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statusBadge,
+                kskillInfo?.status === "connected" ? styles.statusBadgeLive : styles.statusBadgeDemo,
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  kskillInfo?.status === "connected" ? styles.statusDotLive : styles.statusDotDemo,
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  kskillInfo?.status === "connected" ? styles.statusBadgeTextLive : styles.statusBadgeTextDemo,
+                ]}
+              >
+                {kskillLoading ? "확인 중" : kskillInfo?.statusLabel ?? "데모 데이터 사용 중"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.publicInfoGrid}>
+            <View style={styles.publicInfoItem}>
+              <Ionicons name="partly-sunny-outline" size={18} color={Theme.colors.primary} />
+              <Text style={styles.publicInfoLabel}>날씨</Text>
+              <Text style={styles.publicInfoValue}>
+                {kskillInfo?.weather?.temperature ?? "--"} · {kskillInfo?.weather?.sky ?? "확인 중"}
+              </Text>
+              <Text style={styles.publicInfoMeta}>
+                강수 {kskillInfo?.weather?.rainProbability ?? "--"}
+              </Text>
+            </View>
+            <View style={styles.publicInfoItem}>
+              <Ionicons name="leaf-outline" size={18} color={Theme.colors.success} />
+              <Text style={styles.publicInfoLabel}>미세먼지</Text>
+              <Text style={styles.publicInfoValue}>
+                {kskillInfo?.fineDust?.overallGrade ?? kskillInfo?.fineDust?.pm10Grade ?? "확인 중"}
+              </Text>
+              <Text style={styles.publicInfoMeta}>PM10 {kskillInfo?.fineDust?.pm10 ?? "--"}</Text>
+            </View>
+            <View style={styles.publicInfoItem}>
+              <Ionicons name="car-outline" size={18} color={Theme.colors.warning} />
+              <Text style={styles.publicInfoLabel}>주차</Text>
+              <Text style={styles.publicInfoValue}>
+                {kskillInfo?.parkingLots[0]?.name ?? "확인 중"}
+              </Text>
+              <Text style={styles.publicInfoMeta} numberOfLines={1}>
+                {kskillInfo?.parkingLots[0]?.address ?? kskillInfo?.destinationLabel ?? "목적지 주변"}
+              </Text>
+            </View>
+          </View>
+          {kskillInfo?.message ? <Text style={styles.statusNote}>{kskillInfo.message}</Text> : null}
+        </View>
+
         <View style={styles.destList}>
           {destinations.map((destination) => (
             <TouchableOpacity
@@ -83,7 +159,18 @@ export default function HomeScreen() {
                 })
               }
             >
-              <Image source={{ uri: destination.image }} style={styles.destImage} />
+              {imageErrors[destination.id] ? (
+                <View style={[styles.destImage, styles.destImageFallback]}>
+                  <Ionicons name="image-outline" size={26} color="#FFFFFF" />
+                  <Text style={styles.destImageFallbackText}>{destination.name}</Text>
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: destination.image }}
+                  style={styles.destImage}
+                  onError={() => setImageErrors((prev) => ({ ...prev, [destination.id]: true }))}
+                />
+              )}
               <View style={styles.destOverlay} />
               <View style={styles.destFooter}>
                 <Text style={styles.destName}>{destination.name}</Text>
@@ -195,6 +282,111 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 14
   },
+  statusCard: {
+    backgroundColor: Theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Theme.colors.border,
+    padding: 14,
+    marginBottom: 14,
+    ...Theme.shadow.sm,
+  },
+  statusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  statusTitle: {
+    fontSize: 18,
+    lineHeight: 23,
+    fontWeight: "800",
+    color: Theme.colors.textPrimary,
+  },
+  statusSub: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderWidth: 1,
+  },
+  statusBadgeLive: {
+    backgroundColor: "#ECFDF5",
+    borderColor: "#BBF7D0",
+  },
+  statusBadgeDemo: {
+    backgroundColor: "#FFF7ED",
+    borderColor: "#FED7AA",
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusDotLive: {
+    backgroundColor: Theme.colors.success,
+  },
+  statusDotDemo: {
+    backgroundColor: Theme.colors.warning,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "800",
+  },
+  statusBadgeTextLive: {
+    color: "#047857",
+  },
+  statusBadgeTextDemo: {
+    color: "#B45309",
+  },
+  publicInfoGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  publicInfoItem: {
+    flex: 1,
+    minHeight: 96,
+    borderRadius: 10,
+    backgroundColor: Theme.colors.background,
+    padding: 10,
+    justifyContent: "space-between",
+  },
+  publicInfoLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: Theme.colors.textSecondary,
+    fontWeight: "700",
+  },
+  publicInfoValue: {
+    marginTop: 3,
+    fontSize: 13,
+    lineHeight: 17,
+    color: Theme.colors.textPrimary,
+    fontWeight: "800",
+  },
+  publicInfoMeta: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 15,
+    color: Theme.colors.textTertiary,
+  },
+  statusNote: {
+    marginTop: 9,
+    fontSize: 11,
+    lineHeight: 15,
+    color: Theme.colors.textSecondary,
+  },
   destList: {
     gap: 10
   },
@@ -208,6 +400,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: "100%",
     height: "100%"
+  },
+  destImageFallback: {
+    backgroundColor: "#475569",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  destImageFallbackText: {
+    marginTop: 6,
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
   },
   destOverlay: {
     ...StyleSheet.absoluteFillObject,

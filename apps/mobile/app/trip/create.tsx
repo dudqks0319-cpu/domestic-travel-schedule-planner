@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
-  View, StyleSheet, ScrollView, Alert, Platform,
-  Text, TouchableOpacity,
+  View, StyleSheet, ScrollView, Platform,
+  Text, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,9 +10,6 @@ import { Theme } from '../../constants/Theme';
 
 import StepDestination from '../../components/trip/StepDestination';
 import StepDates from '../../components/trip/StepDates';
-import StepCompanion from '../../components/trip/StepCompanion';
-import StepTransport from '../../components/trip/StepTransport';
-import StepAccommodation from '../../components/trip/StepAccommodation';
 import StepAttractions from '../../components/trip/StepAttractions';
 import StepRestaurants from '../../components/trip/StepRestaurants';
 import { clearPersistedOptimizedRoute } from '../../services/routeApi';
@@ -21,12 +18,14 @@ import { plannerApi } from '../../services/api';
 import type { CompanionType, TransportType, TripRouteMapPoint } from '../../types';
 import type { AccommodationType } from '../../components/trip/StepAccommodation';
 
-const TOTAL_STEPS = 7;
-const STEP_LABELS = ['목적지', '날짜', '동행자', '이동수단', '숙소', '관광지', '맛집'] as const;
+const TOTAL_STEPS = 4;
+const STEP_LABELS = ['목적지', '날짜', '관광지', '맛집'] as const;
 const STEP_ICONS = [
-  'location-outline', 'calendar-outline', 'people-outline',
-  'car-outline', 'bed-outline', 'camera-outline', 'restaurant-outline',
+  'location-outline', 'calendar-outline', 'camera-outline', 'restaurant-outline',
 ] as const;
+const DEFAULT_COMPANION: CompanionType = 'friends';
+const DEFAULT_TRANSPORT: TransportType = 'car';
+const DEFAULT_ACCOMMODATION: AccommodationType = 'hotel';
 
 interface StepState {
   destination: string;
@@ -39,11 +38,91 @@ interface StepState {
   restaurants: string[];
 }
 
+function toDateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getDefaultDates(): Pick<StepState, 'startDate' | 'endDate'> {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 2);
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end),
+  };
+}
+
+const DEFAULTS = getDefaultDates();
+
 const INITIAL: StepState = {
-  destination: '', startDate: '', endDate: '',
-  companion: null, transport: null, accommodationType: null,
+  destination: '제주도',
+  startDate: DEFAULTS.startDate,
+  endDate: DEFAULTS.endDate,
+  companion: DEFAULT_COMPANION,
+  transport: DEFAULT_TRANSPORT,
+  accommodationType: DEFAULT_ACCOMMODATION,
   attractions: [], restaurants: [],
 };
+
+const DESTINATION_CENTERS: Record<string, { latitude: number; longitude: number }> = {
+  제주: { latitude: 33.4996, longitude: 126.5312 },
+  부산: { latitude: 35.1796, longitude: 129.0756 },
+  서울: { latitude: 37.5665, longitude: 126.978 },
+  강릉: { latitude: 37.7519, longitude: 128.8761 },
+  여수: { latitude: 34.7604, longitude: 127.6622 },
+  경주: { latitude: 35.8562, longitude: 129.2247 },
+  전주: { latitude: 35.8242, longitude: 127.148 },
+  인천: { latitude: 37.4563, longitude: 126.7052 },
+  속초: { latitude: 38.207, longitude: 128.5918 },
+  포항: { latitude: 36.019, longitude: 129.3435 }
+};
+
+const FALLBACK_POINT_OFFSETS = [
+  { latitude: 0, longitude: 0 },
+  { latitude: 0.012, longitude: 0.014 },
+  { latitude: -0.011, longitude: 0.016 },
+  { latitude: -0.014, longitude: -0.009 },
+  { latitude: 0.009, longitude: -0.015 }
+];
+
+function resolveDestinationCenter(destination: string): { latitude: number; longitude: number } {
+  const normalized = destination.trim();
+  const entry = Object.entries(DESTINATION_CENTERS).find(([name]) => normalized.includes(name));
+  if (entry) {
+    return entry[1];
+  }
+
+  return { latitude: 37.5665, longitude: 126.978 };
+}
+
+function buildFallbackRoutePoints(
+  destination: string,
+  selectedAttractions: string[],
+  selectedRestaurants: string[]
+): TripRouteMapPoint[] {
+  const safeDestination = destination.trim() || "여행지";
+  const center = resolveDestinationCenter(safeDestination);
+  const attractionLabels = selectedAttractions.slice(0, 2).map((_, index) => `${safeDestination} 관광지 ${index + 1}`);
+  const restaurantLabels = selectedRestaurants
+    .slice(0, 2)
+    .map((name, index) => (name.trim().length > 0 ? name.trim() : `${safeDestination} 맛집 ${index + 1}`));
+
+  const pointNames = [`${safeDestination} 출발`, ...attractionLabels, ...restaurantLabels, `${safeDestination} 마무리`];
+  const normalizedNames = pointNames.length >= 2 ? pointNames : [`${safeDestination} 출발`, `${safeDestination} 마무리`];
+
+  return normalizedNames
+    .slice(0, FALLBACK_POINT_OFFSETS.length)
+    .map((name, index) => ({
+      id: `fallback-${index + 1}`,
+      name,
+      latitude: center.latitude + FALLBACK_POINT_OFFSETS[index].latitude,
+      longitude: center.longitude + FALLBACK_POINT_OFFSETS[index].longitude,
+    }));
+}
 
 function parseDate(t: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null;
@@ -58,7 +137,7 @@ export default function TripCreateScreen() {
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<StepState>(() => ({
     ...INITIAL,
-    destination: params.destination ?? '',
+    destination: params.destination ?? INITIAL.destination,
   }));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -85,39 +164,51 @@ export default function TripCreateScreen() {
 
   const scrollTop = () => scrollRef.current?.scrollTo({ y: 0, animated: true });
 
-  const validate = (): boolean => {
-    switch (step) {
-      case 1: if (!draft.destination.trim()) { Alert.alert('', '여행지를 선택해주세요'); return false; } return true;
-      case 2: {
-        const s = parseDate(draft.startDate), e = parseDate(draft.endDate);
-        if (!s || !e) { Alert.alert('', '출발일과 도착일을 선택해주세요'); return false; }
-        if (e.getTime() < s.getTime()) { Alert.alert('', '도착일은 출발일 이후여야 해요'); return false; }
-        return true;
-      }
-      case 3: if (!draft.companion) { Alert.alert('', '동행자를 선택해주세요'); return false; } return true;
-      case 4: if (!draft.transport) { Alert.alert('', '이동수단을 선택해주세요'); return false; } return true;
-      case 5: if (!draft.accommodationType) { Alert.alert('', '숙소 타입을 선택해주세요'); return false; } return true;
-      case 6: if (draft.attractions.length === 0) { Alert.alert('', '관광지를 1개 이상 선택해주세요'); return false; } return true;
-      default: return true;
-    }
+  const ensureRequiredDefaults = () => {
+    setDraft((prev) => {
+      const defaults = getDefaultDates();
+      const startDate = parseDate(prev.startDate) ? prev.startDate : defaults.startDate;
+      const endDate = parseDate(prev.endDate) ? prev.endDate : defaults.endDate;
+      return {
+        ...prev,
+        destination: prev.destination.trim() || INITIAL.destination,
+        startDate,
+        endDate,
+        companion: prev.companion ?? DEFAULT_COMPANION,
+        transport: prev.transport ?? DEFAULT_TRANSPORT,
+        accommodationType: prev.accommodationType ?? DEFAULT_ACCOMMODATION,
+      };
+    });
   };
 
+  const validate = (): boolean => true;
+
   const handleBack = () => { if (step === 1) router.back(); else { setStep((s) => s - 1); scrollTop(); } };
-  const handleNext = () => { if (!validate()) return; setStep((s) => Math.min(s + 1, TOTAL_STEPS)); scrollTop(); };
+  const handleNext = () => {
+    ensureRequiredDefaults();
+    if (!validate()) return;
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+    scrollTop();
+  };
 
   const handleComplete = async () => {
-    if (!draft.companion || !draft.transport || !draft.accommodationType) {
-      Alert.alert('', '누락된 항목이 있어요'); return;
-    }
     if (isSaving) return;
     setIsSaving(true);
+    const safeDestination = draft.destination.trim() || INITIAL.destination;
+    const safeDates = getDefaultDates();
+    const startDate = parseDate(draft.startDate) ? draft.startDate : safeDates.startDate;
+    const endDate = parseDate(draft.endDate) ? draft.endDate : safeDates.endDate;
+    const transport = draft.transport ?? DEFAULT_TRANSPORT;
+    const companion = draft.companion ?? DEFAULT_COMPANION;
     try {
       const res = await plannerApi.generate({
-        destination: draft.destination.trim(),
-        startDate: draft.startDate,
-        endDate: draft.endDate,
-        transport: draft.transport,
-        companions: draft.companion,
+        destination: safeDestination,
+        startDate,
+        endDate,
+        transport,
+        companions: companion,
+        attractionKeywords: draft.attractions,
+        restaurantKeywords: draft.restaurants,
       });
       const trip = res.data.trip;
       const routePoints: TripRouteMapPoint[] = [];
@@ -128,23 +219,45 @@ export default function TripCreateScreen() {
           }
         }
       }
+      const savedRoutePoints =
+        routePoints.length >= 2
+          ? routePoints
+          : buildFallbackRoutePoints(draft.destination, draft.attractions, draft.restaurants);
       await Promise.all([
         AsyncStorage.setItem('currentTrip', JSON.stringify({
           id: trip.id, title: trip.title, destination: trip.destination,
-          startDate: trip.startDate, endDate: trip.endDate,
-          routePoints, createdAt: trip.createdAt,
+          startDate: trip.startDate ?? startDate,
+          endDate: trip.endDate ?? endDate,
+          routePoints: savedRoutePoints,
+          attractions: draft.attractions,
+          restaurants: draft.restaurants,
+          transport,
+          companions: companion,
+          createdAt: trip.createdAt,
         })),
         clearPersistedOptimizedRoute(),
       ]);
       router.push('/trip/route-map');
     } catch {
-      Alert.alert('', '서버 연결 실패. 로컬에 저장합니다.');
-      await AsyncStorage.setItem('currentTrip', JSON.stringify({
-        id: `trip_${Date.now()}`, title: `${draft.destination} 여행`,
-        destination: draft.destination.trim(),
-        startDate: draft.startDate, endDate: draft.endDate,
-        routePoints: [], createdAt: new Date().toISOString(),
-      }));
+      const fallbackRoutePoints = buildFallbackRoutePoints(
+        safeDestination,
+        draft.attractions,
+        draft.restaurants
+      );
+      await Promise.all([
+        AsyncStorage.setItem('currentTrip', JSON.stringify({
+          id: `trip_${Date.now()}`, title: `${safeDestination} 여행`,
+          destination: safeDestination,
+          startDate, endDate,
+          routePoints: fallbackRoutePoints,
+          attractions: draft.attractions,
+          restaurants: draft.restaurants,
+          transport,
+          companions: companion,
+          createdAt: new Date().toISOString(),
+        })),
+        clearPersistedOptimizedRoute(),
+      ]);
       router.push('/trip/route-map');
     } finally { setIsSaving(false); }
   };
@@ -153,11 +266,16 @@ export default function TripCreateScreen() {
     switch (step) {
       case 1: return <StepDestination destination={draft.destination} onChangeDestination={(v) => update('destination', v)} />;
       case 2: return <StepDates startDate={draft.startDate} endDate={draft.endDate} onChangeStartDate={handleChangeStartDate} onChangeEndDate={handleChangeEndDate} />;
-      case 3: return <StepCompanion companion={draft.companion} onSelectCompanion={(v) => update('companion', v)} />;
-      case 4: return <StepTransport transport={draft.transport} onSelectTransport={(v) => update('transport', v)} />;
-      case 5: return <StepAccommodation destination={draft.destination} accommodationType={draft.accommodationType} onSelectAccommodation={(v) => update('accommodationType', v)} />;
-      case 6: return <StepAttractions destination={draft.destination} selectedAttractions={draft.attractions} onChangeAttractions={(v) => update('attractions', v)} />;
-      case 7: return <StepRestaurants destination={draft.destination} selectedRestaurants={draft.restaurants} onChangeRestaurants={(v) => update('restaurants', v)} onComplete={() => void handleComplete()} loading={isSaving} />;
+      case 3: return <StepAttractions destination={draft.destination || INITIAL.destination} selectedAttractions={draft.attractions} onChangeAttractions={(v) => update('attractions', v)} />;
+      case 4:
+        return (
+          <StepRestaurants
+            destination={draft.destination || INITIAL.destination}
+            selectedRestaurants={draft.restaurants}
+            onChangeRestaurants={(v) => update('restaurants', v)}
+            showCompleteButton={false}
+          />
+        );
       default: return null;
     }
   };
@@ -220,21 +338,40 @@ export default function TripCreateScreen() {
         {renderStep()}
       </ScrollView>
 
-      {step < TOTAL_STEPS && (
+      {step <= TOTAL_STEPS && (
         <View style={styles.bottomBar}>
           {step > 1 && (
-            <TouchableOpacity style={styles.btnOutline} onPress={handleBack}>
+            <TouchableOpacity
+              style={[styles.btnOutline, step === TOTAL_STEPS && isSaving && styles.btnDisabled]}
+              onPress={handleBack}
+              disabled={step === TOTAL_STEPS && isSaving}
+            >
               <Ionicons name="chevron-back" size={18} color={Theme.colors.primary} />
               <Text style={styles.btnOutlineText}>이전</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.btnPrimary, step === 1 && { flex: 1 }]}
-            onPress={handleNext}
+            style={[
+              styles.btnPrimary,
+              step === 1 && { flex: 1 },
+              step === TOTAL_STEPS && isSaving && styles.btnDisabled
+            ]}
+            onPress={step === TOTAL_STEPS ? () => void handleComplete() : handleNext}
+            disabled={step === TOTAL_STEPS && isSaving}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnPrimaryText}>다음</Text>
-            <Ionicons name="chevron-forward" size={18} color="#FFF" />
+            {step === TOTAL_STEPS && isSaving ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Text style={styles.btnPrimaryText}>{step === TOTAL_STEPS ? '완료' : '다음'}</Text>
+                <Ionicons
+                  name={step === TOTAL_STEPS ? "checkmark" : "chevron-forward"}
+                  size={18}
+                  color="#FFF"
+                />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -315,6 +452,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16, borderRadius: Theme.radius.lg,
     backgroundColor: Theme.colors.primary,
     ...Theme.shadow.sm,
+  },
+  btnDisabled: {
+    opacity: 0.65
   },
   btnPrimaryText: { ...Theme.typography.button, color: '#FFF' },
 });

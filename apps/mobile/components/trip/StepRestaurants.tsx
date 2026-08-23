@@ -11,8 +11,10 @@ interface Props {
   destination: string;
   selectedRestaurants: string[];
   onChangeRestaurants: (v: string[]) => void;
-  onComplete: () => void;
+  onComplete?: () => void;
   loading?: boolean;
+  showCompleteButton?: boolean;
+  completeLabel?: string;
 }
 
 interface Item {
@@ -30,7 +32,15 @@ const CATS = [
   { key: '분식', label: '분식', icon: 'fast-food-outline' },
 ];
 
-export default function StepRestaurants({ destination, selectedRestaurants, onChangeRestaurants, onComplete, loading: saving = false }: Props) {
+export default function StepRestaurants({
+  destination,
+  selectedRestaurants,
+  onChangeRestaurants,
+  onComplete,
+  loading: saving = false,
+  showCompleteButton = true,
+  completeLabel = "일정 저장하기"
+}: Props) {
   const [items, setItems] = useState<Item[]>([]);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState('');
@@ -131,21 +141,23 @@ export default function StepRestaurants({ destination, selectedRestaurants, onCh
         <Text style={styles.countText}>{selectedRestaurants.length}개 선택됨</Text>
       </View>
 
-      <TouchableOpacity
-        style={[styles.completeBtn, saving && { opacity: 0.7 }]}
-        onPress={onComplete}
-        disabled={saving}
-        activeOpacity={0.85}
-      >
-        {saving ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <>
-            <Ionicons name="sparkles" size={20} color="#FFF" />
-            <Text style={styles.completeBtnText}>AI 일정 생성하기</Text>
-          </>
-        )}
-      </TouchableOpacity>
+      {showCompleteButton && onComplete ? (
+        <TouchableOpacity
+          style={[styles.completeBtn, saving && { opacity: 0.7 }]}
+          onPress={onComplete}
+          disabled={saving}
+          activeOpacity={0.85}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+              <Text style={styles.completeBtnText}>{completeLabel}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }

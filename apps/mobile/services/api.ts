@@ -6,7 +6,7 @@ import {
   setAccessToken,
 } from "../lib/secure-storage";
 
-const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+const API_BASE = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 const API_PREFIX = "/api/v1";
 
 type RetriableRequestConfig = {
@@ -32,7 +32,7 @@ function applyAuthorizationHeader(
 }
 
 const apiClient = axios.create({
-  baseURL: `${API_BASE}${API_PREFIX}`,
+  baseURL: API_BASE ? `${API_BASE}${API_PREFIX}` : API_PREFIX,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
 });

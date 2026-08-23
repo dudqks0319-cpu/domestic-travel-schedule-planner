@@ -37,15 +37,39 @@ export default function StepAttractions({ destination, selectedAttractions, onCh
 
   const fetchData = useCallback(async (p: number, c?: string, reset = false) => {
     if (!destination) return;
+    if (reset) {
+      setItems([]);
+    }
     setLoading(true); setError('');
     try {
       const area = destination.replace(/도$|시$|군$|구$/g, '').trim();
       const ct = c === 'all' ? undefined : c;
       const res = await tourismApi.getAttractions(area, p, ct);
-      const arr = (res.data.items ?? []) as Item[];
+      const raw = (res.data.items ?? []) as Item[];
+      const keyword = area.toLowerCase();
+      const filtered = raw.filter((item) => {
+        const haystack = `${item.title ?? ""} ${item.addr1 ?? ""}`.toLowerCase();
+        return keyword.length === 0 || haystack.includes(keyword);
+      });
+
+      let arr = filtered.length > 0 ? filtered : raw;
+      if (arr.length === 0 && p === 1) {
+        const fallback = await tourismApi.search(`${area} 관광지`, 1);
+        const fallbackRaw = (fallback.data.items ?? []) as Item[];
+        const fallbackFiltered = fallbackRaw.filter((item) => {
+          const haystack = `${item.title ?? ""} ${item.addr1 ?? ""}`.toLowerCase();
+          return keyword.length === 0 || haystack.includes(keyword);
+        });
+        arr = fallbackFiltered.length > 0 ? fallbackFiltered : fallbackRaw;
+      }
       setItems((prev) => reset ? arr : [...prev, ...arr]);
       setHasMore(arr.length >= 20);
-    } catch { setError('관광지 정보를 불러올 수 없습니다'); }
+    } catch {
+      if (reset) {
+        setItems([]);
+      }
+      setError('관광지 정보를 불러올 수 없습니다');
+    }
     finally { setLoading(false); }
   }, [destination]);
 

@@ -76,3 +76,37 @@ export interface TripScheduleItem {
   endTime?: string;
   locationName?: string;
 }
+
+export interface Destination {
+  id: string;
+  name: string;
+  rating: number;
+  image: string;
+}
+
+export interface Review {
+  id: string;
+  user: string;
+  tag: string;
+  score: number;
+  daysAgo: number;
+  text: string;
+  helpful: number;
+  avatar: string;
+  photo: string;
+  type: "전체" | "가족" | "커플" | "혼자";
+  destinationId?: string;
+}
+
+export interface FriendMatch {
+  id: string;
+  name: string;
+  age: number;
+  destination: string;
+  dateRange: string;
+  bio: string;
+  match: number;
+  avatar: string;
+  tags: string[];
+  checklist: string[];
+}

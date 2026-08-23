@@ -1,0 +1,30 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --color-bg: #f7f8fb;
+  --color-surface: #ffffff;
+  --color-text-primary: #171923;
+  --color-text-secondary: #5d6474;
+  --color-border: #e5e9f2;
+  --color-primary: #5b84e6;
+  --color-primary-strong: #3f63c7;
+  --color-accent-coral: #ea9078;
+  --color-accent-mint: #d7efdf;
+  --color-accent-lavender: #e5dcf4;
+  --size-radius-card: 16px;
+  --size-radius-pill: 999px;
+  --size-touch-target-minimum: 44px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-xxl: 24px;
+  --font-family-base: 'Noto Sans KR';
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --font-weight-extra-bold: 800;
+}

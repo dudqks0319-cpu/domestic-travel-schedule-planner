@@ -1,20 +1,35 @@
 import { Tabs } from "expo-router";
-import { Text, View, StyleSheet } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "../../constants/Colors";
+import Theme from "../../constants/Theme";
 
-type IconName = "home" | "search" | "add-circle" | "map" | "person";
+type VisibleTab = "index" | "search" | "schedule" | "map" | "profile";
 
-function TabIcon({ icon, label, focused }: { icon: IconName; label: string; focused: boolean }) {
+type TabMeta = {
+  name: VisibleTab;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconFocused: keyof typeof Ionicons.glyphMap;
+};
+
+const TAB_META: Record<VisibleTab, TabMeta> = {
+  index: { name: "index", label: "홈", icon: "home-outline", iconFocused: "home" },
+  search: { name: "search", label: "로컬", icon: "compass-outline", iconFocused: "compass" },
+  schedule: { name: "schedule", label: "일정", icon: "calendar-outline", iconFocused: "calendar" },
+  map: { name: "map", label: "지도", icon: "map-outline", iconFocused: "map" },
+  profile: { name: "profile", label: "프로필", icon: "person-outline", iconFocused: "person" }
+};
+
+function TabIcon({ tab, focused }: { tab: TabMeta; focused: boolean }) {
   return (
     <View style={styles.tabItem}>
       <Ionicons
-        name={focused ? icon : (`${icon}-outline` as any)}
-        size={24}
-        color={focused ? Colors.young.primary : Colors.common.gray400}
+        name={focused ? tab.iconFocused : tab.icon}
+        size={23}
+        color={focused ? Theme.colors.textPrimary : Theme.colors.textTertiary}
       />
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+      <Text style={[styles.tabLabel, focused ? styles.tabLabelFocused : null]}>{tab.label}</Text>
     </View>
   );
 }
@@ -24,41 +39,49 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
+        tabBarStyle: styles.tabBar,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="home" label="홈" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="search" label="검색" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="create"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="add-circle" label="새일정" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="map" label="지도" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="person" label="MY" focused={focused} /> }}
-      />
+      {(Object.keys(TAB_META) as VisibleTab[]).map((key) => (
+        <Tabs.Screen
+          key={key}
+          name={TAB_META[key].name}
+          options={{
+            tabBarIcon: ({ focused }) => <TabIcon tab={TAB_META[key]} focused={focused} />
+          }}
+        />
+      ))}
+
+      <Tabs.Screen name="create" options={{ href: null }} />
+      <Tabs.Screen name="friend" options={{ href: null }} />
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 85, paddingTop: 8, paddingBottom: 25,
-    backgroundColor: "#FFFFFF", borderTopWidth: 0,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 12,
+    height: 84,
+    paddingTop: 8,
+    paddingBottom: 20,
+    backgroundColor: Theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.borderLight,
+    ...Theme.shadow.md,
   },
-  tabItem: { alignItems: "center", justifyContent: "center" },
-  tabLabel: { fontSize: 11, marginTop: 2, color: Colors.common.gray400, fontWeight: "500" },
-  tabLabelActive: { color: Colors.young.primary, fontWeight: "700" },
+  tabItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 60,
+  },
+  tabLabel: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: "500",
+    color: Theme.colors.textTertiary,
+  },
+  tabLabelFocused: {
+    color: Theme.colors.textPrimary,
+    fontWeight: "700",
+  }
 });
